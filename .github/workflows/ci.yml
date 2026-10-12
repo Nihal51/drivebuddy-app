@@ -1,0 +1,55 @@
+# ============================================================================
+#  DriveBuddy mobile — checks on every push and pull request.
+#
+#  Fails (red cross on the commit) if the code is unformatted, has lint errors
+#  or type errors, a test fails, or the Android app no longer bundles. Nothing
+#  here builds or publishes an app: store builds go through EAS (docs/RELEASING.md).
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: 1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Bundle the Android app
+        working-directory: apps/customer
+        run: npx expo export --platform android --output-dir dist --no-bytecode
