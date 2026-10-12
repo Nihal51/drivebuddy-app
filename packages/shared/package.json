@@ -1,0 +1,31 @@
+{
+  "name": "@drivebuddy/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The DriveBuddy data model shared by every app: packages, cities, prices, validation and the booking document shape that firestore.rules accepts.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "\\.[jt]sx?$": [
+        "babel-jest",
+        {
+          "presets": [
+            "babel-preset-expo"
+          ]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "babel-preset-expo": "~57.0.14",
+    "jest": "^30.5.2"
+  }
+}
