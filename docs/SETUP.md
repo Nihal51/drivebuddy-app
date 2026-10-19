@@ -128,13 +128,61 @@ Want an app to hand to friends for testing, without your computer?
 4. In the booking's panel, **Tell the customer… → English / हिंदी** opens
    WhatsApp with the driver details typed.
 
+## 8. Crash reports and usage stats (optional, 15 minutes)
+
+Both are free at this size and both are **off until you paste a key** into
+`apps\customer\.env`. Whatever you switch on must also be ticked in the Play
+_Data safety_ form (`apps/customer/store/google-play/app-content.md`).
+
+**Crash reports — Sentry.** When the app crashes on a customer's phone you get
+an email with the error and the screen, instead of a 1-star review.
+
+1. Sign up at https://sentry.io (free) → _Create project_ → **React Native** →
+   name it `drivebuddy-app`.
+2. Copy the **DSN** into `.env`: `EXPO_PUBLIC_SENTRY_DSN=https://…`
+3. For readable error locations, also give EAS three secrets (Sentry → Settings
+   → Auth tokens → create one with `project:releases`):
+   ```bash
+   cd apps\customer
+   eas env:create --name SENTRY_ORG --value <your-org-slug> --environment production
+   eas env:create --name SENTRY_PROJECT --value drivebuddy-app --environment production
+   eas env:create --name SENTRY_AUTH_TOKEN --value <token> --visibility secret --environment production
+   ```
+   Without them reports still arrive; the code locations are just harder to read.
+
+Reports never include names, phone numbers, addresses or bookings
+(`src/lib/monitoring.ts` strips them), and are sent only from installed
+builds, never while you are developing.
+
+**Usage stats — PostHog.** Counts such as "booking form opened" vs "booking
+sent", so you can see where people give up. Anonymous: a random ID, no names,
+numbers or addresses; customers can switch it off in Account.
+
+1. Sign up at https://posthog.com (free) → create a project (US or EU).
+2. Project settings → copy the **Project API key** into `.env`:
+   `EXPO_PUBLIC_POSTHOG_KEY=phc_…` (EU projects also set
+   `EXPO_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com`).
+3. Project settings → turn on **Discard client IP data**, so not even the
+   phone's IP address is kept.
+
+The events and what they mean are listed in `src/lib/analytics.ts`.
+
+## 9. Builds from GitHub (optional)
+
+Once the repo is on GitHub, builds can start from the browser instead of your
+computer: expo.dev → Account settings → **Access tokens** → create one →
+GitHub repo → Settings → Secrets → Actions → `EXPO_TOKEN`. Then _Actions_ →
+**EAS build** → _Run workflow_ → pick the profile.
+
 ## When something does not work
 
-| You see                                        | Fix                                                                                             |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| "We could not save your request just now"      | Publish the rules (step 0.2)                                                                    |
-| "Login is not switched on in this version yet" | Web client ID in `.env` (step 4.1), then rebuild or restart                                     |
-| Google login error / "DEVELOPER_ERROR"         | SHA-1 fingerprint missing in Firebase (step 4.2)                                                |
-| Notifications "Not available on this device"   | Project ID in `app.config.ts` (step 2.3); a real phone, not an emulator                         |
-| Notifications never arrive on Android          | FCM key uploaded (step 5); robot code updated (step 0.3)                                        |
-| Old prices                                     | The app refreshes prices on start and every 30 minutes; check `/app-config.json` on the website |
+| You see                                            | Fix                                                                                             |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| "We could not save your request just now"          | Publish the rules (step 0.2)                                                                    |
+| "Login is not switched on in this version yet"     | Web client ID in `.env` (step 4.1), then rebuild or restart                                     |
+| Google login error / "DEVELOPER_ERROR"             | SHA-1 fingerprint missing in Firebase (step 4.2)                                                |
+| Notifications "Not available on this device"       | Project ID in `app.config.ts` (step 2.3); a real phone, not an emulator                         |
+| Notifications never arrive on Android              | FCM key uploaded (step 5); robot code updated (step 0.3)                                        |
+| Old prices                                         | The app refreshes prices on start and every 30 minutes; check `/app-config.json` on the website |
+| "Please update DriveBuddy" on every phone          | `app.minVersion` in the website's `site-settings.ts` is above the app's `version`; lower it     |
+| Google login works in your test app, not from Play | Play's App signing SHA-1 is missing in Firebase (`store/google-play/README.md`, step 14)        |

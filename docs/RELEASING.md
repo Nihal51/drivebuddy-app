@@ -8,7 +8,8 @@ uploads run on EAS (Expo's cloud), so **no Mac is needed, even for iPhone**.
 - [ ] Website pushed, rules published, robot updated ([SETUP.md](SETUP.md) step 0)
 - [ ] Google login works on the test app (SETUP steps 3–4)
 - [ ] Notifications arrive (SETUP step 5)
-- [ ] Privacy policy is live: https://thedrivebuddy.in/privacy/ (updated for the app)
+- [ ] Privacy policy is live and has the account-deletion section:
+      https://thedrivebuddy.in/privacy/#delete-account
 - [ ] `version` in `apps/customer/app.config.ts` is what you want shown (`1.0.0`)
 - [ ] **iPhone only:** add _Sign in with Apple_ next to Google (App Store rule
       4.8 for apps with a third-party login). Ask Claude to add it before the
@@ -16,66 +17,23 @@ uploads run on EAS (Expo's cloud), so **no Mac is needed, even for iPhone**.
 
 ## Google Play
 
-**Costs:** $25 once (about ₹2,100) for the developer account.
+Everything is in **[apps/customer/store/google-play/](../apps/customer/store/google-play/README.md)**:
+the step-by-step order, the store listing in English and Hindi, the icon,
+feature graphic and screenshots, every _App content_ answer (Data safety,
+content rating…), the tester message and the release notes.
 
-1. **Developer account:** https://play.google.com/console → sign up.
-   - _Personal_ account: Google requires a **closed test with at least 12
-     testers, opted in for 14 days in a row**, before you can publish to
-     everyone. Line up 12 friends, drivers or customers with Android phones.
-   - _Organisation_ account (DriveBuddy as a registered business, with a free
-     D-U-N-S number): more paperwork up front, but Google does not apply that
-     12-tester rule to it.
-   - Either way Google verifies your identity (ID, sometimes a video selfie).
-2. **Create the app:** name _DriveBuddy_, default language English (India),
-   App, Free.
-3. **The production build** (an .aab file, signed by EAS):
-   ```bash
-   cd apps\customer
-   eas build --profile production --platform android
-   ```
-   EAS keeps the signing key safe; never lose access to your Expo account.
-4. **First upload by hand** (Google requires it once): Play Console → _Test and
-   release_ → _Testing_ → **Closed testing** → create a track → upload the
-   .aab from the EAS build page → add testers (an email list or Google Group)
-   → roll out. Send testers the opt-in link.
-5. Later releases go up with one command, after you create a Google service
-   account for uploads (`eas submit` walks you through it):
-   ```bash
-   npm run submit:android
-   ```
-6. **App content** (Play Console → _Policy and programmes_ → App content):
-   - Privacy policy: `https://thedrivebuddy.in/privacy/`
-   - Ads: **No ads**
-   - App access: login is optional — "All functionality is available without
-     special access"; booking works as a guest
-   - Content rating questionnaire: a utility/booking app, no objectionable
-     content → rated for everyone
-   - Target audience: 18+
-   - **Data safety** — what the app collects (matches the privacy policy):
+The short version:
 
-     | Data                             | Collected                | Why                                    | Optional |
-     | -------------------------------- | ------------------------ | -------------------------------------- | -------- |
-     | Name                             | Yes                      | App functionality (booking)            | No       |
-     | Phone number                     | Yes                      | App functionality (we call to confirm) | No       |
-     | Address (pickup)                 | Yes                      | App functionality                      | No       |
-     | Email address                    | Yes, if logged in        | Account management                     | Yes      |
-     | User IDs                         | Yes, if logged in        | Account management                     | Yes      |
-     | Device or other IDs (push token) | Yes, if notifications on | App functionality                      | Yes      |
-
-     Encrypted in transit: **Yes**. Data shared with third parties: **No**
-     (Firebase and Expo are service providers). Users can request deletion:
-     **Yes** — in the app (Account → Delete my account), and for the web form
-     use `https://thedrivebuddy.in/privacy/#your-rights`.
-
-   - Government apps, financial features, health: No.
-7. **Store listing:** short description (80 characters), full description,
-   app icon 512×512 (`apps/customer/assets/icon.png` scaled down), feature
-   graphic 1024×500, at least 2 phone screenshots (take them from the test
-   app). Category: _Maps & Navigation_ or _Auto & Vehicles_. Contact:
-   drivebuddyind@gmail.com, +91 91114 73929, https://thedrivebuddy.in.
-8. After 14 days of closed testing with 12+ testers: _Apply for production_,
-   answer Google's short questionnaire, then promote the release to
-   **Production**. Reviews usually take 1–7 days.
+- **Costs:** $25 once (about ₹2,100). One account covers every app,
+  including the driver app later.
+- **Personal account:** a **closed test with 12+ testers for 14 days** is
+  required before the app can go public (organisation accounts skip it).
+- **Build:** `npm run build:play` in `apps\customer` → an `.aab` signed by EAS.
+  The **first** upload goes in by hand (Play Console → Closed testing);
+  later ones with `npm run submit:android`, which uploads to closed testing
+  as a draft.
+- **After the first upload:** copy Play's _App signing key_ SHA-1 into
+  Firebase, or Google login fails in the Play version.
 
 ## App Store (iPhone)
 
@@ -95,7 +53,7 @@ uploads run on EAS (Expo's cloud), so **no Mac is needed, even for iPhone**.
    record for you (log in with your Apple ID when asked).
 4. App Store Connect → your app: description, keywords, support URL
    (https://thedrivebuddy.in/contact/), privacy policy URL, screenshots (6.9"
-   and 6.5" iPhone), **App Privacy** answers (same data as the table above),
+   and 6.5" iPhone), **App Privacy** answers (the same data as the Play Data safety answers in `apps/customer/store/google-play/app-content.md`),
    age rating 4+.
 5. _Review notes:_ "Booking works without login. Log in with Google to see
    bookings. Driver bookings are confirmed by phone." Submit for review
@@ -113,3 +71,27 @@ uploads run on EAS (Expo's cloud), so **no Mac is needed, even for iPhone**.
 - **Anything native** (a new permission, a new native library, a new Expo SDK):
   raise `version` in `app.config.ts` (e.g. 1.1.0), then build and submit again
   as above. EAS raises the store build numbers by itself.
+
+## Upgrading Expo
+
+Expo releases a new SDK about three times a year, and Google Play raises the
+required Android version every August, so plan one upgrade a year at least.
+Dependabot deliberately leaves Expo, React Native and their libraries alone
+(`.github/dependabot.yml`): they must move together.
+
+1. Read the SDK's release notes on https://expo.dev/changelog (breaking changes).
+2. On a new git branch:
+   ```bash
+   cd apps\customer
+   npx expo install expo@^<new SDK>.0.0
+   npx expo install --fix
+   npx expo-doctor
+   cd ..\..
+   npm run check
+   ```
+3. Fix what the checks report, build a development app
+   (`eas build --profile development --platform android`) and run
+   [PHONE-TEST.md](PHONE-TEST.md) on a real phone.
+4. Raise `version` in `app.config.ts` (a new SDK is a new native runtime, so
+   old installs keep receiving updates for their own version only), then build
+   and submit as a normal release.
