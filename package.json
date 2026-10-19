@@ -9,12 +9,21 @@
   "scripts": {
     "customer": "npm --workspace @drivebuddy/customer run start",
     "customer:web": "npm --workspace @drivebuddy/customer run web",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "prettier --write",
+      "eslint --max-warnings 0 --no-warn-ignored"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
   },
   "engines": {
     "node": ">=20.19.4"
@@ -22,6 +31,8 @@
   "devDependencies": {
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   },

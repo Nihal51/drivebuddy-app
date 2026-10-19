@@ -1,0 +1,55 @@
+# End-to-end smoke test on a real phone or emulator, with Maestro
+# (https://maestro.mobile.dev). Saves nothing: it stops before booking.
+#
+#   maestro test apps/customer/.maestro            (all flows)
+#
+# Runs against the development build (in.thedrivebuddy.app.dev). For the
+# store build: maestro test -e APP_ID=in.thedrivebuddy.app apps/customer/.maestro
+appId: ${APP_ID || 'in.thedrivebuddy.app.dev'}
+name: Home, prices, booking form checks, Hindi
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'A verified driver for your car'
+    timeout: 15000
+
+# Prices are on Home
+- assertVisible: '1 hour'
+- assertVisible:
+    id: 'package-3-hours-600'
+
+# A service opens the form with it chosen; an empty form explains what is missing
+- tapOn:
+    id: 'package-night-driver'
+- assertVisible: 'Book a driver'
+- tapOn:
+    id: 'submit-booking'
+- assertVisible: 'Please tell us your name.'
+- assertVisible: 'We need a mobile number to confirm your booking.'
+
+# A wrong number is caught before anything is saved
+- tapOn:
+    id: 'field-phone'
+- inputText: '12345'
+- tapOn:
+    id: 'submit-booking'
+- assertVisible: 'Enter a 10-digit mobile number so we can call you back.'
+
+# Time slots appear when "Pick a time" is chosen
+- scrollUntilVisible:
+    element:
+      id: 'when-schedule'
+- tapOn:
+    id: 'when-schedule'
+- assertVisible: 'Today'
+- back
+
+# Hindi everywhere
+- tapOn: 'हिंदी'
+- assertVisible: 'आपकी कार के लिए वेरिफ़ाइड ड्राइवर'
+- tapOn: 'मेरी बुकिंग'
+- assertVisible: 'अपनी सारी बुकिंग देखें'
+- tapOn: 'अकाउंट'
+- tapOn: 'English'
+- assertVisible: 'Help and information'

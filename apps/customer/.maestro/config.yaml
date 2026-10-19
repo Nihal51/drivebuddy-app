@@ -1,0 +1,6 @@
+# `maestro test apps/customer/.maestro` runs every flow here except those
+# tagged `writes` (they create real bookings). Run those by name.
+flows:
+  - '*'
+excludeTags:
+  - writes

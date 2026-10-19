@@ -28,6 +28,11 @@ module.exports = defineConfig([
     },
   },
   {
+    // Command-line scripts talk to you through the console; that is their job.
+    files: ['**/scripts/**/*.{js,mjs}'],
+    rules: { 'no-console': 'off' },
+  },
+  {
     files: ['**/*.test.ts', '**/*.test.tsx', '**/jest.setup.js'],
     languageOptions: {
       globals: {

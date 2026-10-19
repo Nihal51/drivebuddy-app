@@ -1,0 +1,42 @@
+# Makes a REAL booking as a guest, end to end. It reaches Telegram, the Sheet
+# and /admin like any other booking — cancel it there afterwards. Only run it
+# on purpose:
+#
+#   maestro test apps/customer/.maestro/guest-booking.yaml
+appId: ${APP_ID || 'in.thedrivebuddy.app.dev'}
+name: Guest booking (creates a real TEST booking)
+tags:
+  - writes
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'A verified driver for your car'
+    timeout: 15000
+- tapOn:
+    id: 'hero-book'
+- tapOn:
+    id: 'field-name'
+- inputText: 'TEST Maestro'
+- tapOn:
+    id: 'field-phone'
+- inputText: '9876543210'
+- tapOn:
+    id: 'city-Raipur'
+- scrollUntilVisible:
+    element:
+      id: 'choice-1-hour-300'
+- tapOn:
+    id: 'choice-1-hour-300'
+- scrollUntilVisible:
+    element:
+      id: 'field-pickup'
+- tapOn:
+    id: 'field-pickup'
+- inputText: 'TEST - automated check, please cancel'
+- hideKeyboard
+- tapOn:
+    id: 'submit-booking'
+- extendedWaitUntil:
+    visible: 'Booking received!'
+    timeout: 25000

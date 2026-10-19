@@ -13,6 +13,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Daily: is the live website still in step with the app? (job "contract")
+  schedule:
+    - cron: '30 2 * * *' # 08:00 India time
 
 permissions:
   contents: read
@@ -26,6 +29,7 @@ env:
 
 jobs:
   check:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,9 +51,38 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Tests
-        run: npm test
+      - name: Tests, with the coverage floor
+        run: npm run test:coverage
+
+      # Known security holes in the libraries the app ships with. Report only:
+      # most fixes arrive with the next Expo SDK, so this warns instead of
+      # blocking (Dependabot opens the upgrade pull requests).
+      - name: Security audit (report only)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Play Store kit fits Google's limits
+        working-directory: apps/customer
+        run: npm run store:check
 
       - name: Bundle the Android app
         working-directory: apps/customer
         run: npx expo export --platform android --output-dir dist --no-bytecode
+
+  # The live website (app-config.json) and its firestore.rules on GitHub must
+  # accept exactly what this app sends. Red here = the website changed in a way
+  # the app does not expect (packages/shared/src/contract.test.ts).
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Contract with thedrivebuddy.in
+        working-directory: packages/shared
+        env:
+          CONTRACT: '1'
+        run: npx jest contract --ci

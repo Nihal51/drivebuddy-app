@@ -1,0 +1,3 @@
+# Before every commit: format and lint only the files being committed (a few
+# seconds). The full check — types, tests, Android bundle — runs on GitHub.
+npx lint-staged

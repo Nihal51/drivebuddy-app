@@ -1,0 +1,43 @@
+# Weekly pull requests that keep libraries patched. CI checks each one before
+# you merge it.
+#
+# Expo and React Native are left out on purpose: they must move together, one
+# Expo SDK at a time, with `npx expo install --fix` (docs/RELEASING.md,
+# "Upgrading Expo") — never package by package.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    groups:
+      dev-tools:
+        dependency-type: development
+        update-types: [minor, patch]
+      app-libraries:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: expo
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: jest-expo
+      - dependency-name: eslint-config-expo
+      - dependency-name: babel-preset-expo
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native-async-storage/async-storage'
+      - dependency-name: '@sentry/react-native'
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
