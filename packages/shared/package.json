@@ -8,7 +8,8 @@
   "sideEffects": false,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "jest": {
     "testEnvironment": "node",
@@ -21,10 +22,19 @@
           ]
         }
       ]
+    },
+    "coverageThreshold": {
+      "global": {
+        "statements": 95,
+        "branches": 88,
+        "functions": 94,
+        "lines": 97
+      }
     }
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/node": "^22.20.5",
     "babel-preset-expo": "~57.0.14",
     "jest": "^30.5.2"
   }

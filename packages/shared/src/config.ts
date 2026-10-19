@@ -41,6 +41,12 @@ export type AppConfig = {
   /** The alerts robot's doorbell; '' = alerts still come within a minute. */
   alerts: { pingUrl: string };
   site: { url: string; privacy: string; terms: string };
+  /**
+   * Installed apps older than minVersion show "Please update" (site-settings.ts
+   * → app.minVersion on the website). Older website files have no `app`
+   * block: then nothing is enforced.
+   */
+  app: { minVersion: string; playStoreUrl: string; appStoreUrl: string };
 };
 
 /** Snapshot of site-settings.ts on 12 Oct 2026. Only a fallback — see above. */
@@ -81,6 +87,11 @@ export const DEFAULT_CONFIG: AppConfig = {
     privacy: 'https://thedrivebuddy.in/privacy/',
     terms: 'https://thedrivebuddy.in/terms/',
   },
+  app: {
+    minVersion: '0.0.0',
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=in.thedrivebuddy.app',
+    appStoreUrl: '',
+  },
 };
 
 /* ------------------------------------------------------------- validation */
@@ -94,6 +105,25 @@ const isCount = (v: unknown): v is number =>
 const isMobile = (v: unknown): v is string => typeof v === 'string' && /^[6-9]\d{9}$/.test(v);
 const isHttps = (v: unknown): v is string => typeof v === 'string' && /^https:\/\/\S+$/.test(v);
 const isRange = (v: unknown): v is Range => isObj(v) && isMoney(v.from) && isMoney(v.to) && v.from <= v.to;
+const isVersion = (v: unknown): v is string => typeof v === 'string' && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v);
+const isStoreUrl = (v: unknown, host: string) =>
+  v === '' || (typeof v === 'string' && v.startsWith(`https://${host}/`));
+
+/** 1.10.0 > 1.9.3 — compared number by number, not as text. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+/** True when the installed version is below the website's minimum. Unknown versions never block. */
+export function mustUpdate(installed: string | null | undefined, config: AppConfig): boolean {
+  return isVersion(installed) && compareVersions(installed, config.app.minVersion) < 0;
+}
 
 /**
  * The downloaded file → a config the app can trust, or null.
@@ -102,7 +132,7 @@ const isRange = (v: unknown): v is Range => isObj(v) && isMoney(v.from) && isMon
  */
 export function parseAppConfig(raw: unknown): AppConfig | null {
   if (!isObj(raw) || raw.schema !== 1) return null;
-  const { contact, notice, prices, monthly, google, alerts, site } = raw;
+  const { contact, notice, prices, monthly, google, alerts, site, app } = raw;
   if (!isObj(contact) || !isObj(notice) || !isObj(prices) || !isObj(monthly)) return null;
   if (!isObj(google) || !isObj(alerts) || !isObj(site)) return null;
 
@@ -134,7 +164,12 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
     (alerts.pingUrl === '' || isHttps(alerts.pingUrl)) &&
     isHttps(site.url) &&
     isHttps(site.privacy) &&
-    isHttps(site.terms);
+    isHttps(site.terms) &&
+    (app === undefined ||
+      (isObj(app) &&
+        isVersion(app.minVersion) &&
+        isStoreUrl(app.playStoreUrl, 'play.google.com') &&
+        isStoreUrl(app.appStoreUrl, 'apps.apple.com')));
   if (!ok) return null;
 
   // Rebuild rather than cast, so unknown extra fields never leak into the app.
@@ -170,5 +205,12 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
     google: { profile: google.profile as string, writeReview: google.writeReview as string },
     alerts: { pingUrl: alerts.pingUrl as string },
     site: { url: site.url as string, privacy: site.privacy as string, terms: site.terms as string },
+    app: isObj(app)
+      ? {
+          minVersion: app.minVersion as string,
+          playStoreUrl: app.playStoreUrl as string,
+          appStoreUrl: app.appStoreUrl as string,
+        }
+      : { ...DEFAULT_CONFIG.app },
   };
 }
