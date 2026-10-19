@@ -124,7 +124,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
       Raipur: { km: 127, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Bhilai: { km: 120, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Durg: { km: 120, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
-      Bilaspur: { km: 240, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Bilaspur: { km: 240, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -158,8 +158,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     region: 'cg',
     from: {
       Raipur: { km: 216, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
-      Bhilai: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Bhilai: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Bilaspur: { km: 90, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
@@ -169,9 +169,9 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'रायगढ़',
     region: 'cg',
     from: {
-      Raipur: { km: 258, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 300, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 258, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 300, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Bilaspur: { km: 170, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
@@ -181,9 +181,9 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'जगदलपुर',
     region: 'cg',
     from: {
-      Raipur: { km: 287, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 287, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Bilaspur: { km: 390, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
     },
   },
@@ -193,8 +193,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'अंबिकापुर',
     region: 'cg',
     from: {
-      Raipur: { km: 334, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 334, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Durg: { km: 370, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
       Bilaspur: { km: 200, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
@@ -208,7 +208,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
       Raipur: { km: 201, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Bhilai: { km: 170, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
       Durg: { km: 160, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
-      Bilaspur: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Bilaspur: { km: 290, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -217,10 +217,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'संबलपुर',
     region: 'india',
     from: {
-      Raipur: { km: 275, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 310, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 320, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bilaspur: { km: 230, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 275, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 310, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 320, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bilaspur: { km: 230, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -229,10 +229,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'नागपुर',
     region: 'india',
     from: {
-      Raipur: { km: 284, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bilaspur: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 284, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 250, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bilaspur: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -241,10 +241,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'झारसुगुड़ा',
     region: 'india',
     from: {
-      Raipur: { km: 320, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bhilai: { km: 350, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bilaspur: { km: 240, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Raipur: { km: 320, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 350, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Durg: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bilaspur: { km: 240, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -255,8 +255,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     from: {
       Raipur: { km: 383, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
       Bhilai: { km: 370, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Durg: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
-      Bilaspur: { km: 350, oneWay: { days: 1, returnHours: 0 }, roundDays: 2 },
+      Durg: { km: 360, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
+      Bilaspur: { km: 350, oneWay: { days: 1, returnHours: 0 }, roundDays: 1 },
     },
   },
   {
@@ -338,8 +338,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     region: 'india',
     from: {
       Raipur: { km: 644, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Bhilai: { km: 660, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Durg: { km: 670, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
+      Bhilai: { km: 660, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
+      Durg: { km: 670, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
       Bilaspur: { km: 500, oneWay: { days: 2, returnHours: 0 }, roundDays: 3 },
     },
   },
@@ -349,10 +349,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'इंदौर',
     region: 'india',
     from: {
-      Raipur: { km: 727, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Bhilai: { km: 700, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Durg: { km: 690, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Bilaspur: { km: 770, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
+      Raipur: { km: 727, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
+      Bhilai: { km: 700, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
+      Durg: { km: 690, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
+      Bilaspur: { km: 770, oneWay: { days: 2, returnHours: 4 }, roundDays: 4 },
     },
   },
   {
@@ -361,10 +361,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'पटना',
     region: 'india',
     from: {
-      Raipur: { km: 739, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
-      Bhilai: { km: 770, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
-      Durg: { km: 770, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
-      Bilaspur: { km: 610, oneWay: { days: 2, returnHours: 0 }, roundDays: 3 },
+      Raipur: { km: 739, oneWay: { days: 2, returnHours: 4 }, roundDays: 4 },
+      Bhilai: { km: 770, oneWay: { days: 2, returnHours: 5 }, roundDays: 4 },
+      Durg: { km: 770, oneWay: { days: 2, returnHours: 5 }, roundDays: 4 },
+      Bilaspur: { km: 610, oneWay: { days: 2, returnHours: 3 }, roundDays: 3 },
     },
   },
   {
@@ -373,10 +373,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'लखनऊ',
     region: 'india',
     from: {
-      Raipur: { km: 779, oneWay: { days: 2, returnHours: 2 }, roundDays: 4 },
-      Bhilai: { km: 780, oneWay: { days: 2, returnHours: 2 }, roundDays: 4 },
-      Durg: { km: 780, oneWay: { days: 2, returnHours: 2 }, roundDays: 4 },
-      Bilaspur: { km: 680, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
+      Raipur: { km: 779, oneWay: { days: 2, returnHours: 6 }, roundDays: 4 },
+      Bhilai: { km: 780, oneWay: { days: 2, returnHours: 7 }, roundDays: 4 },
+      Durg: { km: 780, oneWay: { days: 2, returnHours: 7 }, roundDays: 4 },
+      Bilaspur: { km: 680, oneWay: { days: 2, returnHours: 2 }, roundDays: 4 },
     },
   },
   {
@@ -385,7 +385,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'हैदराबाद',
     region: 'india',
     from: {
-      Raipur: { km: 780, oneWay: { days: 2, returnHours: 2 }, roundDays: 4 },
+      Raipur: { km: 780, oneWay: { days: 2, returnHours: 1 }, roundDays: 4 },
       Bhilai: { km: 750, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
       Durg: { km: 740, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
       Bilaspur: { km: 890, oneWay: { days: 3, returnHours: 0 }, roundDays: 5 },
@@ -397,7 +397,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'कोलकाता',
     region: 'india',
     from: {
-      Raipur: { km: 831, oneWay: { days: 2, returnHours: 4 }, roundDays: 5 },
+      Raipur: { km: 831, oneWay: { days: 2, returnHours: 0 }, roundDays: 5 },
       Bhilai: { km: 860, oneWay: { days: 3, returnHours: 0 }, roundDays: 5 },
       Durg: { km: 870, oneWay: { days: 3, returnHours: 0 }, roundDays: 5 },
       Bilaspur: { km: 750, oneWay: { days: 2, returnHours: 0 }, roundDays: 4 },
@@ -421,10 +421,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'मुंबई',
     region: 'india',
     from: {
-      Raipur: { km: 1118, oneWay: { days: 3, returnHours: 7 }, roundDays: 6 },
-      Bhilai: { km: 1080, oneWay: { days: 3, returnHours: 5 }, roundDays: 6 },
-      Durg: { km: 1070, oneWay: { days: 3, returnHours: 5 }, roundDays: 6 },
-      Bilaspur: { km: 1210, oneWay: { days: 3, returnHours: 11 }, roundDays: 6 },
+      Raipur: { km: 1118, oneWay: { days: 3, returnHours: 3 }, roundDays: 6 },
+      Bhilai: { km: 1080, oneWay: { days: 3, returnHours: 1 }, roundDays: 6 },
+      Durg: { km: 1070, oneWay: { days: 3, returnHours: 1 }, roundDays: 6 },
+      Bilaspur: { km: 1210, oneWay: { days: 3, returnHours: 7 }, roundDays: 6 },
     },
   },
   {
@@ -433,10 +433,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'दिल्ली',
     region: 'india',
     from: {
-      Raipur: { km: 1214, oneWay: { days: 3, returnHours: 11 }, roundDays: 6 },
-      Bhilai: { km: 1190, oneWay: { days: 3, returnHours: 10 }, roundDays: 6 },
-      Durg: { km: 1180, oneWay: { days: 3, returnHours: 10 }, roundDays: 6 },
-      Bilaspur: { km: 1130, oneWay: { days: 3, returnHours: 7 }, roundDays: 6 },
+      Raipur: { km: 1214, oneWay: { days: 3, returnHours: 9 }, roundDays: 6 },
+      Bhilai: { km: 1190, oneWay: { days: 3, returnHours: 8 }, roundDays: 6 },
+      Durg: { km: 1180, oneWay: { days: 3, returnHours: 8 }, roundDays: 6 },
+      Bilaspur: { km: 1130, oneWay: { days: 3, returnHours: 6 }, roundDays: 6 },
     },
   },
   {
@@ -447,8 +447,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     from: {
       Raipur: { km: 1370, oneWay: { days: 4, returnHours: 9 }, roundDays: 7 },
       Bhilai: { km: 1350, oneWay: { days: 4, returnHours: 8 }, roundDays: 7 },
-      Durg: { km: 1340, oneWay: { days: 4, returnHours: 7 }, roundDays: 7 },
-      Bilaspur: { km: 1480, oneWay: { days: 4, returnHours: 13 }, roundDays: 8 },
+      Durg: { km: 1340, oneWay: { days: 4, returnHours: 8 }, roundDays: 7 },
+      Bilaspur: { km: 1480, oneWay: { days: 4, returnHours: 14 }, roundDays: 8 },
     },
   },
   {
@@ -457,10 +457,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'चेन्नई',
     region: 'india',
     from: {
-      Raipur: { km: 1405, oneWay: { days: 4, returnHours: 10 }, roundDays: 7 },
-      Bhilai: { km: 1360, oneWay: { days: 4, returnHours: 8 }, roundDays: 7 },
-      Durg: { km: 1360, oneWay: { days: 4, returnHours: 8 }, roundDays: 7 },
-      Bilaspur: { km: 1520, oneWay: { days: 4, returnHours: 15 }, roundDays: 8 },
+      Raipur: { km: 1405, oneWay: { days: 4, returnHours: 5 }, roundDays: 7 },
+      Bhilai: { km: 1360, oneWay: { days: 4, returnHours: 3 }, roundDays: 7 },
+      Durg: { km: 1360, oneWay: { days: 4, returnHours: 3 }, roundDays: 7 },
+      Bilaspur: { km: 1520, oneWay: { days: 4, returnHours: 10 }, roundDays: 8 },
     },
   },
 ];

@@ -138,10 +138,10 @@ describe('Booking form', () => {
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,450–1,650');
     expect(screen.getByText(/within the paid days/)).toBeOnTheScreen();
 
-    // Delhi: still on the train 11 h after the 3 paid days → the ₹1,200 daily maximum.
+    // Delhi: still on the train 9 h after the 3 paid days (~22½ h by timetable) → 9 × ₹120.
     await fireEvent.press(screen.getByTestId('dest-delhi'));
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹5,550–6,150');
-    expect(screen.getByText(/11 h after the last day/)).toBeOnTheScreen();
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹5,430–6,030');
+    expect(screen.getByText(/9 h after the last day/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
 
     // A day's stop on the way: one more driving day.

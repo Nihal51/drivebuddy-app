@@ -83,9 +83,9 @@ test('a trip is saved only on a trip package, and only with the matching kind', 
     kind: 'one-way',
     km: 1214,
     days: 3,
-    returnHours: 11,
-    estFrom: 5550,
-    estTo: 6150,
+    returnHours: 9,
+    estFrom: 5430,
+    estTo: 6030,
   });
   expect(Object.keys(fields.trip ?? {}).sort()).toEqual([...TRIP_KEYS].sort());
   for (const key of Object.keys(fields)) expect(BOOKING_CREATE_KEYS).toContain(key);

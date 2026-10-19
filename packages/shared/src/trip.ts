@@ -221,8 +221,8 @@ function digits(n: number): string {
 
 /**
  * The trip in one English line for the team (the same words as the alerts
- * robot): "Trip: Raipur → Delhi · one-way drop · ~1214 km · 3 days + 11 h
- * getting home · est. ₹5,550–6,150".
+ * robot): "Trip: Raipur → Delhi · one-way drop · ~1214 km · 3 days + 9 h
+ * getting home · est. ₹5,430–6,030".
  */
 export function tripNote(t: BookingTrip, city: string): string {
   const n = (k: number, word: string) => `${k} ${word}${k === 1 ? '' : 's'}`;
