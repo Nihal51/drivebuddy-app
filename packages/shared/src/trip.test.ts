@@ -5,6 +5,7 @@ import {
   isTripPackage,
   notesWithTrip,
   planTrip,
+  returnCost,
   searchDestinations,
   toQuote,
   toTrip,
@@ -16,32 +17,44 @@ const config = DEFAULT_CONFIG;
 
 /* The worked examples agreed with the owner (website: scripts/outstation.test.mjs). */
 
-test('Raipur → Nagpur one-way: 1 driving day + 1 return day, ₹2,450–2,850', () => {
+test('Raipur → Nagpur one-way: home the same evening, so one day is all — ₹1,450–1,650', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
-  expect([p.km, p.days, p.returnDays, p.local]).toEqual([284, 1, 1, false]);
-  // ₹1,450–1,650 driving + ₹1,000–1,200 for the day on the bus/train home.
-  expect([p.est?.from, p.est?.to]).toEqual([2450, 2850]);
-  expect(p.est?.returnCharge).toEqual({ from: 1000, to: 1200 });
+  expect([p.km, p.days, p.returnHours, p.local]).toEqual([284, 1, 0, false]);
+  expect([p.est?.from, p.est?.to, p.est?.returnCharge]).toEqual([1450, 1650, 0]);
 });
 
-test('Raipur → Bilaspur one-way: home the same day', () => {
-  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bilaspur');
-  expect([p.days, p.returnDays]).toEqual([1, 0]);
+test('Raipur → Bhopal one-way: 2 days, home before they end', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bhopal');
+  expect([p.days, p.returnHours]).toEqual([2, 0]);
 });
 
-test('Raipur → Delhi one-way: 3 driving days + 2 return days; more days booked are charged', () => {
+test('Raipur → Delhi one-way: 3 days + 11 h still on the train, charged at most ₹1,200', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'delhi');
-  expect([p.minDays, p.days, p.returnDays]).toEqual([3, 3, 2]);
-  expect([p.est?.from, p.est?.to]).toEqual([3 * 1450 + 2 * 1000, 3 * 1650 + 2 * 1200]);
+  expect([p.minDays, p.days, p.returnHours]).toEqual([3, 3, 11]);
+  expect(p.est?.returnCharge).toBe(1200);
+  expect([p.est?.from, p.est?.to]).toEqual([5550, 6150]);
+  // Extra days booked are charged; the return hours stay the same.
   const longer = planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 5);
-  expect(longer.days).toBe(5);
+  expect([longer.days, longer.returnHours, longer.est?.from]).toEqual([5, 11, 5 * 1450 + 1200]);
   expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 1).days).toBe(3);
   expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 500).days).toBe(60);
 });
 
-test('a round trip drives both ways and has no return days', () => {
+test('Raipur → Mumbai one-way: 7 h after the last day, ₹840', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'mumbai');
+  expect([p.days, p.returnHours, p.est?.returnCharge]).toEqual([3, 7, 840]);
+});
+
+test("return hours: ₹120 each, at most ₹1,200 in any 24 hours (the owner's 6 AM → 10 AM example: ₹480)", () => {
+  expect(returnCost(0, 120, 1200)).toBe(0);
+  expect(returnCost(4, 120, 1200)).toBe(480);
+  expect(returnCost(14, 120, 1200)).toBe(1200);
+  expect(returnCost(30, 120, 1200)).toBe(1200 + 720);
+});
+
+test('a round trip drives both ways and has no return hours', () => {
   const p = planTrip(config, 'outstation', 'Raipur', 'nagpur');
-  expect([p.kind, p.days, p.returnDays]).toEqual(['round', 2, 0]);
+  expect([p.kind, p.days, p.returnHours]).toEqual(['round', 2, 0]);
   expect([p.est?.from, p.est?.to]).toEqual([2900, 3300]);
 });
 
@@ -60,7 +73,7 @@ test('nearby, the same city, somewhere else, or no city yet', () => {
 
 test('prices follow the downloaded config', () => {
   const dearer = { ...config, prices: { ...config.prices, outstation: { from: 1500, to: 1700 } } };
-  expect(planTrip(dearer, 'one-way-drop', 'Raipur', 'nagpur').est?.from).toBe(2500);
+  expect(planTrip(dearer, 'one-way-drop', 'Raipur', 'nagpur').est?.from).toBe(1500);
 });
 
 test('the saved trip', () => {
@@ -71,7 +84,7 @@ test('the saved trip', () => {
     kind: 'one-way',
     km: 0,
     days: 1,
-    returnDays: 0,
+    returnHours: 0,
     estFrom: 0,
     estTo: 0,
   });
@@ -81,7 +94,7 @@ test('the saved trip', () => {
 test('read back defensively', () => {
   expect(toTrip(null)).toBeUndefined();
   expect(toTrip({ to: '' })).toBeUndefined();
-  expect(toTrip({ to: 'Nagpur', km: 1.5, days: 1, returnDays: 0, estFrom: 0, estTo: 0 })).toBeUndefined();
+  expect(toTrip({ to: 'Nagpur', km: 1.5, days: 1, returnHours: 0, estFrom: 0, estTo: 0 })).toBeUndefined();
   expect(toQuote({ amount: 100 })).toBeUndefined();
 });
 
@@ -102,9 +115,9 @@ test('search: popular places first, then by name in English or Hindi', () => {
 });
 
 test('the trip as a line for the team, and in the notes when the website does not take trips yet', () => {
-  const t = tripRecord(planTrip(config, 'one-way-drop', 'Raipur', 'nagpur'), '');
+  const t = tripRecord(planTrip(config, 'one-way-drop', 'Raipur', 'delhi'), '');
   const line =
-    'Trip: Raipur → Nagpur · one-way drop · ~284 km · 1 driving day + 1 return day · est. ₹2,450–2,850';
+    'Trip: Raipur → Delhi · one-way drop · ~1214 km · 3 days + 11 h getting home · est. ₹5,550–6,150';
   expect(tripNote(t, 'Raipur')).toBe(line);
   expect(notesWithTrip('  Swift, automatic ', t, 'Raipur')).toBe(`${line}\nSwift, automatic`);
   expect(notesWithTrip('', t, 'Raipur')).toBe(line);

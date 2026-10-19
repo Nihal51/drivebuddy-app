@@ -18,12 +18,14 @@ like a website booking.
   without an app update), city, pickup, "as soon as possible" or a time slot.
   Works without logging in, like the website.
 - **Outstation trips and one-way drops:** pick the destination (38 places, or
-  "somewhere else") and the days; the form shows the estimate straight away —
-  driving days × the per-day price + the days the driver needs to get home by
-  bus or train. The rules and distances come from the website's
-  `app-config.json` (its `lib/outstation.ts`), so both always agree. Until the
-  website publishes them, the app uses its built-in copy and writes the trip
-  into the booking's notes, which the current website rules accept.
+  "somewhere else") and the days; the form shows the estimate straight away.
+  Each day (₹1,450–1,650) covers the driver's 24 hours from the start, his
+  bus or train home included; only hours he is still travelling home after
+  the last paid day are added, at ₹120 an hour, at most ₹1,200 a day. The
+  rules and distances come from the website's `app-config.json` (its
+  `lib/outstation.ts`), so both always agree. Until the website publishes
+  them, the app uses its built-in copy and writes the trip into the booking's
+  notes, which the current website rules accept.
 - **If saving fails** (no internet, an outage), the customer is offered
   WhatsApp with everything they typed — a booking is never lost.
 - **Log in with Google** (optional) → **My bookings** with live status

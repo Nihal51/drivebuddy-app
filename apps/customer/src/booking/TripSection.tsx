@@ -180,7 +180,9 @@ function Estimate({
     body = (
       <AppText color={colors.textMuted}>
         {t.trip.elsewhereNote(rate)}
-        {oneWay ? ` ${t.trip.elsewhereReturn(rupeeRange(config.outstation.returnDay))}` : ''}
+        {oneWay
+          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay))}`
+          : ''}
       </AppText>
     );
   } else if (!plan.dest) {
@@ -207,11 +209,16 @@ function Estimate({
         </AppText>
         <View style={styles.lines}>
           <Line label={t.trip.times(drivingLabel(t, plan), rate)} amount={rupeeRange(plan.est.driving)} />
-          {plan.returnDays > 0 ? (
+          {oneWay && plan.returnHours > 0 ? (
             <Line
-              label={t.trip.times(t.trip.homeDays(plan.returnDays), rupeeRange(config.outstation.returnDay))}
-              amount={rupeeRange(plan.est.returnCharge)}
+              label={`${t.trip.homeLate(plan.returnHours)} (${t.trip.returnMax(
+                rupees(config.outstation.returnHour),
+                rupees(config.outstation.returnMaxPerDay),
+              )})`}
+              amount={rupees(plan.est.returnCharge)}
             />
+          ) : oneWay ? (
+            <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
           ) : null}
         </View>
         {plan.local ? (
@@ -245,9 +252,8 @@ function Estimate({
   );
 }
 
-/** "2 driving days" / "2 days" — the first line of the breakdown. */
-const drivingLabel = (t: Messages, plan: TripPlan) =>
-  plan.kind === 'round' ? t.trip.days(plan.days) : t.trip.drivingDays(plan.days);
+/** "2 days" — the first line of the breakdown. */
+const drivingLabel = (t: Messages, plan: TripPlan) => t.trip.days(plan.days);
 
 function Line({ label, amount }: { label: string; amount: string }) {
   const { colors } = useTheme();

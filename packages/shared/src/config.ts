@@ -84,8 +84,9 @@ export const DEFAULT_CONFIG: AppConfig = {
   outstation: {
     hoursPerDay: 12,
     extraHour: 120,
-    returnDay: { from: 1000, to: 1200 },
-    mealAllowance: 100,
+    returnHour: 120,
+    returnMaxPerDay: 1200,
+    mealAllowance: 300,
     kmPerDay: 400,
     localWithinKm: 60,
   },

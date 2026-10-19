@@ -83,16 +83,16 @@ export function errorText(t: Messages, field: BookingField, code: FieldError): s
 /** 1214 → "1,214 km" / "1,214 किमी". */
 export const kmText = (t: Messages, km: number) => t.trip.km(indianDigits(km));
 
-/** "1 driving day + 1 return day" / "2 days". */
-export function tripDays(t: Messages, trip: Pick<BookingTrip, 'kind' | 'days' | 'returnDays'>): string {
-  if (trip.kind === 'round') return t.trip.days(trip.days);
-  return (
-    t.trip.drivingDays(trip.days) + (trip.returnDays > 0 ? ` + ${t.trip.returnDays(trip.returnDays)}` : '')
-  );
+/** "2 days" / "3 days + 11 h for the driver to get home". */
+export function tripDays(t: Messages, trip: Pick<BookingTrip, 'kind' | 'days' | 'returnHours'>): string {
+  const days = t.trip.days(trip.days);
+  return trip.kind === 'one-way' && trip.returnHours > 0
+    ? `${days} + ${t.trip.returnHours(trip.returnHours)}`
+    : days;
 }
 
 /**
- * "Raipur → Nagpur · one-way drop · 284 km · 1 driving day + 1 return day · estimate ₹2,450–2,650".
+ * "Raipur → Delhi · one-way drop · 1,214 km · 3 days + 11 h for the driver to get home · estimate ₹5,550–6,150".
  * With `destinations`, a listed place is named in the customer's language.
  */
 export function tripSummary(
@@ -117,11 +117,11 @@ export function tripSummary(
     .join(' · ');
 }
 
-/** The agreed price, itemised: "₹1,550 × 2 days + ₹1,000 × 1 return day + ₹650 ticket". */
+/** The agreed price, itemised: "₹1,550 × 3 days + ₹1,200 return (11 h) + ₹650 ticket". */
 export function quoteBreakdown(t: Messages, q: BookingQuote): string {
   return [
     t.trip.times(rupees(q.dayRate), t.trip.days(q.days)),
-    q.returnDays > 0 ? t.trip.times(rupees(q.returnDay), t.trip.returnDays(q.returnDays)) : null,
+    q.returnHours > 0 ? `${rupees(q.returnCharge)} ${t.trip.returnShort(q.returnHours)}` : null,
     q.extraHours > 0 ? t.trip.times(rupees(q.extraHourRate), t.trip.extraHours(q.extraHours)) : null,
     q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
   ]

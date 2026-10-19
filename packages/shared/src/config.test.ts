@@ -42,7 +42,7 @@ test('an older website file without trip estimates still works, with the built-i
   // That website's outstation price was per trip; the built-in per-day range is used instead.
   old.prices.outstation = { from: 1200, to: 1500 };
   const parsed = parseAppConfig(old);
-  expect(parsed?.outstation.returnDay).toEqual(DEFAULT_CONFIG.outstation.returnDay);
+  expect(parsed?.outstation.returnHour).toBe(DEFAULT_CONFIG.outstation.returnHour);
   expect(parsed?.destinations.length).toBe(DEFAULT_CONFIG.destinations.length);
   expect(parsed?.prices.outstation).toEqual(DEFAULT_CONFIG.prices.outstation);
   expect(parsed?.tripsLive).toBe(false);
@@ -51,17 +51,8 @@ test('an older website file without trip estimates still works, with the built-i
 test('a broken trip block or destination row rejects the file', () => {
   const raw = clone(DEFAULT_CONFIG) as unknown as Record<string, unknown>;
   const bad = (patch: Record<string, unknown>) => parseAppConfig({ ...raw, ...patch });
-  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: 0 } })).toBeNull();
-  expect(
-    bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: { from: 1200, to: 1000 } } }),
-  ).toBeNull();
-  // A single number is read as a fixed return-day price.
-  expect(
-    bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: 1000 } })?.outstation.returnDay,
-  ).toEqual({
-    from: 1000,
-    to: 1000,
-  });
+  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnHour: 0 } })).toBeNull();
+  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnMaxPerDay: '1200' } })).toBeNull();
   expect(bad({ destinations: [] })).toBeNull();
   const rows = clone(DEFAULT_CONFIG.destinations);
   delete (rows[3] as { from: Record<string, unknown> }).from.Durg;

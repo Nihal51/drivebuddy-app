@@ -19,7 +19,9 @@ then cancel them in `/admin`.
        gets the alert marked "📱 Booked in the DriveBuddy app" within a minute,
        and it appears in `/admin` and the Sheet with a DB-number.
 6. [ ] Book → **One-way car drop** → Raipur → Nagpur: the estimate shows
-       ₹2,450–2,850 (1 driving day + 1 return day). Tap **+** once: ₹3,900–4,500.
+       ₹1,450–1,650 (the driver is home within the day). Tap **+** once:
+       ₹2,900–3,300. Delhi: ₹5,550–6,150 (3 days + 11 h on the train home,
+       charged at the ₹1,200 daily maximum).
        Choose a nearby place (Bhilai): the app suggests the full day instead.
        Book it: the Telegram alert shows the trip (under Notes until the
        website update is published).

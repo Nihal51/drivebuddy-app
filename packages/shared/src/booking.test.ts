@@ -75,17 +75,17 @@ test('a trip package needs a destination, and a typed place for "somewhere else"
 
 test('a trip is saved only on a trip package, and only with the matching kind', () => {
   const drop: BookingInput = { ...GOOD, packageId: 'one-way-drop', destId: 'nagpur' };
-  const trip = tripRecord(planTrip(DEFAULT_CONFIG, 'one-way-drop', 'Raipur', 'nagpur'), '');
-  const fields = newBookingFields(drop, null, trip);
+  const trip = tripRecord(planTrip(DEFAULT_CONFIG, 'one-way-drop', 'Raipur', 'delhi'), '');
+  const fields = newBookingFields({ ...drop, destId: 'delhi' }, null, trip);
   expect(fields.trip).toEqual({
-    to: 'Nagpur',
-    destId: 'nagpur',
+    to: 'Delhi',
+    destId: 'delhi',
     kind: 'one-way',
-    km: 284,
-    days: 1,
-    returnDays: 1,
-    estFrom: 2450,
-    estTo: 2850,
+    km: 1214,
+    days: 3,
+    returnHours: 11,
+    estFrom: 5550,
+    estTo: 6150,
   });
   expect(Object.keys(fields.trip ?? {}).sort()).toEqual([...TRIP_KEYS].sort());
   for (const key of Object.keys(fields)) expect(BOOKING_CREATE_KEYS).toContain(key);
@@ -102,16 +102,17 @@ test('the trip and the agreed price are read back', () => {
       kind: 'one-way',
       km: 284,
       days: 1,
-      returnDays: 1,
-      estFrom: 2450,
-      estTo: 2650,
+      returnHours: 0,
+      estFrom: 1450,
+      estTo: 1650,
     },
     quote: {
-      amount: 2700,
+      amount: 1700,
       dayRate: 1550,
       days: 1,
-      returnDays: 1,
-      returnDay: 1000,
+      returnHours: 0,
+      returnHourRate: 120,
+      returnCharge: 0,
       extraHours: 0,
       extraHourRate: 120,
       ticket: 150,
@@ -119,7 +120,7 @@ test('the trip and the agreed price are read back', () => {
     },
   });
   expect(b.trip?.to).toBe('Nagpur');
-  expect(b.quote?.amount).toBe(2700);
+  expect(b.quote?.amount).toBe(1700);
   const odd = toBooking('o', { trip: { to: 'X', km: '284' }, quote: { amount: -1 } });
   expect(odd.trip).toBeUndefined();
   expect(odd.quote).toBeUndefined();

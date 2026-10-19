@@ -95,7 +95,7 @@ describe('outstation trips and one-way drops', () => {
     await submitBooking(DROP, null, { trip, tripsLive: false });
     expect(saved()).not.toHaveProperty('trip');
     expect(saved().notes).toBe(
-      'Trip: Raipur → Nagpur · one-way drop · ~284 km · 1 driving day + 1 return day · est. ₹2,450–2,850\nSwift',
+      'Trip: Raipur → Nagpur · one-way drop · ~284 km · 1 day · est. ₹1,450–1,650\nSwift',
     );
   });
 });
