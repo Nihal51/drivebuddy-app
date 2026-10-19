@@ -2,23 +2,27 @@ import { type Booking, isActive } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, SectionList, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { GoogleButton } from '@/components/GoogleButton';
 import { AppText } from '@/components/AppText';
 import { EmptyState, Notice, SectionTitle } from '@/components/bits';
 import { Button } from '@/components/Button';
+import { GoogleButton } from '@/components/GoogleButton';
 import { Screen } from '@/components/Screen';
 import { StatusBadge } from '@/components/StatusBadge';
 import { watchMyBookings } from '@/data/bookings';
 import { useI18n } from '@/i18n';
 import { bookingTitle, formatPreferred } from '@/i18n/format';
-import { colors, radius, shadow, space } from '@/theme';
+import { cardShadow, makeStyles, radius, space, useTheme } from '@/theme';
 
 export default function BookingsScreen() {
   const { t } = useI18n();
   const { ready, user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
+
   // Results are tagged with the login and attempt they belong to, so a stale
   // list or error never shows after logging out or pulling to refresh.
   const [attempt, setAttempt] = useState(0);
@@ -38,7 +42,13 @@ export default function BookingsScreen() {
   const bookings = result?.key === key ? result.list : null;
   const failed = result?.key === key && result.failed;
 
-  if (!ready) return <Loading />;
+  if (!ready) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.amber} size="large" />
+      </View>
+    );
+  }
 
   if (!user) {
     return (
@@ -56,48 +66,65 @@ export default function BookingsScreen() {
     );
   }
 
-  const current = bookings?.filter(isActive) ?? [];
-  const past = bookings?.filter((b) => !isActive(b)) ?? [];
+  const sections = [
+    { title: t.bookings.current, data: bookings?.filter(isActive) ?? [] },
+    { title: t.bookings.past, data: bookings?.filter((b) => !isActive(b)) ?? [] },
+  ].filter((s) => s.data.length > 0);
 
+  // A virtualised list: only the bookings on screen are drawn, however many there are.
   return (
-    <Screen refreshing={false} onRefresh={() => setAttempt((n) => n + 1)}>
-      <AppText variant="title" weight="heavy" accessibilityRole="header">
-        {t.bookings.title}
-      </AppText>
-      {failed ? <Notice text={t.bookings.loadError} tone="danger" /> : null}
-      {bookings === null && !failed ? (
-        <ActivityIndicator color={colors.amber} style={styles.spinner} />
-      ) : null}
-      {bookings?.length === 0 ? (
-        <EmptyState icon="car-outline" title={t.bookings.empty} body={t.bookings.emptyBody}>
-          <Button title={t.common.bookDriver} icon="car" onPress={() => router.push('/book')} />
-        </EmptyState>
-      ) : null}
-      {current.length ? (
-        <View style={styles.section}>
-          <SectionTitle>{t.bookings.current}</SectionTitle>
-          {current.map((b) => (
-            <BookingCard key={b.id} booking={b} />
-          ))}
-        </View>
-      ) : null}
-      {past.length ? (
-        <View style={styles.section}>
-          <SectionTitle>{t.bookings.past}</SectionTitle>
-          {past.map((b) => (
-            <BookingCard key={b.id} booking={b} />
-          ))}
-        </View>
-      ) : null}
-    </Screen>
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      <SectionList
+        sections={sections}
+        keyExtractor={(b) => b.id}
+        renderItem={({ item }) => <BookingCard booking={item} />}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <SectionTitle>{section.title}</SectionTitle>
+          </View>
+        )}
+        stickySectionHeadersEnabled={false}
+        ItemSeparatorComponent={() => <View style={styles.gap} />}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <AppText variant="title" weight="heavy" accessibilityRole="header">
+              {t.bookings.title}
+            </AppText>
+            {failed ? <Notice text={t.bookings.loadError} tone="danger" /> : null}
+            {bookings === null && !failed ? (
+              <ActivityIndicator color={colors.amber} style={styles.spinner} />
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
+          bookings?.length === 0 ? (
+            <EmptyState icon="car-outline" title={t.bookings.empty} body={t.bookings.emptyBody}>
+              <Button title={t.common.bookDriver} icon="car" onPress={() => router.push('/book')} />
+            </EmptyState>
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => setAttempt((n) => n + 1)}
+            tintColor={colors.amber}
+            colors={[colors.amber]}
+          />
+        }
+        contentContainerStyle={styles.content}
+      />
+    </SafeAreaView>
   );
 }
 
 function BookingCard({ booking: b }: { booking: Booking }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const title = bookingTitle(t, b);
   return (
     <Pressable
+      testID={`booking-${b.id}`}
       onPress={() => router.push({ pathname: '/booking/[id]', params: { id: b.id } })}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${t.status[b.status].label}, ${formatPreferred(t, b.preferredTime)}`}
@@ -136,29 +163,31 @@ function BookingCard({ booking: b }: { booking: Booking }) {
   );
 }
 
-function Loading() {
-  return (
-    <View style={styles.loading}>
-      <ActivityIndicator color={colors.amber} size="large" />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
+  safe: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background },
+  content: {
+    padding: space.lg,
+    paddingBottom: space.xxl * 2,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
+  header: { gap: space.md, marginBottom: space.sm },
   spinner: { marginTop: space.xl },
-  section: { gap: space.sm },
+  sectionHeader: { paddingTop: space.md, paddingBottom: space.sm },
+  gap: { height: space.sm },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     padding: space.lg,
     gap: space.sm,
-    ...shadow.card,
+    ...cardShadow(c),
   },
-  cardPressed: { backgroundColor: colors.cream },
+  cardPressed: { backgroundColor: c.cream },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-});
+}));

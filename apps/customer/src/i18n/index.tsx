@@ -9,6 +9,7 @@ import { type Language, isLanguage } from '@drivebuddy/shared';
 import { getLocales } from 'expo-localization';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { track } from '@/lib/analytics';
 import { readStored, writeStored } from '@/lib/storage';
 
 import { type Messages, en } from './en';
@@ -46,6 +47,7 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
   const setLang = useCallback((next: Language) => {
     setLangState(next);
     void writeStored(STORAGE_KEY, next);
+    track('language_changed', { language: next });
   }, []);
 
   const value = useMemo(() => ({ lang, t: MESSAGES[lang], setLang }), [lang, setLang]);

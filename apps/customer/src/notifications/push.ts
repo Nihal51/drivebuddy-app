@@ -20,8 +20,9 @@ import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 import { firestore } from '@/firebase/app';
+import { reportError } from '@/lib/monitoring';
 import { readStored, writeStored } from '@/lib/storage';
-import { colors } from '@/theme';
+import { palettes } from '@/theme';
 
 export const CHANNEL_ID = 'bookings';
 const TOKEN_KEY = 'db.pushToken';
@@ -54,7 +55,7 @@ async function ensureChannel(name: string) {
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name,
     importance: Notifications.AndroidImportance.HIGH,
-    lightColor: colors.amber,
+    lightColor: palettes.light.amber,
     vibrationPattern: [0, 250, 150, 250],
   });
 }
@@ -97,6 +98,7 @@ export async function enablePush(
     return 'on';
   } catch (err) {
     if (__DEV__) console.warn('[drivebuddy] push registration failed', err);
+    reportError(err, 'push');
     return 'off';
   }
 }

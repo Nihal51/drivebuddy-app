@@ -4,13 +4,12 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   View,
   type ViewStyle,
 } from 'react-native';
 import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, space } from '@/theme';
+import { makeStyles, space, useTheme } from '@/theme';
 
 /**
  * A scrolling page with safe-area padding and keyboard handling, centred and
@@ -23,7 +22,6 @@ export function Screen({
   refreshing,
   onRefresh,
   contentStyle,
-  background = colors.background,
   footer,
 }: {
   children: ReactNode;
@@ -32,12 +30,13 @@ export function Screen({
   refreshing?: boolean;
   onRefresh?: () => void;
   contentStyle?: ViewStyle;
-  background?: string;
   /** Pinned below the scrolling content (e.g. a submit button). */
   footer?: ReactNode;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
-    <SafeAreaView edges={edges} style={[styles.safe, { backgroundColor: background }]}>
+    <SafeAreaView edges={edges} style={styles.safe}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           ref={scrollRef}
@@ -50,6 +49,7 @@ export function Screen({
                 refreshing={Boolean(refreshing)}
                 onRefresh={onRefresh}
                 tintColor={colors.amber}
+                colors={[colors.amber]}
               />
             ) : undefined
           }
@@ -62,8 +62,8 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
+const useStyles = makeStyles((c) => ({
+  safe: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
   content: { padding: space.lg, paddingBottom: space.xxl * 2, alignItems: 'center' },
   column: { width: '100%', maxWidth: 640, gap: space.lg },
@@ -71,8 +71,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.md,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.white,
+    borderTopColor: c.line,
+    backgroundColor: c.surface,
     alignItems: 'center',
   },
-});
+}));

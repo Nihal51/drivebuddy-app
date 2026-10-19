@@ -3,10 +3,11 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useI18n } from '@/i18n';
-import { colors, fonts } from '@/theme';
+import { fonts, useTheme } from '@/theme';
 
 export default function TabsLayout() {
   const { t, lang } = useI18n();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const labelFont = lang === 'hi' ? { fontWeight: '700' as const } : { fontFamily: fonts.bold };
   return (
@@ -19,12 +20,13 @@ export default function TabsLayout() {
         // Room for the icon and a full label in either language (Hindi letters are
         // taller), above the phone's gesture bar.
         tabBarStyle: {
-          backgroundColor: colors.white,
+          backgroundColor: colors.surface,
           borderTopColor: colors.line,
           height: 68 + insets.bottom,
           paddingTop: 4,
           paddingBottom: 4 + insets.bottom,
         },
+        sceneStyle: { backgroundColor: colors.background },
       }}
     >
       <Tabs.Screen

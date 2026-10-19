@@ -1,6 +1,6 @@
 /**
- * Renders a screen inside the real language and price providers, with a fake
- * login. Screens under test never touch Firebase. Await it: rendering is
+ * Renders a screen inside the real theme, language and price providers, with a
+ * fake login. Screens under test never touch Firebase. Await it: rendering is
  * asynchronous in React Native Testing Library 14.
  */
 
@@ -11,6 +11,7 @@ import type { ReactElement } from 'react';
 import { AuthContext, type AuthContextValue } from '@/auth/AuthProvider';
 import { ConfigProvider } from '@/config/ConfigProvider';
 import { I18nProvider } from '@/i18n';
+import { type Scheme, ThemeProvider } from '@/theme';
 
 export const signedOut: AuthContextValue = {
   ready: true,
@@ -30,13 +31,23 @@ export function renderScreen(
     lang = 'en',
     auth = signedOut,
     config = DEFAULT_CONFIG,
-  }: { lang?: Language; auth?: AuthContextValue; config?: AppConfig } = {},
+    configSource = 'built-in',
+    scheme = 'light',
+  }: {
+    lang?: Language;
+    auth?: AuthContextValue;
+    config?: AppConfig;
+    configSource?: 'built-in' | 'saved' | 'live';
+    scheme?: Scheme;
+  } = {},
 ) {
   return render(
-    <I18nProvider initial={lang}>
-      <ConfigProvider initial={config}>
-        <AuthContext.Provider value={auth}>{ui}</AuthContext.Provider>
-      </ConfigProvider>
-    </I18nProvider>,
+    <ThemeProvider scheme={scheme}>
+      <I18nProvider initial={lang}>
+        <ConfigProvider initial={config} initialSource={configSource}>
+          <AuthContext.Provider value={auth}>{ui}</AuthContext.Provider>
+        </ConfigProvider>
+      </I18nProvider>
+    </ThemeProvider>,
   );
 }

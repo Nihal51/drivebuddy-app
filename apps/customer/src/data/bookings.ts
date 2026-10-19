@@ -15,6 +15,7 @@ import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, where } fr
 
 import { isFirebaseConfigured } from '@/env';
 import { firestore } from '@/firebase/app';
+import { reportError } from '@/lib/monitoring';
 
 export type SubmitFailure = 'config' | 'permission' | 'network' | 'timeout' | 'unknown';
 export type SubmitResult = { ok: true; id: string } | { ok: false; reason: SubmitFailure; id?: string };
@@ -53,7 +54,10 @@ export async function submitBooking(
     return { ok: true, id };
   } catch (err) {
     if (__DEV__) console.warn('[drivebuddy] booking failed', err);
-    return { ok: false, reason: failureReason(err), id };
+    const reason = failureReason(err);
+    // Offline is expected; a refusal or an unknown error is worth a report.
+    if (reason !== 'network') reportError(err, `booking:${reason}`);
+    return { ok: false, reason, id };
   }
 }
 

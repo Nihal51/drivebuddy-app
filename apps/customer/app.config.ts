@@ -20,8 +20,13 @@ const IS_DEV = process.env.APP_VARIANT === 'development';
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '';
 const APP_ID = IS_DEV ? 'in.thedrivebuddy.app.dev' : 'in.thedrivebuddy.app';
 
-/** Brand colours, also in src/theme.ts. */
+/** Brand colours, also in src/theme.tsx. */
 const AMBER = '#F59E0B';
+const SENTRY = {
+  organization: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+};
 const WHITE = '#FFFFFF';
 
 /**
@@ -57,7 +62,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         fallbackToCacheTimeout: 0,
       }
     : { enabled: false },
-  userInterfaceStyle: 'light',
+  // Follows the phone's light / dark setting (src/theme.tsx has both palettes).
+  userInterfaceStyle: 'automatic',
   backgroundColor: WHITE,
   ios: {
     bundleIdentifier: APP_ID,
@@ -70,6 +76,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: APP_ID,
+    // A phone backup must not carry a customer's login to another phone.
+    allowBackup: false,
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       monochromeImage: './assets/adaptive-icon-monochrome.png',
@@ -79,6 +87,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Nothing beyond internet and notifications. No location, contacts or storage:
     // fewer permissions = a simpler Play "Data safety" form and more trust.
     blockedPermissions: [
+      // No ads and no ad tracking: keeps the Play "Advertising ID" answer a plain No.
+      'com.google.android.gms.permission.AD_ID',
       'android.permission.READ_EXTERNAL_STORAGE',
       'android.permission.WRITE_EXTERNAL_STORAGE',
       'android.permission.SYSTEM_ALERT_WINDOW',
@@ -100,6 +110,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         image: './assets/splash-icon.png',
         imageWidth: 180,
         backgroundColor: WHITE,
+        dark: { image: './assets/splash-icon-dark.png', backgroundColor: '#0C0A09' },
       },
     ],
     [
@@ -108,16 +119,33 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         icon: './assets/notification-icon.png',
         color: AMBER,
         defaultChannel: 'bookings',
+        // Apple's push environment: the sandbox for test builds, the real one for the store.
+        mode: IS_DEV ? 'development' : 'production',
       },
     ],
     // Reads google-services.json / GoogleService-Info.plist when present.
     '@react-native-google-signin/google-signin',
+    // Crash reports with readable stack traces: uploads source maps during the
+    // build. Only when SENTRY_ORG, SENTRY_PROJECT and the SENTRY_AUTH_TOKEN
+    // secret are all set (docs/SETUP.md), so a build never fails for want of them.
+    ...(SENTRY.organization && SENTRY.project && SENTRY.authToken
+      ? [
+          ['@sentry/react-native/expo', { organization: SENTRY.organization, project: SENTRY.project }] as [
+            string,
+            object,
+          ],
+        ]
+      : []),
   ],
   experiments: {
     typedRoutes: true,
   },
   extra: {
     ...config.extra,
+    // Google login on iPhone needs GoogleService-Info.plist (its URL scheme);
+    // without it the app hides the button instead of crashing (docs/SETUP.md).
+    iosGoogleSignIn: Boolean(iosGoogleServicesFile),
+    variant: IS_DEV ? 'development' : 'production',
     eas: {
       ...config.extra?.eas,
       // Push notifications need the EAS project id. `eas init` prints it; paste it

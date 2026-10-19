@@ -1,7 +1,7 @@
 import { type Booking, prettyPhone } from '@drivebuddy/shared';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText } from '@/components/AppText';
@@ -18,7 +18,7 @@ import { watchBooking } from '@/data/bookings';
 import { useI18n } from '@/i18n';
 import { bookingTitle, formatDateTime, formatPreferred } from '@/i18n/format';
 import { callNumber, openWebPage } from '@/lib/links';
-import { colors, space } from '@/theme';
+import { makeStyles, space, useTheme } from '@/theme';
 
 type State = { kind: 'loading' } | { kind: 'missing' } | { kind: 'ready'; booking: Booking };
 
@@ -26,6 +26,8 @@ export default function BookingDetailScreen() {
   const { t } = useI18n();
   const { config } = useConfig();
   const { ready, user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [state, setState] = useState<State>({ kind: 'loading' });
 
@@ -159,9 +161,9 @@ export default function BookingDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background },
   head: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   help: { gap: space.sm },
-});
+}));

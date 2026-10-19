@@ -14,8 +14,8 @@ import {
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, type ScrollView, StyleSheet, type TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, type ScrollView, type TextInput, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { WhenPicker, type When } from '@/booking/WhenPicker';
@@ -32,8 +32,9 @@ import { useConfig } from '@/config/ConfigProvider';
 import { type SubmitFailure, submitBooking } from '@/data/bookings';
 import { useI18n } from '@/i18n';
 import { errorText } from '@/i18n/format';
+import { track } from '@/lib/analytics';
 import { openWhatsapp } from '@/lib/links';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 type Phase =
   | { kind: 'editing' }
@@ -48,6 +49,8 @@ function preferredFrom(when: When): string {
 
 export default function BookScreen() {
   const { ready, user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const params = useLocalSearchParams<{ package?: string }>();
   // Wait for a saved login (and its profile) so the form can start pre-filled.
   if (!ready) {
@@ -62,6 +65,8 @@ export default function BookScreen() {
 
 function BookingForm({ initialPackage }: { initialPackage?: string }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { config } = useConfig();
   const { user, profile } = useAuth();
 
@@ -77,6 +82,10 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
   const [phase, setPhase] = useState<Phase>({ kind: 'editing' });
   // "Now" for the time picker, fixed while the form is open so slots do not jump.
   const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    track('booking_form_opened', initialPackage ? { package: initialPackage } : {});
+  }, [initialPackage]);
 
   const input: BookingInput = { ...values, preferredTime: preferredFrom(when) };
   const errors: BookingErrors = validateBooking(input);
@@ -110,6 +119,16 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
     }
     setPhase({ kind: 'submitting' });
     const result = await submitBooking(input, user?.uid ?? null, { pingUrl: config.alerts.pingUrl });
+    if (result.ok) {
+      track('booking_submitted', {
+        package: input.packageId,
+        city: input.city,
+        when: input.preferredTime ? 'scheduled' : 'asap',
+        loggedIn: Boolean(user),
+      });
+    } else {
+      track('booking_failed', { reason: result.reason });
+    }
     setPhase(
       result.ok
         ? { kind: 'done', id: result.id, phone: prettyPhone(input.phone) }
@@ -155,7 +174,10 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
                 icon="logo-whatsapp"
                 variant="whatsapp"
                 compact
-                onPress={() => void openWhatsapp(config.contact.whatsapp, whatsappBookingMessage(t, input))}
+                onPress={() => {
+                  track('whatsapp_fallback_used');
+                  void openWhatsapp(config.contact.whatsapp, whatsappBookingMessage(t, input));
+                }}
                 testID="failure-whatsapp"
               />
             </View>
@@ -320,6 +342,8 @@ function Success({
   onAnother: () => void;
 }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <Screen edges={['bottom']} contentStyle={styles.successPage}>
       <View style={styles.successIcon}>
@@ -350,7 +374,7 @@ function Success({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   footer: { width: '100%', maxWidth: 640, gap: space.sm },
   block: { gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -359,18 +383,18 @@ const styles = StyleSheet.create({
     gap: space.xs + 2,
     padding: space.md,
     borderRadius: radius.md,
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: c.dangerSoft,
   },
   successPage: { justifyContent: 'center', flexGrow: 1 },
   successIcon: {
     width: 84,
     height: 84,
     borderRadius: radius.pill,
-    backgroundColor: colors.success,
+    backgroundColor: c.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
   },
   successActions: { gap: space.sm, marginTop: space.md },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-});
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background },
+}));

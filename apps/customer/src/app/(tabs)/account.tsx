@@ -1,8 +1,8 @@
 import { type ProfileErrors, prettyPhone, validateProfile } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Application from 'expo-application';
-import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Pressable, Switch, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText } from '@/components/AppText';
@@ -16,8 +16,9 @@ import { TextField } from '@/components/TextField';
 import { useConfig } from '@/config/ConfigProvider';
 import { useI18n } from '@/i18n';
 import { errorText } from '@/i18n/format';
+import { analyticsAvailable, isAnalyticsOn, setAnalyticsOn } from '@/lib/analytics';
 import { callNumber, openWebPage, openWhatsapp, sendEmail } from '@/lib/links';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 export default function AccountScreen() {
   const { t } = useI18n();
@@ -34,6 +35,8 @@ export default function AccountScreen() {
       <SectionTitle>{t.account.language}</SectionTitle>
       <LanguageToggle />
 
+      {analyticsAvailable() ? <StatsToggle /> : null}
+
       <HelpLinks />
     </Screen>
   );
@@ -41,6 +44,8 @@ export default function AccountScreen() {
 
 function SignedOut() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <Card>
       <AppText variant="heading" weight="heavy">
@@ -65,6 +70,8 @@ function SignedIn() {
 
 function ProfileForm() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { user, profile, saveProfile, signOut } = useAuth();
   const [name, setName] = useState(profile?.name ?? '');
   const [phone, setPhone] = useState(profile?.phone ? prettyPhone(profile.phone) : '');
@@ -97,7 +104,7 @@ function ProfileForm() {
     <>
       <View style={styles.who}>
         <View style={styles.avatar}>
-          <AppText variant="title" weight="heavy" color={colors.ink}>
+          <AppText variant="title" weight="heavy" color={colors.onAmber}>
             {initial}
           </AppText>
         </View>
@@ -159,6 +166,8 @@ function ProfileForm() {
 /** Asked twice on purpose: a link, then a plain explanation with the real button. */
 function DeleteAccount() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { deleteAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -203,8 +212,47 @@ function DeleteAccount() {
   );
 }
 
+/** Anonymous usage stats, on unless the customer turns them off (src/lib/analytics.ts). */
+function StatsToggle() {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void isAnalyticsOn().then((v) => alive && setOn(v));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (on === null) return null;
+  return (
+    <View style={styles.statsRow}>
+      <View style={styles.flex}>
+        <AppText weight="bold">{t.account.statsTitle}</AppText>
+        <AppText variant="small" color={colors.textMuted}>
+          {t.account.statsBody}
+        </AppText>
+      </View>
+      <Switch
+        value={on}
+        onValueChange={(v) => {
+          setOn(v);
+          void setAnalyticsOn(v);
+        }}
+        trackColor={{ true: colors.amber, false: colors.line }}
+        thumbColor={colors.surface}
+        accessibilityLabel={t.account.statsTitle}
+        testID="stats-toggle"
+      />
+    </View>
+  );
+}
+
 function NotificationsCard() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { push, enableNotifications } = useAuth();
   const [busy, setBusy] = useState(false);
   return (
@@ -253,6 +301,8 @@ function NotificationsCard() {
 
 function HelpLinks() {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { config } = useConfig();
   const c = config.contact;
   const rows: { icon: IconName; label: string; detail?: string; onPress: () => void }[] = [
@@ -329,7 +379,7 @@ function HelpLinks() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   who: { flexDirection: 'row', alignItems: 'center', gap: space.md },
@@ -337,19 +387,20 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.amber,
+    backgroundColor: c.amber,
     alignItems: 'center',
     justifyContent: 'center',
   },
   list: {
-    backgroundColor: colors.white,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     overflow: 'hidden',
   },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, minHeight: 56 },
-  divider: { borderTopWidth: 1, borderTopColor: colors.line },
-  pressed: { backgroundColor: colors.cream },
-  danger: { borderColor: colors.danger },
-});
+  divider: { borderTopWidth: 1, borderTopColor: c.line },
+  pressed: { backgroundColor: c.cream },
+  danger: { borderColor: c.danger },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+}));

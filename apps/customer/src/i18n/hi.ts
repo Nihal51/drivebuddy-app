@@ -255,6 +255,8 @@ export const hi: Messages = {
     privacy: 'प्राइवेसी पॉलिसी',
     terms: 'सेवा की शर्तें',
     version: (v: string) => `वर्ज़न ${v}`,
+    statsTitle: 'गुमनाम इस्तेमाल के आँकड़े',
+    statsBody: 'इससे हम ऐप बेहतर बनाते हैं। कोई नाम, नंबर या पता कभी नहीं भेजा जाता।',
     deleteLink: 'मेरा अकाउंट डिलीट करें',
     deleteTitle: 'अपना DriveBuddy अकाउंट डिलीट करें?',
     deleteBody:
@@ -291,5 +293,12 @@ export const hi: Messages = {
   notFound: {
     title: 'पेज नहीं मिला',
     home: 'होम पर जाएँ',
+  },
+
+  update: {
+    title: 'कृपया DriveBuddy अपडेट करें',
+    body: 'ऐप का यह वर्ज़न बुकिंग के लिए बहुत पुराना है। नया वर्ज़न एक मिनट में इंस्टॉल हो जाता है।',
+    button: 'अभी अपडेट करें',
+    orCall: 'ड्राइवर अभी चाहिए? हमें कॉल या WhatsApp करें।',
   },
 };

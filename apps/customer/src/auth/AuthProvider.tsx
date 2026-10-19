@@ -22,6 +22,8 @@ import { isFirebaseConfigured } from '@/env';
 import { firebaseAuth } from '@/firebase/auth';
 import { type AuthErrorKind, authErrorKind, signInWithGoogle, signOutOfGoogle } from '@/firebase/google';
 import { useI18n } from '@/i18n';
+import { track } from '@/lib/analytics';
+import { reportError } from '@/lib/monitoring';
 import { type PushState, disablePush, enablePush, pushState } from '@/notifications/push';
 
 export type SignInResult =
@@ -109,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await signInWithGoogle();
       if (result === 'cancelled') return { ok: false, cancelled: true };
+      track('login_completed');
       const uid = firebaseAuth().currentUser?.uid;
       // The moment they log in is the moment they expect updates: ask now.
       if (uid) setPush(await enablePush(uid, langRef.current, { ask: true, channelName }));
@@ -124,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (uid) await disablePush(uid);
     await signOutOfGoogle();
     await firebaseSignOut(firebaseAuth());
+    track('logged_out');
   }, []);
 
   const saveProfile = useCallback(
@@ -140,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return push;
     const next = await enablePush(user.uid, langRef.current, { ask: true, channelName });
     setPush(next);
+    if (next === 'on') track('notifications_enabled');
     return next;
   }, [user, push, channelName]);
 
@@ -165,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return 'deleted';
     } catch (err) {
       if (__DEV__) console.warn('[drivebuddy] account deletion failed', err);
+      reportError(err, 'delete-account');
       return 'failed';
     }
   }, []);

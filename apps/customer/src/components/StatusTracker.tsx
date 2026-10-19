@@ -1,18 +1,20 @@
 import { type BookingStatus, STATUS_STEPS } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useI18n } from '@/i18n';
-import { colors, space } from '@/theme';
+import { makeStyles, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
 /** Received → Confirmed → Driver assigned → Completed, with the current step highlighted. */
 export function StatusTracker({ status }: { status: BookingStatus }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const current = STATUS_STEPS.indexOf(status);
   return (
-    <View accessibilityRole="progressbar" accessibilityLabel={t.status[status].label} style={styles.wrap}>
+    <View accessibilityRole="progressbar" accessibilityLabel={t.status[status].label}>
       {STATUS_STEPS.map((step, i) => {
         const done = i < current || status === 'completed';
         const active = i === current && status !== 'completed';
@@ -46,15 +48,14 @@ export function StatusTracker({ status }: { status: BookingStatus }) {
 }
 
 const DOT = 24;
-const styles = StyleSheet.create({
-  wrap: { gap: 0 },
+const useStyles = makeStyles((c) => ({
   row: { flexDirection: 'row', gap: space.md, minHeight: 52 },
   rail: { width: DOT, alignItems: 'center' },
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2, alignItems: 'center', justifyContent: 'center' },
-  dotDone: { backgroundColor: colors.success },
-  dotActive: { backgroundColor: colors.amber, borderWidth: 4, borderColor: colors.amberSoft },
-  dotTodo: { backgroundColor: colors.white, borderWidth: 2, borderColor: colors.line },
-  line: { flex: 1, width: 2, backgroundColor: colors.line, marginVertical: 2 },
-  lineDone: { backgroundColor: colors.success },
+  dotDone: { backgroundColor: c.successSolid },
+  dotActive: { backgroundColor: c.amber, borderWidth: 4, borderColor: c.amberSoft },
+  dotTodo: { backgroundColor: c.surface, borderWidth: 2, borderColor: c.line },
+  line: { flex: 1, width: 2, backgroundColor: c.line, marginVertical: 2 },
+  lineDone: { backgroundColor: c.successSolid },
   text: { flex: 1, paddingBottom: space.md, gap: 2 },
-});
+}));

@@ -2,14 +2,15 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, View } from 'react-native';
 
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 import type { IconName } from './Button';
 
 export function SectionTitle({ children, action }: { children: string; action?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.sectionRow}>
       <AppText variant="heading" weight="heavy" accessibilityRole="header" style={styles.flex}>
@@ -22,9 +23,13 @@ export function SectionTitle({ children, action }: { children: string; action?: 
 
 /** The DB logo + wordmark, as on the website header. */
 export function BrandMark() {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.brand} accessible accessibilityLabel="DriveBuddy">
-      <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+      <View style={styles.logoTile}>
+        <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+      </View>
       <AppText variant="heading" weight="heavy">
         Drive
         <AppText variant="heading" weight="heavy" color={colors.amberText}>
@@ -36,12 +41,14 @@ export function BrandMark() {
 }
 
 export function Notice({ text, tone = 'amber' }: { text: string; tone?: 'amber' | 'grey' | 'danger' }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const look =
     tone === 'danger'
       ? { bg: colors.dangerSoft, fg: colors.danger, icon: 'alert-circle' as const }
       : tone === 'grey'
-        ? { bg: colors.line, fg: colors.textMuted, icon: 'cloud-offline' as const }
-        : { bg: colors.amberSoft, fg: colors.ink, icon: 'megaphone' as const };
+        ? { bg: colors.line, fg: colors.textMuted, icon: 'information-circle' as const }
+        : { bg: colors.amberSoft, fg: colors.text, icon: 'megaphone' as const };
   return (
     <View style={[styles.notice, { backgroundColor: look.bg }]} accessibilityRole="alert">
       <Ionicons name={look.icon} size={18} color={look.fg} />
@@ -63,6 +70,8 @@ export function EmptyState({
   body?: string;
   children?: ReactNode;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
@@ -83,6 +92,8 @@ export function EmptyState({
 
 /** "Label ........ value" line on the booking detail. */
 export function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.info}>
       <Ionicons name={icon} size={18} color={colors.textMuted} style={styles.infoIcon} />
@@ -96,10 +107,12 @@ export function InfoRow({ icon, label, value }: { icon: IconName; label: string;
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   brand: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  // The logo's black "D" needs a light tile to show on the dark theme.
+  logoTile: { backgroundColor: '#ffffff', borderRadius: radius.sm, padding: 3 },
   logo: { width: 43, height: 36 },
   notice: {
     flexDirection: 'row',
@@ -113,11 +126,11 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.amberSoft,
+    backgroundColor: c.amberSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyActions: { alignSelf: 'stretch', gap: space.sm, marginTop: space.sm },
   info: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   infoIcon: { marginTop: 2 },
-});
+}));

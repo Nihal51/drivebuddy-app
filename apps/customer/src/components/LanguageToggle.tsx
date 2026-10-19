@@ -1,16 +1,18 @@
 import { LANGUAGES, type Language } from '@drivebuddy/shared';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { MESSAGES, useI18n } from '@/i18n';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
 /** English | हिंदी. Each option is written in its own language so anyone can find theirs. */
 export function LanguageToggle({ size = 'normal' }: { size?: 'small' | 'normal' }) {
   const { lang, setLang } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
-    <View style={[styles.wrap, size === 'small' ? styles.small : null]} accessibilityRole="radiogroup">
+    <View style={styles.wrap} accessibilityRole="radiogroup">
       {LANGUAGES.map((l: Language) => {
         const selected = l === lang;
         return (
@@ -30,7 +32,7 @@ export function LanguageToggle({ size = 'normal' }: { size?: 'small' | 'normal' 
             <AppText
               variant={size === 'small' ? 'tiny' : 'small'}
               weight="bold"
-              color={selected ? colors.ink : colors.textMuted}
+              color={selected ? colors.onAmber : colors.textMuted}
             >
               {MESSAGES[l].languageName}
             </AppText>
@@ -41,18 +43,17 @@ export function LanguageToggle({ size = 'normal' }: { size?: 'small' | 'normal' 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   wrap: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: c.surface,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     padding: 3,
     alignSelf: 'flex-start',
   },
-  small: {},
   option: { minHeight: 40, paddingHorizontal: space.lg, borderRadius: radius.pill, justifyContent: 'center' },
   optionSmall: { minHeight: 32, paddingHorizontal: space.md },
-  selected: { backgroundColor: colors.amber },
-});
+  selected: { backgroundColor: c.amber },
+}));

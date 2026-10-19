@@ -11,11 +11,15 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:coverage": "jest --coverage",
     "doctor": "expo-doctor",
     "build:preview": "eas build --profile preview --platform android",
+    "build:play": "eas build --profile production --platform android",
     "build:production": "eas build --profile production --platform all",
     "submit:android": "eas submit --profile production --platform android",
-    "submit:ios": "eas submit --profile production --platform ios"
+    "submit:ios": "eas submit --profile production --platform ios",
+    "i18n:review": "node --no-warnings scripts/translations.mjs",
+    "store:check": "node --no-warnings scripts/store-check.mjs"
   },
   "dependencies": {
     "@drivebuddy/shared": "*",
@@ -24,6 +28,7 @@
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-google-signin/google-signin": "^16.1.5",
+    "@sentry/react-native": "~7.11.0",
     "expo": "~57.0.27",
     "expo-application": "~57.0.3",
     "expo-constants": "~57.0.21",

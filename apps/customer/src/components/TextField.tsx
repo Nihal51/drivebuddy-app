@@ -1,8 +1,8 @@
 import { forwardRef, useState } from 'react';
-import { StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { TextInput, type TextInputProps, View } from 'react-native';
 
 import { useOptionalLang } from '@/i18n';
-import { TOUCH, colors, fonts, radius, space, type as scale } from '@/theme';
+import { TOUCH, fonts, makeStyles, radius, space, type as scale, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
@@ -20,6 +20,8 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   ref,
 ) {
   const lang = useOptionalLang();
+  const { colors, scheme } = useTheme();
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
   const border = error ? colors.danger : focused ? colors.amber : colors.line;
   return (
@@ -42,6 +44,8 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           ref={ref}
           multiline={multiline}
           placeholderTextColor={colors.textFaint}
+          selectionColor={colors.amber}
+          keyboardAppearance={scheme}
           accessibilityLabel={label}
           accessibilityHint={error ?? hint}
           onFocus={(e) => {
@@ -74,7 +78,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   wrap: { gap: space.xs + 2 },
   box: {
     flexDirection: 'row',
@@ -82,11 +86,11 @@ const styles = StyleSheet.create({
     minHeight: TOUCH + 4,
     borderWidth: 1.5,
     borderRadius: radius.md,
-    backgroundColor: colors.white,
+    backgroundColor: c.surface,
     paddingHorizontal: space.md,
   },
   multiBox: { alignItems: 'flex-start', paddingVertical: space.sm },
   prefix: { marginRight: space.sm },
-  input: { flex: 1, fontSize: scale.body.fontSize, color: colors.text, paddingVertical: space.sm },
+  input: { flex: 1, fontSize: scale.body.fontSize, color: c.text, paddingVertical: space.sm },
   multiInput: { minHeight: 84, textAlignVertical: 'top' },
-});
+}));

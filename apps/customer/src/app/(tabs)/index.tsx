@@ -1,7 +1,7 @@
 import { PACKAGE_GROUPS, type PackageId, startingFrom } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText } from '@/components/AppText';
@@ -14,7 +14,7 @@ import { PackageRow } from '@/components/PackageRow';
 import { Screen } from '@/components/Screen';
 import { useConfig } from '@/config/ConfigProvider';
 import { useI18n } from '@/i18n';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 const bookPackage = (id?: PackageId) =>
   router.push(id ? { pathname: '/book', params: { package: id } } : '/book');
@@ -23,6 +23,8 @@ export default function HomeScreen() {
   const { t } = useI18n();
   const { config } = useConfig();
   const { profile } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const firstName = profile?.name.split(' ')[0];
 
   return (
@@ -35,23 +37,23 @@ export default function HomeScreen() {
       {config.notice.show && config.notice.text ? <Notice text={config.notice.text} /> : null}
 
       {/* Hero */}
-      <Card tone="dark" style={styles.hero}>
+      <Card tone="hero" style={styles.hero}>
         {firstName ? (
           <AppText weight="bold" color={colors.amber}>
             {t.home.greeting(firstName)}
           </AppText>
         ) : null}
-        <AppText variant="display" weight="heavy" color={colors.white} accessibilityRole="header">
+        <AppText variant="display" weight="heavy" color={colors.onHero} accessibilityRole="header">
           {t.home.title}
         </AppText>
-        <AppText color="#d6d3d1">{t.home.subtitle}</AppText>
+        <AppText color={colors.onHeroMuted}>{t.home.subtitle}</AppText>
         <View style={styles.heroMeta}>
           <View style={styles.pricePill}>
-            <AppText variant="small" weight="heavy" color={colors.ink}>
+            <AppText variant="small" weight="heavy" color={colors.onAmber}>
               {t.home.startingFrom(startingFrom(config))}
             </AppText>
           </View>
-          <AppText variant="small" weight="bold" color="#d6d3d1">
+          <AppText variant="small" weight="bold" color={colors.onHeroMuted}>
             {t.home.cities}
           </AppText>
         </View>
@@ -108,12 +110,12 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   hero: { gap: space.md, padding: space.xl },
   heroMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
   pricePill: {
-    backgroundColor: colors.amber,
+    backgroundColor: c.amber,
     borderRadius: radius.pill,
     paddingHorizontal: space.md,
     paddingVertical: space.xs,
@@ -123,10 +125,10 @@ const styles = StyleSheet.create({
   pillar: {
     flexBasis: '47%',
     flexGrow: 1,
-    backgroundColor: colors.white,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     padding: space.md,
     gap: space.xs,
   },
@@ -134,9 +136,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.amberSoft,
+    backgroundColor: c.amberSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: space.xs,
   },
-});
+}));

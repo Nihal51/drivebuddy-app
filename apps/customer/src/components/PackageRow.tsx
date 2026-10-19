@@ -1,11 +1,11 @@
 import { POPULAR_PACKAGE, type PackageId, packagePrice } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { useConfig } from '@/config/ConfigProvider';
 import { useI18n } from '@/i18n';
 import { priceLabel } from '@/i18n/format';
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
@@ -26,6 +26,8 @@ export function PackageRow({
 }) {
   const { t } = useI18n();
   const { config } = useConfig();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const pkg = t.packages[id];
   const price = priceLabel(t, packagePrice(config, id));
   const popular = id === POPULAR_PACKAGE;
@@ -75,7 +77,7 @@ export function PackageRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -84,17 +86,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: colors.line,
-    backgroundColor: colors.white,
+    borderColor: c.line,
+    backgroundColor: c.surface,
     minHeight: 64,
   },
-  selected: { borderColor: colors.amber, backgroundColor: colors.cream },
-  pressed: { backgroundColor: colors.cream },
+  selected: { borderColor: c.amber, backgroundColor: c.cream },
+  pressed: { backgroundColor: c.cream },
   main: { flex: 1, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
   shrink: { flexShrink: 1 },
   popular: {
-    backgroundColor: colors.amberSoft,
+    backgroundColor: c.amberSoft,
     borderRadius: radius.pill,
     paddingHorizontal: space.sm,
     paddingVertical: 1,
@@ -105,10 +107,10 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.textFaint,
+    borderColor: c.textFaint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioOn: { borderColor: colors.amberText },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.amberText },
-});
+  radioOn: { borderColor: c.amberText },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.amberText },
+}));

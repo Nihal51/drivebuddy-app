@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 
-import { colors, radius, space } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
@@ -18,6 +18,8 @@ export function Chip({
   sublabel?: string;
   testID?: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       testID={testID}
@@ -31,14 +33,14 @@ export function Chip({
         pressed && !selected ? styles.pressed : null,
       ]}
     >
-      <AppText variant="small" weight="bold" color={selected ? colors.ink : colors.text} align="center">
+      <AppText variant="small" weight="bold" color={selected ? colors.onAmber : colors.text} align="center">
         {label}
       </AppText>
       {sublabel ? (
         <AppText
           variant="tiny"
           weight="medium"
-          color={selected ? colors.ink : colors.textMuted}
+          color={selected ? colors.onAmber : colors.textMuted}
           align="center"
         >
           {sublabel}
@@ -48,7 +50,7 @@ export function Chip({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((c) => ({
   chip: {
     minHeight: 44,
     minWidth: 64,
@@ -56,10 +58,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: colors.line,
-    backgroundColor: colors.white,
+    borderColor: c.line,
+    backgroundColor: c.surface,
     justifyContent: 'center',
   },
-  selected: { backgroundColor: colors.amber, borderColor: colors.amber },
-  pressed: { backgroundColor: colors.amberSoft },
-});
+  selected: { backgroundColor: c.amber, borderColor: c.amber },
+  pressed: { backgroundColor: c.amberSoft },
+}));

@@ -20,8 +20,20 @@ const ConfigContext = createContext<ConfigState>({ config: DEFAULT_CONFIG, sourc
 
 const REFRESH_AFTER_MS = 30 * 60 * 1000;
 
-export function ConfigProvider({ children, initial }: { children: ReactNode; initial?: AppConfig }) {
-  const [state, setState] = useState<ConfigState>({ config: initial ?? DEFAULT_CONFIG, source: 'built-in' });
+export function ConfigProvider({
+  children,
+  initial,
+  initialSource = 'built-in',
+}: {
+  children: ReactNode;
+  /** Tests and previews: a fixed config instead of downloading one. */
+  initial?: AppConfig;
+  initialSource?: Source;
+}) {
+  const [state, setState] = useState<ConfigState>({
+    config: initial ?? DEFAULT_CONFIG,
+    source: initialSource,
+  });
   const lastFetch = useRef(0);
 
   useEffect(() => {

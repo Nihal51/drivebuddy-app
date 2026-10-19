@@ -13,7 +13,9 @@ import {
   isErrorWithCode,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 import { env } from '@/env';
 
@@ -21,7 +23,17 @@ import { firebaseAuth } from './auth';
 
 let configured = false;
 
-export const isGoogleLoginAvailable = () => Boolean(env.googleWebClientId);
+/**
+ * Needs the web client ID everywhere, and on iPhone also the Firebase iOS
+ * config (GoogleService-Info.plist), whose URL scheme Google's sign-in sheet
+ * returns to — without it iOS would close the app.
+ */
+export function isGoogleLoginAvailable(): boolean {
+  if (!env.googleWebClientId) return false;
+  if (Platform.OS !== 'ios') return true;
+  const extra = Constants.expoConfig?.extra as { iosGoogleSignIn?: boolean } | undefined;
+  return extra?.iosGoogleSignIn === true;
+}
 
 export async function signInWithGoogle(): Promise<'ok' | 'cancelled'> {
   if (!configured) {

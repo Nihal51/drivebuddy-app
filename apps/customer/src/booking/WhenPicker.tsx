@@ -6,7 +6,7 @@ import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { useI18n } from '@/i18n';
 import { formatSlot } from '@/i18n/format';
-import { colors, space } from '@/theme';
+import { space, useTheme } from '@/theme';
 
 export type When = { mode: 'asap' } | { mode: 'schedule'; day: string; slot: string | null };
 
@@ -27,6 +27,7 @@ export function WhenPicker({
   error?: string;
 }) {
   const { t } = useI18n();
+  const { colors } = useTheme();
   const days = useMemo(() => dayOptions(now, 7), [now]);
   const firstDayWithSlots = days.find((d) => timeSlots(d.key, now).length > 0)?.key ?? days[1]?.key ?? '';
   const day = value.mode === 'schedule' ? value.day : firstDayWithSlots;

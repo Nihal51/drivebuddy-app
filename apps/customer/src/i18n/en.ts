@@ -257,6 +257,8 @@ export const en = {
     privacy: 'Privacy policy',
     terms: 'Terms of service',
     version: (v: string) => `Version ${v}`,
+    statsTitle: 'Anonymous usage stats',
+    statsBody: 'Helps us improve the app. No names, numbers or addresses are ever sent.',
     deleteLink: 'Delete my account',
     deleteTitle: 'Delete your DriveBuddy account?',
     deleteBody:
@@ -292,6 +294,13 @@ export const en = {
   notFound: {
     title: 'Page not found',
     home: 'Go to home',
+  },
+
+  update: {
+    title: 'Please update DriveBuddy',
+    body: 'This version of the app is too old to book. The new one takes a minute to install.',
+    button: 'Update now',
+    orCall: 'Need a driver right now? Call or WhatsApp us.',
   },
 };
 
