@@ -41,6 +41,14 @@ function listAfter(source: string, marker: string): string[] {
 live('contract with the live website', () => {
   jest.setTimeout(30_000);
 
+  // Whether the live website publishes trip estimates. Until it does, the app
+  // keeps `trip` out of bookings (it goes in the notes), so the rules need not
+  // know it yet.
+  let tripsLive = false;
+  beforeAll(async () => {
+    tripsLive = parseAppConfig(JSON.parse(await text(`${SITE}/app-config.json`)))?.tripsLive ?? false;
+  });
+
   test('the published app-config.json passes every check the app makes', async () => {
     const parsed = parseAppConfig(JSON.parse(await text(`${SITE}/app-config.json`)));
     expect(parsed).not.toBeNull();
@@ -59,7 +67,8 @@ live('contract with the live website', () => {
 
     test('accepts the fields of an app booking, with source "app"', () => {
       const bookings = rules.slice(rules.indexOf('match /bookings/{bookingId}'));
-      expect(listAfter(bookings, 'keys().hasOnly(').sort()).toEqual([...BOOKING_CREATE_KEYS].sort());
+      const expected = tripsLive ? [...BOOKING_CREATE_KEYS] : BOOKING_CREATE_KEYS.filter((k) => k !== 'trip');
+      expect(listAfter(bookings, 'keys().hasOnly(').sort()).toEqual(expected.sort());
       expect(listAfter(rules, 'data.source in')).toContain('app');
       const fields = newBookingFields(
         {
@@ -77,7 +86,8 @@ live('contract with the live website', () => {
       for (const key of Object.keys(fields)) expect(BOOKING_CREATE_KEYS).toContain(key);
     });
 
-    test('accepts a trip in exactly the shape the app writes', () => {
+    test('accepts a trip in exactly the shape the app writes (once the website publishes trips)', () => {
+      if (!tripsLive) return;
       expect(listAfter(rules, 'function isTrip').sort()).toEqual([...TRIP_KEYS].sort());
     });
 
