@@ -7,7 +7,9 @@
 import {
   type Booking,
   type BookingInput,
+  type BookingTrip,
   newBookingFields,
+  notesWithTrip,
   sortNewestFirst,
   toBooking,
 } from '@drivebuddy/shared';
@@ -31,13 +33,24 @@ export const SUBMIT_TIMEOUT_MS = 20_000;
 export async function submitBooking(
   input: BookingInput,
   customerUid: string | null,
-  opts: { pingUrl?: string; timeoutMs?: number } = {},
+  opts: {
+    pingUrl?: string;
+    timeoutMs?: number;
+    /** Outstation trip / one-way drop: the trip and estimate the customer saw. */
+    trip?: BookingTrip | null;
+    /** The website takes `trip` (AppConfig.tripsLive); if not, it goes in the notes. */
+    tripsLive?: boolean;
+  } = {},
 ): Promise<SubmitResult> {
   if (!isFirebaseConfigured()) return { ok: false, reason: 'config' };
 
   let id: string | undefined;
   try {
-    const fields = newBookingFields(input, customerUid);
+    const { trip, tripsLive = false } = opts;
+    const fields =
+      trip && !tripsLive && input.city
+        ? newBookingFields({ ...input, notes: notesWithTrip(input.notes, trip, input.city) }, customerUid)
+        : newBookingFields(input, customerUid, trip);
     // The id is made on the phone, so even a slow save can be traced later.
     const ref = doc(collection(firestore(), 'bookings'));
     id = ref.id;

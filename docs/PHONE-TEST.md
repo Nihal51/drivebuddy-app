@@ -18,35 +18,40 @@ then cancel them in `/admin`.
 5. [ ] Book as a guest (ASAP). The success screen shows your number. Telegram
        gets the alert marked "📱 Booked in the DriveBuddy app" within a minute,
        and it appears in `/admin` and the Sheet with a DB-number.
-6. [ ] Turn on airplane mode, book again: after up to 20 seconds the app offers
+6. [ ] Book → **One-way car drop** → Raipur → Nagpur: the estimate shows
+       ₹2,450–2,850 (1 driving day + 1 return day). Tap **+** once: ₹3,900–4,500.
+       Choose a nearby place (Bhilai): the app suggests the full day instead.
+       Book it: the Telegram alert shows the trip (under Notes until the
+       website update is published).
+7. [ ] Turn on airplane mode, book again: after up to 20 seconds the app offers
        **Send on WhatsApp** with everything typed. Turn airplane mode off.
-7. [ ] Phone settings → Display → largest font size: screens still readable,
+8. [ ] Phone settings → Display → largest font size: screens still readable,
        buttons not cut off. Set it back.
-8. [ ] Phone dark mode on: the app turns dark and everything is readable.
+9. [ ] Phone dark mode on: the app turns dark and everything is readable.
 
 ## Logged in
 
-9. [ ] Account → Continue with Google → pick your account. The app asks to
-       allow notifications → Allow. Account shows "Booking updates: On".
-10. [ ] Book again: your name and number are filled in. The booking shows in
+10. [ ] Account → Continue with Google → pick your account. The app asks to
+        allow notifications → Allow. Account shows "Booking updates: On".
+11. [ ] Book again: your name and number are filled in. The booking shows in
         **My bookings** at once ("Numbering…", then DB-number within a minute).
-11. [ ] In `/admin`: **Confirm** → within a minute the phone shows _Booking
+12. [ ] In `/admin`: **Confirm** → within a minute the phone shows _Booking
         confirmed_. Tap it: the booking opens.
-12. [ ] **Assign driver** → _Driver assigned_ with the driver's name. The booking
+13. [ ] **Assign driver** → _Driver assigned_ with the driver's name. The booking
         shows the driver with a Call button.
-13. [ ] In `/admin`, the booking's **Tell the customer → English / हिंदी**
+14. [ ] In `/admin`, the booking's **Tell the customer → English / हिंदी**
         opens WhatsApp with the driver details.
-14. [ ] **Complete** → _Trip completed_; the booking shows "Write a review".
-15. [ ] Close the app fully and open it again: still logged in.
-16. [ ] Switch to हिंदी, ask a friend to confirm another booking: the
+15. [ ] **Complete** → _Trip completed_; the booking shows "Write a review".
+16. [ ] Close the app fully and open it again: still logged in.
+17. [ ] Switch to हिंदी, ask a friend to confirm another booking: the
         notification arrives in Hindi.
-17. [ ] Account → Log out → My bookings asks you to log in. Log in again.
-18. [ ] Account → Delete my account → confirm: you are logged out, and logging
+18. [ ] Account → Log out → My bookings asks you to log in. Log in again.
+19. [ ] Account → Delete my account → confirm: you are logged out, and logging
         in again starts with empty details (old bookings no longer listed).
 
 ## When the website changes
 
-19. [ ] Change a price in `site-settings.ts` on GitHub. 5 minutes after the
+20. [ ] Change a price in `site-settings.ts` on GitHub. 5 minutes after the
         website deploy, close and reopen the app: the new price shows.
-20. [ ] (Optional) Set `app.minVersion` in `site-settings.ts` above the app's
+21. [ ] (Optional) Set `app.minVersion` in `site-settings.ts` above the app's
         version: the app asks to update. Set it back.

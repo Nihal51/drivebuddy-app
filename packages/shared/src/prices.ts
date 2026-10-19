@@ -32,6 +32,8 @@ export type PackagePrice =
   | { kind: 'fixed'; amount: string }
   | { kind: 'from'; amount: string }
   | { kind: 'monthly'; amount: string }
+  /** Outstation trips and one-way drops, priced by the day (the form shows the trip estimate). */
+  | { kind: 'perDay'; amount: string }
   | { kind: 'priority' }
   | { kind: 'quote' };
 
@@ -45,7 +47,8 @@ export function packagePrice(config: AppConfig, id: PackageId): PackagePrice {
     case 'local-full-day':
       return { kind: 'fixed', amount: rupeeRange(p.fullDay) };
     case 'outstation':
-      return { kind: 'fixed', amount: rupeeRange(p.outstation) };
+    case 'one-way-drop':
+      return { kind: 'perDay', amount: rupeeRange(p.outstation) };
     case 'night-driver':
       return { kind: 'from', amount: rupees(p.nightFrom) };
     case 'monthly-basic':
@@ -55,7 +58,6 @@ export function packagePrice(config: AppConfig, id: PackageId): PackagePrice {
     case 'medical-emergency':
       return { kind: 'priority' };
     case 'wedding-event':
-    case 'one-way-drop':
       return { kind: 'quote' };
   }
 }

@@ -25,6 +25,8 @@ test('every package has a price shape', () => {
     amount: '₹16,000–17,000',
   });
   expect(packagePrice(DEFAULT_CONFIG, 'wedding-event')).toEqual({ kind: 'quote' });
+  expect(packagePrice(DEFAULT_CONFIG, 'outstation')).toEqual({ kind: 'perDay', amount: '₹1,450–1,650' });
+  expect(packagePrice(DEFAULT_CONFIG, 'one-way-drop')).toEqual({ kind: 'perDay', amount: '₹1,450–1,650' });
 });
 
 test('prices follow the downloaded config, not the package id', () => {

@@ -80,12 +80,15 @@ describe('Booking form', () => {
         phone: '98765 43210',
         city: 'Bhilai',
         packageId: 'night-driver',
+        destId: '',
+        destOther: '',
+        days: '',
         pickup: 'Sector 6, Bhilai',
         preferredTime: '',
         notes: '',
       },
       null,
-      { pingUrl: '' },
+      { pingUrl: '', trip: null, tripsLive: false },
     );
     expect(screen.getByText('Booking received!')).toBeOnTheScreen();
     expect(screen.getByText(/\+91 98765 43210/)).toBeOnTheScreen();
@@ -119,6 +122,67 @@ describe('Booking form', () => {
     await fireEvent.press(screen.getByTestId('submit-booking'));
     expect(mockedSubmit.mock.calls[0][1]).toBe('uid-9');
     expect(screen.getByTestId('track-booking')).toBeOnTheScreen();
+  });
+
+  test('a one-way drop shows the estimate and saves the trip with it', async () => {
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b3' });
+    await renderScreen(<BookScreen />);
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('city-Raipur'));
+    await fireEvent.press(screen.getByTestId('choice-one-way-drop'));
+    expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('dest-nagpur'));
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,450–2,850');
+    expect(screen.getByText(/1 day for the driver to get home/)).toBeOnTheScreen();
+
+    // A day's stop on the way: one more driving day.
+    await fireEvent.press(screen.getByTestId('days-plus'));
+    expect(screen.getByTestId('days-value')).toHaveTextContent('2');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,900–4,500');
+
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    const [input, , opts] = mockedSubmit.mock.calls[0];
+    expect(input).toMatchObject({ packageId: 'one-way-drop', destId: 'nagpur', days: '2' });
+    expect(opts.trip).toEqual({
+      to: 'Nagpur',
+      destId: 'nagpur',
+      kind: 'one-way',
+      km: 284,
+      days: 2,
+      returnDays: 1,
+      estFrom: 3900,
+      estTo: 4500,
+    });
+  });
+
+  test('a trip needs a destination; a place not in the list is typed in', async () => {
+    await renderScreen(<BookScreen />);
+    await fireEvent.press(screen.getByTestId('city-Durg'));
+    await fireEvent.press(screen.getByTestId('choice-outstation'));
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    expect(screen.getByText('Please choose where you are going.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'Jaipur');
+    expect(screen.getByText(/Not in our list/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('dest-other'));
+    expect(screen.getByTestId('trip-place').props.value).toBe('Jaipur');
+    expect(screen.getByText(/We work out the distance and call you/)).toBeOnTheScreen();
+  });
+
+  test('a nearby place suggests the local full day', async () => {
+    await renderScreen(<BookScreen />);
+    await fireEvent.press(screen.getByTestId('city-Raipur'));
+    await fireEvent.press(screen.getByTestId('choice-outstation'));
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'Bhil');
+    await fireEvent.press(screen.getByTestId('dest-bhilai'));
+    await fireEvent.press(screen.getByTestId('use-local'));
+    expect(screen.queryByTestId('trip-section')).toBeNull();
+    expect(screen.getByTestId('choice-local-full-day').props.accessibilityState).toMatchObject({
+      checked: true,
+    });
   });
 });
 

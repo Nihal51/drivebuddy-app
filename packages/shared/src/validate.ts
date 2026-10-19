@@ -6,7 +6,7 @@
  * words in the customer's language (English or Hindi).
  */
 
-export type FieldError = 'required' | 'tooShort' | 'tooLong' | 'invalidMobile';
+export type FieldError = 'required' | 'tooShort' | 'tooLong' | 'invalidMobile' | 'invalidNumber';
 
 /** Indian mobile numbers: 10 digits starting 6–9 (firestore.rules `isMobile`). */
 const MOBILE = /^[6-9]\d{9}$/;
@@ -16,6 +16,10 @@ export const LIMITS = {
   pickup: { min: 6, max: 300 },
   notes: { max: 500 },
   preferredTime: { max: 40 },
+  /** A place typed for "somewhere else" (firestore.rules isTrip: to). */
+  place: { min: 2, max: 60 },
+  /** Days with the driver on a trip. */
+  days: { min: 1, max: 60 },
 } as const;
 
 /** Strips spaces, dashes and a leading +91 / 0, so "+91 91114-73929" → "9111473929". */
@@ -60,4 +64,20 @@ export function validateNotes(value: string): FieldError | undefined {
 
 export function validateChoice(value: string): FieldError | undefined {
   return value ? undefined : 'required';
+}
+
+/** "Somewhere else": the city or town typed in. */
+export function validatePlace(value: string): FieldError | undefined {
+  const v = value.trim();
+  if (!v) return 'required';
+  if (v.length < LIMITS.place.min) return 'tooShort';
+  if (v.length > LIMITS.place.max) return 'tooLong';
+  return undefined;
+}
+
+/** Days with the driver: '' = as few as the distance allows; otherwise a whole number 1–60. */
+export function validateDays(value: string): FieldError | undefined {
+  if (!value.trim()) return undefined;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= LIMITS.days.min && n <= LIMITS.days.max ? undefined : 'invalidNumber';
 }

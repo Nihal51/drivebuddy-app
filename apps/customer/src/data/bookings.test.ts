@@ -1,4 +1,4 @@
-import type { BookingInput } from '@drivebuddy/shared';
+import { type BookingInput, DEFAULT_CONFIG, EMPTY_BOOKING, planTrip, tripRecord } from '@drivebuddy/shared';
 import { setDoc } from 'firebase/firestore';
 
 import { submitBooking } from './bookings';
@@ -17,6 +17,7 @@ jest.mock('firebase/firestore', () => ({
 const mockedSetDoc = setDoc as jest.Mock;
 
 const INPUT: BookingInput = {
+  ...EMPTY_BOOKING,
   name: 'Ravi',
   phone: '9876543210',
   city: 'Raipur',
@@ -75,4 +76,26 @@ test('an unchecked form never reaches the network', async () => {
     reason: 'unknown',
   });
   expect(mockedSetDoc).not.toHaveBeenCalled();
+});
+
+describe('outstation trips and one-way drops', () => {
+  const DROP: BookingInput = { ...INPUT, packageId: 'one-way-drop', destId: 'nagpur', notes: 'Swift' };
+  const trip = tripRecord(planTrip(DEFAULT_CONFIG, 'one-way-drop', 'Raipur', 'nagpur'), '');
+  const saved = () => mockedSetDoc.mock.calls[0]?.[1] as Record<string, unknown>;
+
+  test('once the website takes trips, the trip is its own field', async () => {
+    mockedSetDoc.mockResolvedValue(undefined);
+    await submitBooking(DROP, null, { trip, tripsLive: true });
+    expect(saved().trip).toEqual(trip);
+    expect(saved().notes).toBe('Swift');
+  });
+
+  test('until then, the trip goes in the notes so the old rules accept the booking', async () => {
+    mockedSetDoc.mockResolvedValue(undefined);
+    await submitBooking(DROP, null, { trip, tripsLive: false });
+    expect(saved()).not.toHaveProperty('trip');
+    expect(saved().notes).toBe(
+      'Trip: Raipur → Nagpur · one-way drop · ~284 km · 1 driving day + 1 return day · est. ₹2,450–2,850\nSwift',
+    );
+  });
 });

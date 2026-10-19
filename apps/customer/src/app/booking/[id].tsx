@@ -1,4 +1,4 @@
-import { type Booking, prettyPhone } from '@drivebuddy/shared';
+import { type Booking, prettyPhone, rupees } from '@drivebuddy/shared';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -16,7 +16,7 @@ import { StatusTracker } from '@/components/StatusTracker';
 import { useConfig } from '@/config/ConfigProvider';
 import { watchBooking } from '@/data/bookings';
 import { useI18n } from '@/i18n';
-import { bookingTitle, formatDateTime, formatPreferred } from '@/i18n/format';
+import { bookingTitle, formatDateTime, formatPreferred, quoteBreakdown, tripSummary } from '@/i18n/format';
 import { callNumber, openWebPage } from '@/lib/links';
 import { makeStyles, space, useTheme } from '@/theme';
 
@@ -132,6 +132,20 @@ export default function BookingDetailScreen() {
           label={t.detail.city}
           value={t.cities[b.city as keyof typeof t.cities] ?? b.city}
         />
+        {b.trip ? (
+          <InfoRow
+            icon="map-outline"
+            label={t.detail.trip}
+            value={tripSummary(t, b.trip, b.city, config.destinations)}
+          />
+        ) : null}
+        {b.quote ? (
+          <InfoRow
+            icon="cash-outline"
+            label={t.detail.price}
+            value={`${rupees(b.quote.amount)} (${quoteBreakdown(t, b.quote)})`}
+          />
+        ) : null}
         {b.notes ? <InfoRow icon="document-text-outline" label={t.detail.notes} value={b.notes} /> : null}
         {b.createdAt ? (
           <InfoRow icon="calendar-outline" label={t.detail.bookedOn} value={formatDateTime(t, b.createdAt)} />

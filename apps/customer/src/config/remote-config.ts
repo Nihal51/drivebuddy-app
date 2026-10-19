@@ -32,7 +32,12 @@ export async function fetchRemoteConfig(fetchImpl: typeof fetch = fetch): Promis
 }
 
 export async function loadCachedConfig(): Promise<AppConfig | null> {
-  return parseAppConfig(await readJson<unknown>(CACHE_KEY));
+  const raw = await readJson<unknown>(CACHE_KEY);
+  const parsed = parseAppConfig(raw);
+  // tripsLive is worked out when the file is downloaded, not read from it: the
+  // saved copy always has the trip blocks, so keep the answer saved with it.
+  const live = typeof raw === 'object' && raw !== null && (raw as { tripsLive?: unknown }).tripsLive === true;
+  return parsed && { ...parsed, tripsLive: live };
 }
 
 export const cacheConfig = (config: AppConfig) => writeJson(CACHE_KEY, config);

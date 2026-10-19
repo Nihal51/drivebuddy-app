@@ -16,14 +16,25 @@ import {
   isPackageId,
 } from './catalog';
 import {
+  type BookingQuote,
+  type BookingTrip,
+  ELSEWHERE,
+  TRIP_PACKAGES,
+  isTripPackage,
+  toQuote,
+  toTrip,
+} from './trip';
+import {
   type FieldError,
   LIMITS,
   normalisePhone,
   validateChoice,
+  validateDays,
   validateName,
   validateNotes,
   validatePhone,
   validatePickup,
+  validatePlace,
 } from './validate';
 
 /** What the customer fills in. '' = not chosen yet; preferredTime '' = as soon as possible. */
@@ -32,6 +43,12 @@ export type BookingInput = {
   phone: string;
   city: City | '';
   packageId: PackageId | '';
+  /** Outstation trip / one-way drop only: a destination id, ELSEWHERE, or ''. */
+  destId: string;
+  /** The place typed in when destId is ELSEWHERE. */
+  destOther: string;
+  /** Days with the driver; '' = as few as the distance allows. */
+  days: string;
   pickup: string;
   preferredTime: string;
   notes: string;
@@ -42,6 +59,9 @@ export const EMPTY_BOOKING: BookingInput = {
   phone: '',
   city: '',
   packageId: '',
+  destId: '',
+  destOther: '',
+  days: '',
   pickup: '',
   preferredTime: '',
   notes: '',
@@ -53,6 +73,9 @@ export const BOOKING_FIELDS = [
   'phone',
   'city',
   'packageId',
+  'destId',
+  'destOther',
+  'days',
   'pickup',
   'preferredTime',
   'notes',
@@ -70,6 +93,14 @@ export function validateBookingField(field: BookingField, input: BookingInput): 
       return validateChoice(input.city);
     case 'packageId':
       return validateChoice(input.packageId);
+    case 'destId':
+      return isTripPackage(input.packageId) ? validateChoice(input.destId) : undefined;
+    case 'destOther':
+      return isTripPackage(input.packageId) && input.destId === ELSEWHERE
+        ? validatePlace(input.destOther)
+        : undefined;
+    case 'days':
+      return isTripPackage(input.packageId) ? validateDays(input.days) : undefined;
     case 'pickup':
       return validatePickup(input.pickup);
     case 'preferredTime':
@@ -103,6 +134,7 @@ export const BOOKING_CREATE_KEYS = [
   'status',
   'source',
   'customerUid',
+  'trip',
 ] as const;
 
 /** `source` on bookings made in this app; the website writes 'website'. */
@@ -119,14 +151,21 @@ export type NewBookingFields = {
   status: 'new';
   source: typeof APP_SOURCE;
   customerUid?: string;
+  /** Outstation trip / one-way drop only. */
+  trip?: BookingTrip;
 };
 
 /**
  * A checked form → the fields to write (the caller adds createdAt as the
  * server timestamp). Throws if the input has not been validated, so an invalid
- * booking can never reach the network.
+ * booking can never reach the network. `trip` (from planTrip + tripRecord) is
+ * kept only on a trip package, and only if it matches the package's kind.
  */
-export function newBookingFields(input: BookingInput, customerUid?: string | null): NewBookingFields {
+export function newBookingFields(
+  input: BookingInput,
+  customerUid?: string | null,
+  trip?: BookingTrip | null,
+): NewBookingFields {
   if (hasErrors(validateBooking(input)) || !isCity(input.city) || !isPackageId(input.packageId)) {
     throw new Error('newBookingFields: the booking has not passed validateBooking');
   }
@@ -142,6 +181,9 @@ export function newBookingFields(input: BookingInput, customerUid?: string | nul
     source: APP_SOURCE,
   };
   if (customerUid) fields.customerUid = customerUid;
+  if (trip && isTripPackage(input.packageId) && trip.kind === TRIP_PACKAGES[input.packageId]) {
+    fields.trip = { ...trip };
+  }
   return fields;
 }
 
@@ -168,6 +210,10 @@ export type Booking = {
   assignedDriver?: DriverRef;
   cancelReason?: string;
   updatedAt?: Date;
+  /** Outstation trip / one-way drop: where, how long, and the estimate shown. */
+  trip?: BookingTrip;
+  /** The price agreed on the call, once the team has saved it. */
+  quote?: BookingQuote;
 };
 
 /** Firestore Timestamp | Date | anything → Date | undefined, without importing the Firebase SDK here. */
@@ -209,6 +255,8 @@ export function toBooking(id: string, data: Record<string, unknown>): Booking {
     assignedDriver: toDriver(data.assignedDriver),
     cancelReason: str(data.cancelReason) || undefined,
     updatedAt: toDate(data.updatedAt),
+    trip: toTrip(data.trip),
+    quote: toQuote(data.quote),
   };
 }
 

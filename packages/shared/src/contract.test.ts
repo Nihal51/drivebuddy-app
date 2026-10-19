@@ -10,7 +10,8 @@
  *     CONTRACT=1 npx jest contract      (from packages/shared)
  */
 
-import { BOOKING_CREATE_KEYS, newBookingFields } from './booking';
+import { BOOKING_CREATE_KEYS, EMPTY_BOOKING, newBookingFields } from './booking';
+import { TRIP_KEYS } from './trip';
 import { CITIES, PACKAGE_IDS } from './catalog';
 import { parseAppConfig } from './config';
 import { DEVICE_KEYS, isExpoPushToken } from './account';
@@ -62,6 +63,7 @@ live('contract with the live website', () => {
       expect(listAfter(rules, 'data.source in')).toContain('app');
       const fields = newBookingFields(
         {
+          ...EMPTY_BOOKING,
           name: 'Contract Test',
           phone: '9876543210',
           city: 'Raipur',
@@ -73,6 +75,10 @@ live('contract with the live website', () => {
         'uid',
       );
       for (const key of Object.keys(fields)) expect(BOOKING_CREATE_KEYS).toContain(key);
+    });
+
+    test('accepts a trip in exactly the shape the app writes', () => {
+      expect(listAfter(rules, 'function isTrip').sort()).toEqual([...TRIP_KEYS].sort());
     });
 
     test('lets the app register phones for notifications in the shape it writes', () => {

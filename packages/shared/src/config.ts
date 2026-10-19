@@ -12,6 +12,9 @@
  * in parseAppConfig (a bad file can never blank the price list).
  */
 
+import { DEFAULT_DESTINATIONS } from './destinations';
+import { parseDestinations, parseTripRules, type TripDestination, type TripRules } from './trip';
+
 export type Range = { from: number; to: number };
 
 export type AppConfig = {
@@ -23,9 +26,21 @@ export type AppConfig = {
     oneHour: number;
     threeHours: number;
     fullDay: Range;
+    /** Per day of an outstation trip or one-way drop. */
     outstation: Range;
     nightFrom: number;
   };
+  /** How outstation estimates work (site-settings.ts → outstation). */
+  outstation: TripRules;
+  /** Destinations with km and days from each pickup city (lib/outstation.ts on the website). */
+  destinations: TripDestination[];
+  /**
+   * Not in the file: true when the downloaded file had the trip blocks, i.e.
+   * the website (and its firestore.rules, published with it) knows about
+   * trips. Until then the app keeps the trip out of the booking's fields —
+   * the old rules would refuse the booking — and writes it into the notes.
+   */
+  tripsLive: boolean;
   monthly: {
     basic: Range;
     joiningFeePercent: number;
@@ -49,7 +64,7 @@ export type AppConfig = {
   app: { minVersion: string; playStoreUrl: string; appStoreUrl: string };
 };
 
-/** Snapshot of site-settings.ts on 12 Oct 2026. Only a fallback — see above. */
+/** Snapshot of site-settings.ts on 19 Oct 2026. Only a fallback — see above. */
 export const DEFAULT_CONFIG: AppConfig = {
   schema: 1,
   contact: {
@@ -63,9 +78,19 @@ export const DEFAULT_CONFIG: AppConfig = {
     oneHour: 300,
     threeHours: 600,
     fullDay: { from: 1000, to: 1200 },
-    outstation: { from: 1200, to: 1500 },
+    outstation: { from: 1450, to: 1650 },
     nightFrom: 500,
   },
+  outstation: {
+    hoursPerDay: 12,
+    extraHour: 120,
+    returnDay: { from: 1000, to: 1200 },
+    mealAllowance: 100,
+    kmPerDay: 400,
+    localWithinKm: 60,
+  },
+  destinations: DEFAULT_DESTINATIONS,
+  tripsLive: false,
   monthly: {
     basic: { from: 16000, to: 17000 },
     joiningFeePercent: 25,
@@ -132,9 +157,18 @@ export function mustUpdate(installed: string | null | undefined, config: AppConf
  */
 export function parseAppConfig(raw: unknown): AppConfig | null {
   if (!isObj(raw) || raw.schema !== 1) return null;
-  const { contact, notice, prices, monthly, google, alerts, site, app } = raw;
+  const { contact, notice, prices, monthly, google, alerts, site, app, outstation, destinations } = raw;
   if (!isObj(contact) || !isObj(notice) || !isObj(prices) || !isObj(monthly)) return null;
   if (!isObj(google) || !isObj(alerts) || !isObj(site)) return null;
+
+  // Trip estimates (added 19 Oct 2026). A website file from before then has
+  // neither block: the built-in copies are used — and its prices.outstation,
+  // which then meant "per trip", is replaced by the built-in per-day range.
+  // If present, the blocks must be right.
+  const hasTrips = outstation !== undefined || destinations !== undefined;
+  const tripRules = hasTrips ? parseTripRules(outstation) : DEFAULT_CONFIG.outstation;
+  const tripTable = hasTrips ? parseDestinations(destinations) : DEFAULT_CONFIG.destinations;
+  if (!tripRules || !tripTable) return null;
 
   const ok =
     isMobile(contact.phone) &&
@@ -188,9 +222,14 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
       oneHour: p.oneHour,
       threeHours: p.threeHours,
       fullDay: { from: p.fullDay.from, to: p.fullDay.to },
-      outstation: { from: p.outstation.from, to: p.outstation.to },
+      outstation: hasTrips
+        ? { from: p.outstation.from, to: p.outstation.to }
+        : { ...DEFAULT_CONFIG.prices.outstation },
       nightFrom: p.nightFrom,
     },
+    outstation: tripRules,
+    destinations: tripTable,
+    tripsLive: hasTrips,
     monthly: {
       basic: { from: m.basic.from, to: m.basic.to },
       joiningFeePercent: m.joiningFeePercent,

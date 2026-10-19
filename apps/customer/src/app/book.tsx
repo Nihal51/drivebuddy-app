@@ -8,8 +8,11 @@ import {
   PACKAGE_GROUPS,
   hasErrors,
   isPackageId,
+  isTripPackage,
+  planTrip,
   preferredTimeValue,
   prettyPhone,
+  tripRecord,
   validateBooking,
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, type ScrollView, type TextInput, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { TripSection } from '@/booking/TripSection';
 import { WhenPicker, type When } from '@/booking/WhenPicker';
 import { whatsappBookingMessage } from '@/booking/whatsapp';
 import { AppText } from '@/components/AppText';
@@ -89,6 +93,11 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
 
   const input: BookingInput = { ...values, preferredTime: preferredFrom(when) };
   const errors: BookingErrors = validateBooking(input);
+  // Outstation trip / one-way drop: the plan behind the estimate, and the trip saved with the booking.
+  const plan = isTripPackage(values.packageId)
+    ? planTrip(config, values.packageId, values.city, values.destId, Number(values.days) || 0)
+    : null;
+  const trip = plan && values.destId ? tripRecord(plan, values.destOther) : null;
   const timeMissing = when.mode === 'schedule' && !when.slot;
 
   const shown = (field: BookingField) => {
@@ -118,7 +127,11 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
       return;
     }
     setPhase({ kind: 'submitting' });
-    const result = await submitBooking(input, user?.uid ?? null, { pingUrl: config.alerts.pingUrl });
+    const result = await submitBooking(input, user?.uid ?? null, {
+      pingUrl: config.alerts.pingUrl,
+      trip,
+      tripsLive: config.tripsLive,
+    });
     if (result.ok) {
       track('booking_submitted', {
         package: input.packageId,
@@ -176,7 +189,10 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
                 compact
                 onPress={() => {
                   track('whatsapp_fallback_used');
-                  void openWhatsapp(config.contact.whatsapp, whatsappBookingMessage(t, input));
+                  void openWhatsapp(
+                    config.contact.whatsapp,
+                    whatsappBookingMessage(t, input, trip, config.destinations),
+                  );
                 }}
                 testID="failure-whatsapp"
               />
@@ -288,6 +304,26 @@ function BookingForm({ initialPackage }: { initialPackage?: string }) {
           </AppText>
         ) : null}
       </View>
+
+      {plan ? (
+        <View
+          onLayout={(e) => {
+            for (const f of ['destId', 'destOther', 'days'] as const) record(f, e.nativeEvent.layout.y);
+          }}
+        >
+          <TripSection
+            values={values}
+            plan={plan}
+            errors={errors}
+            showErrors={(field) => showAll || Boolean(touched[field])}
+            onChange={(patch) => {
+              setValues((v) => ({ ...v, ...patch }));
+              for (const key of Object.keys(patch)) touch(key as BookingField);
+            }}
+            onUseLocal={() => set('packageId', 'local-full-day')}
+          />
+        </View>
+      ) : null}
 
       <View onLayout={(e) => record('pickup', e.nativeEvent.layout.y)}>
         <TextField

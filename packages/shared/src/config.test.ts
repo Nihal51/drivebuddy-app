@@ -2,14 +2,17 @@ import { DEFAULT_CONFIG, compareVersions, mustUpdate, parseAppConfig } from './c
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
+// A downloaded file with the trip blocks means the website takes trips.
+const LIVE = { ...DEFAULT_CONFIG, tripsLive: true };
+
 test('the built-in config passes its own checks', () => {
-  expect(parseAppConfig(clone(DEFAULT_CONFIG))).toEqual(DEFAULT_CONFIG);
+  expect(parseAppConfig(clone(DEFAULT_CONFIG))).toEqual(LIVE);
 });
 
 test('extra fields from a newer website are dropped, not kept', () => {
   const raw = { ...clone(DEFAULT_CONFIG), future: 1, contact: { ...DEFAULT_CONFIG.contact, fax: 'x' } };
   const parsed = parseAppConfig(raw);
-  expect(parsed).toEqual(DEFAULT_CONFIG);
+  expect(parsed).toEqual(LIVE);
   expect(parsed).not.toHaveProperty('future');
 });
 
@@ -32,6 +35,40 @@ test.each([
 test('an older website file without the app block is still accepted, enforcing nothing', () => {
   const { app: _app, ...old } = clone(DEFAULT_CONFIG);
   expect(parseAppConfig(old)?.app.minVersion).toBe('0.0.0');
+});
+
+test('an older website file without trip estimates still works, with the built-in table', () => {
+  const { outstation: _o, destinations: _d, ...old } = clone(DEFAULT_CONFIG);
+  // That website's outstation price was per trip; the built-in per-day range is used instead.
+  old.prices.outstation = { from: 1200, to: 1500 };
+  const parsed = parseAppConfig(old);
+  expect(parsed?.outstation.returnDay).toEqual(DEFAULT_CONFIG.outstation.returnDay);
+  expect(parsed?.destinations.length).toBe(DEFAULT_CONFIG.destinations.length);
+  expect(parsed?.prices.outstation).toEqual(DEFAULT_CONFIG.prices.outstation);
+  expect(parsed?.tripsLive).toBe(false);
+});
+
+test('a broken trip block or destination row rejects the file', () => {
+  const raw = clone(DEFAULT_CONFIG) as unknown as Record<string, unknown>;
+  const bad = (patch: Record<string, unknown>) => parseAppConfig({ ...raw, ...patch });
+  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: 0 } })).toBeNull();
+  expect(
+    bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: { from: 1200, to: 1000 } } }),
+  ).toBeNull();
+  // A single number is read as a fixed return-day price.
+  expect(
+    bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnDay: 1000 } })?.outstation.returnDay,
+  ).toEqual({
+    from: 1000,
+    to: 1000,
+  });
+  expect(bad({ destinations: [] })).toBeNull();
+  const rows = clone(DEFAULT_CONFIG.destinations);
+  delete (rows[3] as { from: Record<string, unknown> }).from.Durg;
+  expect(bad({ destinations: rows })).toBeNull();
+  expect(bad({ destinations: [{ ...clone(DEFAULT_CONFIG.destinations[0]), id: 'Bad Id' }] })).toBeNull();
+  // Only one of the two blocks: also rejected (they come together).
+  expect(bad({ destinations: undefined })).toBeNull();
 });
 
 test('the minimum app version must look like 1.2.3 and store links must be the real stores', () => {

@@ -6,11 +6,17 @@
 import {
   type Booking,
   type BookingField,
+  type BookingQuote,
+  type BookingTrip,
+  type TripDestination,
   type FieldError,
   type PackageId,
   type PackagePrice,
   clock12,
+  indianDigits,
   istParts,
+  rupeeRange,
+  rupees,
   tripInstant,
 } from '@drivebuddy/shared';
 
@@ -54,6 +60,8 @@ export function priceLabel(t: Messages, price: PackagePrice): string {
       return t.price.from(price.amount);
     case 'monthly':
       return t.price.monthly(price.amount);
+    case 'perDay':
+      return t.price.perDay(price.amount);
     case 'priority':
       return t.price.priority;
     case 'quote':
@@ -70,4 +78,53 @@ export const bookingTitle = (t: Messages, b: Pick<Booking, 'packageId'>) => pack
 export function errorText(t: Messages, field: BookingField, code: FieldError): string {
   const forField = t.errors[field] as Partial<Record<FieldError, string>>;
   return forField[code] ?? t.errors.generic;
+}
+
+/** 1214 → "1,214 km" / "1,214 किमी". */
+export const kmText = (t: Messages, km: number) => t.trip.km(indianDigits(km));
+
+/** "1 driving day + 1 return day" / "2 days". */
+export function tripDays(t: Messages, trip: Pick<BookingTrip, 'kind' | 'days' | 'returnDays'>): string {
+  if (trip.kind === 'round') return t.trip.days(trip.days);
+  return (
+    t.trip.drivingDays(trip.days) + (trip.returnDays > 0 ? ` + ${t.trip.returnDays(trip.returnDays)}` : '')
+  );
+}
+
+/**
+ * "Raipur → Nagpur · one-way drop · 284 km · 1 driving day + 1 return day · estimate ₹2,450–2,650".
+ * With `destinations`, a listed place is named in the customer's language.
+ */
+export function tripSummary(
+  t: Messages,
+  trip: BookingTrip,
+  city: string,
+  destinations: readonly TripDestination[] = [],
+): string {
+  const from = t.cities[city as keyof typeof t.cities] ?? city;
+  const dest = trip.destId ? destinations.find((d) => d.id === trip.destId) : undefined;
+  const to = dest && t.locale === 'hi-IN' && dest.nameHi ? dest.nameHi : trip.to;
+  return [
+    `${from} → ${to}`,
+    trip.kind === 'round' ? t.trip.summaryRound : t.trip.summaryOneWay,
+    trip.km > 0 ? kmText(t, trip.km) : null,
+    tripDays(t, trip),
+    trip.estFrom > 0
+      ? t.trip.estimate(rupeeRange({ from: trip.estFrom, to: trip.estTo }))
+      : t.trip.priceOnCall,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The agreed price, itemised: "₹1,550 × 2 days + ₹1,000 × 1 return day + ₹650 ticket". */
+export function quoteBreakdown(t: Messages, q: BookingQuote): string {
+  return [
+    t.trip.times(rupees(q.dayRate), t.trip.days(q.days)),
+    q.returnDays > 0 ? t.trip.times(rupees(q.returnDay), t.trip.returnDays(q.returnDays)) : null,
+    q.extraHours > 0 ? t.trip.times(rupees(q.extraHourRate), t.trip.extraHours(q.extraHours)) : null,
+    q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
+  ]
+    .filter(Boolean)
+    .join(' + ');
 }

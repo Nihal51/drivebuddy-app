@@ -17,6 +17,13 @@ like a website booking.
   from the website, so a price changed in `site-settings.ts` reaches the app
   without an app update), city, pickup, "as soon as possible" or a time slot.
   Works without logging in, like the website.
+- **Outstation trips and one-way drops:** pick the destination (38 places, or
+  "somewhere else") and the days; the form shows the estimate straight away —
+  driving days × the per-day price + the days the driver needs to get home by
+  bus or train. The rules and distances come from the website's
+  `app-config.json` (its `lib/outstation.ts`), so both always agree. Until the
+  website publishes them, the app uses its built-in copy and writes the trip
+  into the booking's notes, which the current website rules accept.
 - **If saving fails** (no internet, an outage), the customer is offered
   WhatsApp with everything they typed — a booking is never lost.
 - **Log in with Google** (optional) → **My bookings** with live status
