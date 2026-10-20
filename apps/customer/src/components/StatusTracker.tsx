@@ -54,7 +54,7 @@ const useStyles = makeStyles((c) => ({
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2, alignItems: 'center', justifyContent: 'center' },
   dotDone: { backgroundColor: c.successSolid },
   dotActive: { backgroundColor: c.amber, borderWidth: 4, borderColor: c.amberSoft },
-  dotTodo: { backgroundColor: c.surface, borderWidth: 2, borderColor: c.line },
+  dotTodo: { backgroundColor: c.background, borderWidth: 2, borderColor: c.line },
   line: { flex: 1, width: 2, backgroundColor: c.line, marginVertical: 2 },
   lineDone: { backgroundColor: c.successSolid },
   text: { flex: 1, paddingBottom: space.md, gap: 2 },

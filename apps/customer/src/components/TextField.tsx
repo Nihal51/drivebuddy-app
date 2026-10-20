@@ -23,7 +23,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const { colors, scheme } = useTheme();
   const styles = useStyles();
   const [focused, setFocused] = useState(false);
-  const border = error ? colors.danger : focused ? colors.amber : colors.line;
+  const border = error ? colors.danger : focused ? colors.amber : 'transparent';
   return (
     <View style={styles.wrap}>
       <AppText variant="small" weight="bold">
@@ -85,7 +85,7 @@ const useStyles = makeStyles((c) => ({
     alignItems: 'center',
     minHeight: TOUCH + 4,
     borderWidth: 1.5,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: c.surface,
     paddingHorizontal: space.md,
   },

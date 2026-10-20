@@ -17,7 +17,7 @@ const look = (c: Palette, variant: Variant): { bg: string; pressed: string; fg: 
     case 'dark':
       return { bg: c.inverse, pressed: c.inversePressed, fg: c.onInverse };
     case 'outline':
-      return { bg: c.surface, pressed: c.amberSoft, fg: c.text, border: c.line };
+      return { bg: c.surface, pressed: c.surfacePressed, fg: c.text };
     case 'ghost':
       return { bg: 'transparent', pressed: c.amberSoft, fg: c.amberText };
     case 'whatsapp':
@@ -90,12 +90,12 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: TOUCH,
-    borderRadius: radius.md,
+    minHeight: TOUCH + 4,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
     paddingHorizontal: space.lg,
     justifyContent: 'center',
   },
-  compact: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.sm },
+  compact: { minHeight: 40, paddingHorizontal: space.md, borderRadius: radius.md },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
 });

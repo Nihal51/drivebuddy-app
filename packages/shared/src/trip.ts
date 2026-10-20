@@ -61,20 +61,23 @@ export type TripDestination = {
 /** The picker's value for a place that is not in the list. */
 export const ELSEWHERE = 'other';
 
-/** Shown first, before the customer types anything. */
+/**
+ * Shown first, before the customer types anything (the app shows the first
+ * eight): the nearby towns people go to most, then the big cities drops go to.
+ */
 export const POPULAR_DESTINATIONS = [
   'bilaspur',
   'nagpur',
-  'jagdalpur',
   'raigarh',
+  'jagdalpur',
+  'hyderabad',
+  'kolkata',
+  'mumbai',
+  'delhi',
   'korba',
   'ambikapur',
   'jabalpur',
   'bhubaneswar',
-  'hyderabad',
-  'kolkata',
-  'delhi',
-  'mumbai',
 ] as const;
 
 /** Destinations whose English or Hindi name contains the search, best matches first. */

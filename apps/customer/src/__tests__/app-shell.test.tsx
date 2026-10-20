@@ -54,10 +54,11 @@ describe('the "please update" switch', () => {
 describe('dark theme', () => {
   test('Home renders with the dark palette', async () => {
     await renderScreen(<HomeScreen />, { scheme: 'dark' });
-    const title = screen.getByText('A verified driver for your car');
+    const title = screen.getByText('What do you need?');
     expect(title).toBeOnTheScreen();
-    const price = screen.getByText('₹300');
-    expect(price).toHaveStyle({ color: palettes.dark.amberText });
+    // The page is the dark background, the tiles the dark surface.
+    expect(title).toHaveStyle({ color: palettes.dark.text });
+    expect(screen.getByTestId('tile-day')).toHaveStyle({ backgroundColor: palettes.dark.surface });
   });
 
   test('both palettes define every colour', () => {

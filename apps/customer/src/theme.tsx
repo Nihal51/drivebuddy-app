@@ -1,7 +1,8 @@
 /**
- * DriveBuddy's look, taken from the website: amber on ink, warm cream panels,
- * Plus Jakarta Sans — in a light and a dark version that follows the phone's
- * setting. One place for every colour, size and spacing value: no screen types
+ * DriveBuddy's look: a white canvas, soft grey surfaces with no borders, one
+ * amber accent for actions, Plus Jakarta Sans — in a light and a dark version
+ * that follows the phone's setting. Calm on purpose: one main action per
+ * screen, and colour only where it means something. One place for every colour, size and spacing value: no screen types
  * a hex code of its own.
  *
  * Colours come from `useTheme()`; styles that use colours are made with
@@ -13,13 +14,17 @@ import { StyleSheet, useColorScheme } from 'react-native';
 
 const light = {
   /** Page background. */
-  background: '#fafaf9',
-  /** Cards, inputs, lists, the tab bar. */
-  surface: '#ffffff',
+  background: '#ffffff',
+  /** Cards, tiles, inputs: soft grey on the white page, no border. */
+  surface: '#f5f5f4',
+  /** Pressed surface. */
+  surfacePressed: '#ebeae8',
+  /** The tab bar, header and pinned footers. */
+  bar: '#ffffff',
   text: '#18181b',
   textMuted: '#57534e',
   textFaint: '#78716c',
-  line: '#e7e5e4',
+  line: '#ececea',
   amber: '#f59e0b',
   amberPressed: '#d97706',
   /** Amber dark enough to read as text on the surface (WCAG AA). */
@@ -58,6 +63,8 @@ export type Palette = typeof light;
 const dark: Palette = {
   background: '#0c0a09',
   surface: '#1c1917',
+  surfacePressed: '#292524',
+  bar: '#0c0a09',
   text: '#fafaf9',
   textMuted: '#d6d3d1',
   textFaint: '#a8a29e',
@@ -153,7 +160,7 @@ export const fontWeights: Record<Weight, '500' | '600' | '700' | '800'> = {
 };
 
 export const type = {
-  display: { fontSize: 30, lineHeight: 36 },
+  display: { fontSize: 28, lineHeight: 34 },
   title: { fontSize: 22, lineHeight: 28 },
   heading: { fontSize: 18, lineHeight: 24 },
   body: { fontSize: 16, lineHeight: 23 },
@@ -162,12 +169,3 @@ export const type = {
 } as const;
 
 export type TypeScale = keyof typeof type;
-
-/** A soft card shadow in the palette's shadow colour. */
-export const cardShadow = (c: Palette) => ({
-  shadowColor: c.shadow,
-  shadowOpacity: 0.06,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 3 },
-  elevation: 2,
-});

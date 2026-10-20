@@ -394,13 +394,11 @@ const useStyles = makeStyles((c) => ({
   list: {
     backgroundColor: c.surface,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.line,
     overflow: 'hidden',
   },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, minHeight: 56 },
-  divider: { borderTopWidth: 1, borderTopColor: c.line },
-  pressed: { backgroundColor: c.cream },
+  divider: { borderTopWidth: 1, borderTopColor: c.background },
+  pressed: { backgroundColor: c.surfacePressed },
   danger: { borderColor: c.danger },
   statsRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
 }));

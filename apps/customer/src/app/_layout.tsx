@@ -89,7 +89,7 @@ function AppStack() {
         screenOptions={{
           headerTintColor: colors.text,
           headerTitleStyle: { ...titleFont, fontSize: 17, color: colors.text },
-          headerStyle: { backgroundColor: colors.surface },
+          headerStyle: { backgroundColor: colors.bar },
           headerShadowVisible: false,
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: colors.background },

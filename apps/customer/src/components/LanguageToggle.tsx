@@ -48,8 +48,6 @@ const useStyles = makeStyles((c) => ({
     flexDirection: 'row',
     backgroundColor: c.surface,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
     padding: 3,
     alignSelf: 'flex-start',
   },

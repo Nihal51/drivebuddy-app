@@ -1,6 +1,6 @@
 import { DEFAULT_CONFIG } from '@drivebuddy/shared';
 import { fireEvent, screen } from '@testing-library/react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import AccountScreen from '@/app/(tabs)/account';
 import BookScreen from '@/app/book';
@@ -24,24 +24,27 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-  test('shows the live prices from the website, not built-in ones', async () => {
+  test('one question and eight services, with the live prices from the website', async () => {
     const config = { ...DEFAULT_CONFIG, prices: { ...DEFAULT_CONFIG.prices, oneHour: 350, threeHours: 650 } };
     await renderScreen(<HomeScreen />, { config });
-    expect(screen.getByText('₹350')).toBeOnTheScreen();
-    expect(screen.getByText('₹650')).toBeOnTheScreen();
-    expect(screen.getByText('Drivers from ₹350')).toBeOnTheScreen();
+    expect(screen.getByText('What do you need?')).toBeOnTheScreen();
+    expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
+    expect(screen.getByTestId('tile-hourly')).toHaveTextContent(/from ₹350/);
+    expect(screen.getByTestId('tile-drop')).toHaveTextContent(/₹1,450–1,650\/day/);
   });
 
-  test('a service opens the booking form with it already chosen', async () => {
+  test('a one-service tile opens the details step; a two-service tile opens the choice', async () => {
     await renderScreen(<HomeScreen />);
-    await fireEvent.press(screen.getByTestId('package-outstation'));
+    await fireEvent.press(screen.getByTestId('tile-outstation'));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { package: 'outstation' } });
+    await fireEvent.press(screen.getByTestId('tile-hourly'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { category: 'hourly' } });
   });
 
   test('switches to Hindi', async () => {
     await renderScreen(<HomeScreen />);
     await fireEvent.press(screen.getByRole('radio', { name: 'हिंदी' }));
-    expect(screen.getByText('आपकी कार के लिए वेरिफ़ाइड ड्राइवर')).toBeOnTheScreen();
+    expect(screen.getByText('आपको क्या चाहिए?')).toBeOnTheScreen();
     expect(screen.getByText('रात का ड्राइवर')).toBeOnTheScreen();
   });
 
@@ -53,25 +56,56 @@ describe('Home', () => {
   });
 });
 
-describe('Booking form', () => {
-  test('an empty form explains every missing field and saves nothing', async () => {
-    await renderScreen(<BookScreen />);
+const mockedParams = useLocalSearchParams as jest.Mock;
+/** Opens the booking as Home would: with a service already chosen (step 2), or none (step 1). */
+async function openBooking(params: { package?: string; category?: string } = {}, opts = {}) {
+  mockedParams.mockReturnValue(params);
+  await renderScreen(<BookScreen />, opts);
+}
+const next = () => fireEvent.press(screen.getByTestId('next-step'));
+
+describe('Booking, step by step', () => {
+  test('step 1: tiles; one with two services asks which, then moves on by itself', async () => {
+    await openBooking();
+    expect(screen.getByTestId('booking-progress')).toHaveTextContent(/Step 1 of 3/);
+    expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
+    await fireEvent.press(screen.getByTestId('tile-hourly'));
+    expect(screen.getByText('Choose one')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('choice-3-hours-600'));
+    expect(screen.getByTestId('booking-progress')).toHaveTextContent(/Step 2 of 3/);
+    expect(screen.getByText('3 hours')).toBeOnTheScreen();
+    // Back to change it.
+    await fireEvent.press(screen.getByTestId('step-back'));
+    expect(screen.getByTestId('choice-3-hours-600').props.accessibilityState).toMatchObject({
+      checked: true,
+    });
+  });
+
+  test('a step explains what is missing before moving on, and saves nothing', async () => {
+    await openBooking({ package: 'night-driver' });
+    await next();
+    expect(screen.getByText('Please choose your city.')).toBeOnTheScreen();
+    expect(screen.getByTestId('booking-progress')).toHaveTextContent(/Step 2 of 3/);
+    await fireEvent.press(screen.getByTestId('city-Bhilai'));
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Sector 6, Bhilai');
+    await next();
     await fireEvent.press(screen.getByTestId('submit-booking'));
     expect(screen.getByText('Please tell us your name.')).toBeOnTheScreen();
     expect(screen.getByText('We need a mobile number to confirm your booking.')).toBeOnTheScreen();
-    expect(screen.getByText('Please choose your city.')).toBeOnTheScreen();
-    expect(screen.getByText('Please choose a service.')).toBeOnTheScreen();
     expect(mockedSubmit).not.toHaveBeenCalled();
   });
 
-  test('a complete form is saved and the customer is told we will call', async () => {
+  test('a complete booking is saved and the customer is told we will call', async () => {
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b1' });
-    await renderScreen(<BookScreen />);
+    await openBooking({ package: 'night-driver' });
+    await fireEvent.press(screen.getByTestId('city-Bhilai'));
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Sector 6, Bhilai');
+    await next();
+    // Step 3 sums it all up before the customer books.
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Night driver/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Sector 6, Bhilai, Bhilai/);
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '98765 43210');
-    await fireEvent.press(screen.getByTestId('city-Bhilai'));
-    await fireEvent.press(screen.getByTestId('choice-night-driver'));
-    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Sector 6, Bhilai');
     await fireEvent.press(screen.getByTestId('submit-booking'));
 
     expect(mockedSubmit).toHaveBeenCalledWith(
@@ -96,12 +130,12 @@ describe('Booking form', () => {
 
   test('when saving fails, WhatsApp is offered with everything typed', async () => {
     mockedSubmit.mockResolvedValue({ ok: false, reason: 'network' });
-    await renderScreen(<BookScreen />);
+    await openBooking({ package: '1-hour-300' });
+    await fireEvent.press(screen.getByTestId('city-Raipur'));
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Telibandha, Raipur');
+    await next();
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
-    await fireEvent.press(screen.getByTestId('city-Raipur'));
-    await fireEvent.press(screen.getByTestId('choice-1-hour-300'));
-    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Telibandha, Raipur');
     await fireEvent.press(screen.getByTestId('submit-booking'));
     expect(screen.getByText(/Your connection dropped while saving/)).toBeOnTheScreen();
     expect(screen.getByTestId('failure-whatsapp')).toBeOnTheScreen();
@@ -114,11 +148,11 @@ describe('Booking form', () => {
       user: { uid: 'uid-9', email: 'ravi@example.com' } as never,
       profile: { name: 'Ravi Sharma', phone: '9876543210', email: 'ravi@example.com' },
     };
-    await renderScreen(<BookScreen />, { auth });
-    expect(screen.getByTestId('field-name').props.value).toBe('Ravi Sharma');
+    await openBooking({ package: '3-hours-600' }, { auth });
     await fireEvent.press(screen.getByTestId('city-Durg'));
-    await fireEvent.press(screen.getByTestId('choice-3-hours-600'));
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Padmanabhpur, Durg');
+    await next();
+    expect(screen.getByTestId('field-name').props.value).toBe('Ravi Sharma');
     await fireEvent.press(screen.getByTestId('submit-booking'));
     expect(mockedSubmit.mock.calls[0][1]).toBe('uid-9');
     expect(screen.getByTestId('track-booking')).toBeOnTheScreen();
@@ -126,11 +160,8 @@ describe('Booking form', () => {
 
   test('a one-way drop shows the estimate and saves the trip with it', async () => {
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b3' });
-    await renderScreen(<BookScreen />);
-    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
-    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await openBooking({ package: 'one-way-drop' });
     await fireEvent.press(screen.getByTestId('city-Raipur'));
-    await fireEvent.press(screen.getByTestId('choice-one-way-drop'));
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
@@ -150,6 +181,11 @@ describe('Booking form', () => {
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,900–3,300');
 
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+    await next();
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Raipur → Nagpur · 2 days/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹2,900–3,300/);
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
     const [input, , opts] = mockedSubmit.mock.calls[0];
     expect(input).toMatchObject({ packageId: 'one-way-drop', destId: 'nagpur', days: '2' });
@@ -166,10 +202,9 @@ describe('Booking form', () => {
   });
 
   test('a trip needs a destination; a place not in the list is typed in', async () => {
-    await renderScreen(<BookScreen />);
+    await openBooking({ package: 'outstation' });
     await fireEvent.press(screen.getByTestId('city-Durg'));
-    await fireEvent.press(screen.getByTestId('choice-outstation'));
-    await fireEvent.press(screen.getByTestId('submit-booking'));
+    await next();
     expect(screen.getByText('Please choose where you are going.')).toBeOnTheScreen();
 
     await fireEvent.changeText(screen.getByTestId('trip-search'), 'Jaipur');
@@ -180,16 +215,13 @@ describe('Booking form', () => {
   });
 
   test('a nearby place suggests the local full day', async () => {
-    await renderScreen(<BookScreen />);
+    await openBooking({ package: 'outstation' });
     await fireEvent.press(screen.getByTestId('city-Raipur'));
-    await fireEvent.press(screen.getByTestId('choice-outstation'));
     await fireEvent.changeText(screen.getByTestId('trip-search'), 'Bhil');
     await fireEvent.press(screen.getByTestId('dest-bhilai'));
     await fireEvent.press(screen.getByTestId('use-local'));
     expect(screen.queryByTestId('trip-section')).toBeNull();
-    expect(screen.getByTestId('choice-local-full-day').props.accessibilityState).toMatchObject({
-      checked: true,
-    });
+    expect(screen.getByText('Full day in the city')).toBeOnTheScreen();
   });
 });
 

@@ -64,20 +64,18 @@ export function TripSection({
 
   return (
     <View style={styles.box} testID="trip-section">
-      <AppText variant="small" weight="bold">
-        {round ? t.trip.whereRound : t.trip.whereOneWay}
-      </AppText>
       <TextField
-        label={t.trip.search}
+        label={round ? t.trip.whereRound : t.trip.whereOneWay}
         value={search}
         onChangeText={setSearch}
-        placeholder={t.trip.placePlaceholder}
+        placeholder={t.trip.search}
         autoCorrect={false}
         maxLength={40}
         testID="trip-search"
       />
       <View style={styles.chips} accessibilityRole="radiogroup">
-        {shown.slice(0, 16).map((d) => (
+        {/* A few popular places until the customer searches: a short list reads at a glance. */}
+        {shown.slice(0, search.trim() ? 12 : 8).map((d) => (
           <Chip
             key={d.id}
             label={placeName(t, d)}
@@ -318,14 +316,7 @@ function StepButton({
 
 const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
-  box: {
-    gap: space.md,
-    padding: space.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.background,
-  },
+  box: { gap: space.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   daysRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -333,27 +324,23 @@ const useStyles = makeStyles((c) => ({
     width: TOUCH,
     height: TOUCH,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepOff: { opacity: 0.5 },
-  stepPressed: { backgroundColor: c.amberSoft },
+  stepPressed: { backgroundColor: c.surfacePressed },
   dayCount: { minWidth: 28, textAlign: 'center' },
   estimate: {
     gap: space.xs + 2,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.line,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    backgroundColor: c.cream,
   },
   lines: {
     gap: space.xs,
     borderTopWidth: 1,
-    borderTopColor: c.line,
+    borderTopColor: c.creamLine,
     paddingTop: space.sm,
     marginTop: space.xs,
   },

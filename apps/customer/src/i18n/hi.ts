@@ -38,24 +38,40 @@ export const hi: Messages = {
 
   home: {
     greeting: (name: string) => `नमस्ते, ${name}`,
-    title: 'आपकी कार के लिए वेरिफ़ाइड ड्राइवर',
+    title: 'आपको क्या चाहिए?',
     subtitle:
-      'पुलिस वेरिफ़िकेशन, शराब पर पूरी रोक और 5+ साल का अनुभव। आम तौर पर 30 मिनट में आपके दरवाज़े पर।',
-    cities: 'रायपुर · भिलाई · दुर्ग · बिलासपुर',
+      'आपकी अपनी कार के लिए वेरिफ़ाइड, शराब न पीने वाला ड्राइवर — आम तौर पर 30 मिनट में आपके दरवाज़े पर।',
     startingFrom: (price: string) => `ड्राइवर ${price} से`,
-    pricesTitle: 'सेवाएँ और कीमतें',
-    pricesNote: 'यह सिर्फ़ ड्राइवर का चार्ज है — गाड़ी और ईंधन आपका। कोई सर्ज प्राइसिंग या छुपा चार्ज नहीं।',
-    groups: {
-      hourly: 'घंटे के हिसाब से',
-      day: 'पूरा दिन और ट्रिप',
-      monthly: 'मंथली ड्राइवर',
-      special: 'अस्पताल, शादी और ड्रॉप',
-    },
-    trustTitle: 'परिवार DriveBuddy पर भरोसा क्यों करते हैं',
     helpTitle: 'सीधे बात करना चाहते हैं?',
     helpBody: 'कॉल या WhatsApp करें — हम 24/7 जवाब देते हैं।',
-    monthlyNote: (hours: number, daysOff: number) =>
-      `रोज़ ${hours} घंटे · महीने में ${daysOff} दिन छुट्टी · ड्राइवर छुट्टी पर हो तो दूसरा ड्राइवर`,
+  },
+
+  categories: {
+    hourly: { name: 'घंटे के हिसाब से', blurb: '1 या 3 घंटे' },
+    day: { name: 'पूरा दिन', blurb: 'शहर में 8 घंटे' },
+    drop: { name: 'दूसरे शहर ड्रॉप', blurb: 'एक तरफ़, आपकी कार' },
+    outstation: { name: 'आउटस्टेशन', blurb: 'जाना और लौटना' },
+    night: { name: 'रात का ड्राइवर', blurb: 'रात 8 – सुबह 6' },
+    monthly: { name: 'मंथली ड्राइवर', blurb: 'आपका अपना ड्राइवर' },
+    wedding: { name: 'शादी / इवेंट', blurb: 'पूरे इवेंट के लिए' },
+    hospital: { name: 'अस्पताल', blurb: 'हम पहले कॉल करते हैं' },
+  },
+
+  wizard: {
+    step: (n: number, total: number) => `चरण ${n} / ${total}`,
+    steps: ['सेवा', 'पिकअप और समय', 'पुष्टि'] as [string, string, string],
+    serviceTitle: 'आपको क्या चाहिए?',
+    optionsTitle: 'एक चुनें',
+    allServices: 'सभी सेवाएँ',
+    whereTitle: 'कहाँ और कब?',
+    confirmTitle: 'देखें और बुक करें',
+    continue: 'आगे बढ़ें',
+    back: 'पीछे',
+    change: 'बदलें',
+    service: 'सेवा',
+    price: 'कीमत',
+    estimate: 'अनुमान',
+    yourDetails: 'आपकी जानकारी',
   },
 
   packages: {
@@ -86,6 +102,7 @@ export const hi: Messages = {
     from: (amount: string) => `${amount} से`,
     monthly: (amount: string) => `${amount}/माह`,
     perDay: (amount: string) => `${amount}/दिन`,
+    monthlyFrom: (amount: string) => `${amount}/माह से`,
     priority: 'प्राथमिकता',
     quote: 'कॉल पर कीमत',
   },

@@ -20,7 +20,7 @@ export default function TabsLayout() {
         // Room for the icon and a full label in either language (Hindi letters are
         // taller), above the phone's gesture bar.
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.bar,
           borderTopColor: colors.line,
           height: 68 + insets.bottom,
           paddingTop: 4,

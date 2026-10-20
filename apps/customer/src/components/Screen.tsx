@@ -72,7 +72,7 @@ const useStyles = makeStyles((c) => ({
     paddingVertical: space.md,
     borderTopWidth: 1,
     borderTopColor: c.line,
-    backgroundColor: c.surface,
+    backgroundColor: c.bar,
     alignItems: 'center',
   },
 }));

@@ -15,7 +15,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { watchMyBookings } from '@/data/bookings';
 import { useI18n } from '@/i18n';
 import { bookingTitle, formatPreferred } from '@/i18n/format';
-import { cardShadow, makeStyles, radius, space, useTheme } from '@/theme';
+import { makeStyles, radius, space, useTheme } from '@/theme';
 
 export default function BookingsScreen() {
   const { t } = useI18n();
@@ -181,13 +181,10 @@ const useStyles = makeStyles((c) => ({
   card: {
     backgroundColor: c.surface,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.line,
     padding: space.lg,
     gap: space.sm,
-    ...cardShadow(c),
   },
-  cardPressed: { backgroundColor: c.cream },
+  cardPressed: { backgroundColor: c.surfacePressed },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 }));

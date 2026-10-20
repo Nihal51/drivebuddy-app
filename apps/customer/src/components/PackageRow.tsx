@@ -68,7 +68,7 @@ export function PackageRow({
         </AppText>
       </View>
       <View style={styles.side}>
-        <AppText weight="heavy" color={colors.amberText} align="right">
+        <AppText weight="heavy" align="right">
           {price}
         </AppText>
         {mode === 'link' ? <Ionicons name="chevron-forward" size={18} color={colors.textFaint} /> : null}
@@ -82,16 +82,16 @@ const useStyles = makeStyles((c) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingVertical: space.md,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
+    paddingVertical: space.lg,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: c.line,
+    borderColor: 'transparent',
     backgroundColor: c.surface,
-    minHeight: 64,
+    minHeight: 72,
   },
   selected: { borderColor: c.amber, backgroundColor: c.cream },
-  pressed: { backgroundColor: c.cream },
+  pressed: { backgroundColor: c.surfacePressed },
   main: { flex: 1, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
   shrink: { flexShrink: 1 },

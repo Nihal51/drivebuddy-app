@@ -9,6 +9,8 @@
 
 import type { BookingStatus, City, PackageId } from '@drivebuddy/shared';
 
+import type { CategoryId } from '@/booking/categories';
+
 export const en = {
   locale: 'en-IN',
   languageName: 'English',
@@ -44,24 +46,40 @@ export const en = {
 
   home: {
     greeting: (name: string) => `Hello, ${name}`,
-    title: 'A verified driver for your car',
-    subtitle:
-      'Police-verified, sober drivers with 5+ years of experience. Usually at your door within 30 minutes.',
-    cities: 'Raipur · Bhilai · Durg · Bilaspur',
+    title: 'What do you need?',
+    subtitle: 'A verified, sober driver for your own car — usually at your door in 30 minutes.',
     startingFrom: (price: string) => `Drivers from ${price}`,
-    pricesTitle: 'Services and prices',
-    pricesNote: 'Driver charges only — your car, your fuel. No surge pricing, no hidden charges.',
-    groups: {
-      hourly: 'By the hour',
-      day: 'Full day and trips',
-      monthly: 'Monthly driver',
-      special: 'Hospital, weddings and drops',
-    },
-    trustTitle: 'Why families trust DriveBuddy',
-    helpTitle: 'Rather talk to us?',
+    helpTitle: 'Prefer to talk?',
     helpBody: 'Call or WhatsApp — we answer 24/7.',
-    monthlyNote: (hours: number, daysOff: number) =>
-      `${hours} hours a day · ${daysOff} days off a month · replacement driver if yours is away`,
+  },
+
+  /** The service tiles on Home and in the first booking step. */
+  categories: {
+    hourly: { name: 'By the hour', blurb: '1 or 3 hours' },
+    day: { name: 'Full day', blurb: '8 hours in the city' },
+    drop: { name: 'Drop to a city', blurb: 'One-way, your car' },
+    outstation: { name: 'Outstation', blurb: 'Trip and back' },
+    night: { name: 'Night driver', blurb: '8 PM – 6 AM' },
+    monthly: { name: 'Monthly driver', blurb: 'Your own driver' },
+    wedding: { name: 'Wedding / event', blurb: 'For the whole event' },
+    hospital: { name: 'Hospital', blurb: 'We call you first' },
+  } satisfies Record<CategoryId, { name: string; blurb: string }>,
+
+  wizard: {
+    step: (n: number, total: number) => `Step ${n} of ${total}`,
+    steps: ['Service', 'Pickup and time', 'Confirm'] as [string, string, string],
+    serviceTitle: 'What do you need?',
+    optionsTitle: 'Choose one',
+    allServices: 'All services',
+    whereTitle: 'Where and when?',
+    confirmTitle: 'Check and book',
+    continue: 'Continue',
+    back: 'Back',
+    change: 'Change',
+    service: 'Service',
+    price: 'Price',
+    estimate: 'Estimate',
+    yourDetails: 'Your details',
   },
 
   packages: {
@@ -86,6 +104,7 @@ export const en = {
     from: (amount: string) => `from ${amount}`,
     monthly: (amount: string) => `${amount}/month`,
     perDay: (amount: string) => `${amount}/day`,
+    monthlyFrom: (amount: string) => `from ${amount}/mo`,
     priority: 'Priority',
     quote: 'Quote on call',
   },

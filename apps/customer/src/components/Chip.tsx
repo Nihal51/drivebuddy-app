@@ -57,11 +57,9 @@ const useStyles = makeStyles((c) => ({
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: c.line,
     backgroundColor: c.surface,
     justifyContent: 'center',
   },
-  selected: { backgroundColor: c.amber, borderColor: c.amber },
-  pressed: { backgroundColor: c.amberSoft },
+  selected: { backgroundColor: c.amber },
+  pressed: { backgroundColor: c.surfacePressed },
 }));
