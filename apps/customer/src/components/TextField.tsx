@@ -1,10 +1,11 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import { TextInput, type TextInputProps, View } from 'react-native';
 
 import { useOptionalLang } from '@/i18n';
 import { TOUCH, fonts, makeStyles, radius, space, type as scale, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
+import { useReveal } from './Screen';
 
 export type TextFieldProps = Omit<TextInputProps, 'style'> & {
   label: string;
@@ -23,9 +24,12 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
   const { colors, scheme } = useTheme();
   const styles = useStyles();
   const [focused, setFocused] = useState(false);
+  // Inside a Screen: scroll this field (label and all) into view above the keyboard.
+  const reveal = useReveal();
+  const wrap = useRef<View>(null);
   const border = error ? colors.danger : focused ? colors.amber : 'transparent';
   return (
-    <View style={styles.wrap}>
+    <View ref={wrap} style={styles.wrap}>
       <AppText variant="small" weight="bold">
         {label}
         {optionalLabel ? (
@@ -50,6 +54,7 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
           accessibilityHint={error ?? hint}
           onFocus={(e) => {
             setFocused(true);
+            reveal?.(wrap.current);
             onFocus?.(e);
           }}
           onBlur={(e) => {
