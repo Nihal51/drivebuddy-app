@@ -17,7 +17,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
 /** From `eas init` (also on expo.dev → your project). Empty = notifications off. */
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '';
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || 'a4c00bfc-7357-42e9-a85b-59258e7a5e1d';
 const APP_ID = IS_DEV ? 'in.thedrivebuddy.app.dev' : 'in.thedrivebuddy.app';
 
 /** Brand colours, also in src/theme.tsx. */
@@ -43,9 +43,10 @@ const iosGoogleServicesFile = here('GoogleService-Info.plist');
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? 'DriveBuddy (Dev)' : 'DriveBuddy',
-  slug: 'drivebuddy',
+  // Must match the project on expo.dev: expo.dev/accounts/thedrivebuddy/projects/drive-buddy
+  slug: 'drive-buddy',
   // Your Expo account name, set once `eas init` has run (see docs/SETUP.md).
-  ...(process.env.EXPO_OWNER ? { owner: process.env.EXPO_OWNER } : {}),
+  owner: process.env.EXPO_OWNER || 'thedrivebuddy',
   scheme: 'drivebuddy',
   // Shown in the stores. Bump for every store release; EAS bumps the build numbers itself.
   version: '1.0.0',
