@@ -376,6 +376,10 @@ export const en = {
     body: 'This version of the app is too old to book. The new one takes a minute to install.',
     button: 'Update now',
     orCall: 'Need a driver right now? Call or WhatsApp us.',
+    readyTitle: 'New version ready',
+    readyBody: 'Tap Update to get the latest DriveBuddy.',
+    readyButton: 'Update',
+    later: 'Later',
   },
 };
 

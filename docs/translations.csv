@@ -312,3 +312,7 @@
 "update.body","This version of the app is too old to book. The new one takes a minute to install.","ऐप का यह वर्ज़न बुकिंग के लिए बहुत पुराना है। नया वर्ज़न एक मिनट में इंस्टॉल हो जाता है।",""
 "update.button","Update now","अभी अपडेट करें",""
 "update.orCall","Need a driver right now? Call or WhatsApp us.","ड्राइवर अभी चाहिए? हमें कॉल या WhatsApp करें।",""
+"update.readyTitle","New version ready","नया वर्ज़न तैयार है",""
+"update.readyBody","Tap Update to get the latest DriveBuddy.","नया DriveBuddy पाने के लिए अपडेट दबाएँ।",""
+"update.readyButton","Update","अपडेट",""
+"update.later","Later","बाद में",""

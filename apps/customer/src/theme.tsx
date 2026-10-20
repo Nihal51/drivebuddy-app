@@ -176,3 +176,12 @@ export const type = {
 } as const;
 
 export type TypeScale = keyof typeof type;
+
+/** A soft shadow, for the few things that float above the page (the update note). */
+export const cardShadow = (c: Palette) => ({
+  shadowColor: c.shadow,
+  shadowOpacity: 0.12,
+  shadowRadius: 16,
+  shadowOffset: { width: 0, height: 6 },
+  elevation: 6,
+});

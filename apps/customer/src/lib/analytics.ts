@@ -24,7 +24,8 @@ export type AnalyticsEvent =
   | 'login_completed'
   | 'logged_out'
   | 'language_changed'
-  | 'notifications_enabled';
+  | 'notifications_enabled'
+  | 'app_updated_from_banner';
 
 /** The only properties that can ever leave the phone. */
 export type Props = {

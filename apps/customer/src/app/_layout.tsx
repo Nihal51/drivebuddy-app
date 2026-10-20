@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { CrashScreen } from '@/components/CrashScreen';
 import { NotificationRouter } from '@/components/NotificationRouter';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { UpdateGate } from '@/components/UpdateGate';
 import { ConfigProvider } from '@/config/ConfigProvider';
 import { I18nProvider, useI18n } from '@/i18n';
@@ -64,6 +65,7 @@ function RootLayout() {
               <UpdateGate>
                 <AppStack />
               </UpdateGate>
+              {Platform.OS !== 'web' ? <UpdateBanner /> : null}
             </AuthProvider>
           </ConfigProvider>
         </I18nProvider>
