@@ -46,14 +46,15 @@ export const en = {
 
   home: {
     greeting: (name: string) => `Hello, ${name}`,
-    title: 'What do you need?',
-    subtitle: 'A verified, sober driver for your own car — usually at your door in 30 minutes.',
-    startingFrom: (price: string) => `Drivers from ${price}`,
+    welcome: 'Welcome to DriveBuddy',
+    title: 'Your driver, at your door in 30 minutes',
+    badges: { verified: 'Verified', sober: 'Sober', experienced: '5+ years' },
+    moreServices: 'More services',
     helpTitle: 'Prefer to talk?',
     helpBody: 'Call or WhatsApp — we answer 24/7.',
   },
 
-  /** The service tiles on Home and in the first booking step. */
+  /** The services: two big cards and a list on Home, tiles in the first booking step. */
   categories: {
     hourly: { name: 'By the hour', blurb: '1 or 3 hours' },
     day: { name: 'Full day', blurb: '8 hours in the city' },

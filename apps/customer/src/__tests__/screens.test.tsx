@@ -24,27 +24,43 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-  test('one question and eight services, with the live prices from the website', async () => {
+  test('a hello from our driver, two big cards and every other service, with live prices', async () => {
     const config = { ...DEFAULT_CONFIG, prices: { ...DEFAULT_CONFIG.prices, oneHour: 350, threeHours: 650 } };
     await renderScreen(<HomeScreen />, { config });
-    expect(screen.getByText('What do you need?')).toBeOnTheScreen();
+    expect(screen.getByText('Your driver, at your door in 30 minutes')).toBeOnTheScreen();
+    expect(screen.getByText('Welcome to DriveBuddy')).toBeOnTheScreen();
+    // All eight services: hourly and drop as cards, the rest (monthly too) in the list.
     expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
     expect(screen.getByTestId('tile-hourly')).toHaveTextContent(/from ₹350/);
     expect(screen.getByTestId('tile-drop')).toHaveTextContent(/₹1,450–1,650\/day/);
+    expect(screen.getByTestId('tile-monthly')).toHaveTextContent(/Monthly driver.*from ₹16,000\/mo/);
+    expect(screen.getByTestId('tile-hospital')).toHaveTextContent(/Priority/);
   });
 
-  test('a one-service tile opens the details step; a two-service tile opens the choice', async () => {
+  test('greets a logged-in customer by name', async () => {
+    const auth = {
+      ...signedOut,
+      user: { uid: 'u1', email: 'ravi@example.com' } as never,
+      profile: { name: 'Ravi Sharma', phone: '9876543210', email: 'ravi@example.com' },
+    };
+    await renderScreen(<HomeScreen />, { auth });
+    expect(screen.getByText('Hello, Ravi')).toBeOnTheScreen();
+  });
+
+  test('a one-service card opens the details step; a two-service one opens the choice', async () => {
     await renderScreen(<HomeScreen />);
-    await fireEvent.press(screen.getByTestId('tile-outstation'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { package: 'outstation' } });
+    await fireEvent.press(screen.getByTestId('tile-drop'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { package: 'one-way-drop' } });
     await fireEvent.press(screen.getByTestId('tile-hourly'));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { category: 'hourly' } });
+    await fireEvent.press(screen.getByTestId('tile-monthly'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { category: 'monthly' } });
   });
 
   test('switches to Hindi', async () => {
     await renderScreen(<HomeScreen />);
     await fireEvent.press(screen.getByRole('radio', { name: 'हिंदी' }));
-    expect(screen.getByText('आपको क्या चाहिए?')).toBeOnTheScreen();
+    expect(screen.getByText('आपका ड्राइवर, 30 मिनट में आपके दरवाज़े पर')).toBeOnTheScreen();
     expect(screen.getByText('रात का ड्राइवर')).toBeOnTheScreen();
   });
 

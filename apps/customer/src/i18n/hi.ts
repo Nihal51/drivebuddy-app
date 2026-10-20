@@ -38,10 +38,10 @@ export const hi: Messages = {
 
   home: {
     greeting: (name: string) => `नमस्ते, ${name}`,
-    title: 'आपको क्या चाहिए?',
-    subtitle:
-      'आपकी अपनी कार के लिए वेरिफ़ाइड, शराब न पीने वाला ड्राइवर — आम तौर पर 30 मिनट में आपके दरवाज़े पर।',
-    startingFrom: (price: string) => `ड्राइवर ${price} से`,
+    welcome: 'DriveBuddy में आपका स्वागत है',
+    title: 'आपका ड्राइवर, 30 मिनट में आपके दरवाज़े पर',
+    badges: { verified: 'वेरिफ़ाइड', sober: 'शराब नहीं', experienced: '5+ साल' },
+    moreServices: 'और सेवाएँ',
     helpTitle: 'सीधे बात करना चाहते हैं?',
     helpBody: 'कॉल या WhatsApp करें — हम 24/7 जवाब देते हैं।',
   },

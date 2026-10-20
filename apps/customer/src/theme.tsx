@@ -37,6 +37,10 @@ const light = {
   creamLine: '#fde68a',
   /** The dark hero card on Home. */
   hero: '#141210',
+  /** The dark service card on Home ("Drop to a city"), and its text and accent. */
+  feature: '#18181b',
+  onFeature: '#ffffff',
+  featureAccent: '#fbbf24',
   onHero: '#ffffff',
   onHeroMuted: '#d6d3d1',
   /** Strong buttons (e.g. "Continue with Google"): ink on light, light on dark. */
@@ -77,6 +81,9 @@ const dark: Palette = {
   cream: '#1f1a10',
   creamLine: '#4a3b17',
   hero: '#1c1917',
+  feature: '#292524',
+  onFeature: '#ffffff',
+  featureAccent: '#fbbf24',
   onHero: '#ffffff',
   onHeroMuted: '#d6d3d1',
   inverse: '#fafaf9',
