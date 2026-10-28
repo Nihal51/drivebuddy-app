@@ -369,8 +369,8 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     nameHi: 'विशाखापत्तनम',
     region: 'india',
     trains: [
-      { no: '12807', name: 'Samta Exp', dep: '09:20', hours: 9.7 },
-      { no: '20830', name: 'Vande Bharat', dep: '14:50', hours: 7.2 },
+      { no: '12807', name: 'Samta Exp', dep: '09:20', hours: 9.7, days: [0, 2, 3, 4, 6] },
+      { no: '20830', name: 'Vande Bharat', dep: '14:50', hours: 7.2, days: [0, 1, 2, 3, 5, 6] },
       { no: '18530', name: 'VSKP–Durg Exp', dep: '16:50', hours: 11.7 },
       { no: '18518', name: 'VSKP–Korba Exp', dep: '21:00', hours: 10 },
     ],
@@ -634,18 +634,23 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Hyderabad',
     nameHi: 'हैदराबाद',
     region: 'india',
-    trains: [{ no: '12771', name: 'Secunderabad–Raipur Exp', dep: '22:40', hours: 14.7 }],
+    trains: [
+      { no: '12723', name: 'Telangana Exp', dep: '06:25', hours: 15.4, via: 'Nagpur' },
+      { no: '12791', name: 'Secunderabad–Danapur Exp', dep: '09:25', hours: 15.4, via: 'Nagpur' },
+      { no: '12771', name: 'Secunderabad–Raipur Exp', dep: '22:40', hours: 14.7, days: [1, 3, 5] },
+      { no: '12721', name: 'Dakshin Exp', dep: '23:25', hours: 16.4, via: 'Nagpur' },
+    ],
     from: {
       Raipur: {
         km: 780,
-        oneWay: { days: 2, returnHours: 27, driveHours: 15.6, homeHours: 15 },
+        oneWay: { days: 2, returnHours: 30, driveHours: 15.6, homeHours: 15 },
         roundDays: 3,
       },
-      Bhilai: { km: 750, oneWay: { days: 2, returnHours: 28, driveHours: 15, homeHours: 15 }, roundDays: 3 },
-      Durg: { km: 740, oneWay: { days: 2, returnHours: 28, driveHours: 14.8, homeHours: 15 }, roundDays: 3 },
+      Bhilai: { km: 750, oneWay: { days: 2, returnHours: 30, driveHours: 15, homeHours: 15 }, roundDays: 3 },
+      Durg: { km: 740, oneWay: { days: 2, returnHours: 31, driveHours: 14.8, homeHours: 15 }, roundDays: 3 },
       Bilaspur: {
         km: 890,
-        oneWay: { days: 2, returnHours: 27, driveHours: 17.8, homeHours: 16.5 },
+        oneWay: { days: 2, returnHours: 29, driveHours: 17.8, homeHours: 16.5 },
         roundDays: 3,
       },
     },
@@ -783,7 +788,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     region: 'india',
     trains: [
       { no: '12295', name: 'Sanghamitra Exp', dep: '09:15', hours: 29.8, via: 'Nagpur' },
-      { no: '12975', name: 'Mysuru–Jaipur Exp', dep: '13:00', hours: 28.6, via: 'Nagpur' },
+      { no: '12975', name: 'Mysuru–Jaipur Exp', dep: '13:00', hours: 28.6, days: [4, 6], via: 'Nagpur' },
       { no: '18262', name: 'Yelahanka–Bilaspur Exp', dep: '21:30', hours: 27.6, days: [4] },
       { no: '12251', name: 'Wainganga Exp', dep: '23:40', hours: 24.4, days: [2, 5] },
       { no: '22366', name: 'Bengaluru–Danapur Exp', dep: '23:50', hours: 31.7, via: 'Nagpur' },
@@ -791,17 +796,17 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     from: {
       Raipur: {
         km: 1370,
-        oneWay: { days: 3, returnHours: 32, driveHours: 27.4, homeHours: 28 },
+        oneWay: { days: 3, returnHours: 46, driveHours: 27.4, homeHours: 28 },
         roundDays: 5,
       },
       Bhilai: {
         km: 1350,
-        oneWay: { days: 3, returnHours: 31, driveHours: 27, homeHours: 27.25 },
+        oneWay: { days: 3, returnHours: 45, driveHours: 27, homeHours: 27.25 },
         roundDays: 5,
       },
       Durg: {
         km: 1340,
-        oneWay: { days: 3, returnHours: 32, driveHours: 26.8, homeHours: 27.25 },
+        oneWay: { days: 3, returnHours: 45, driveHours: 26.8, homeHours: 27.25 },
         roundDays: 5,
       },
       Bilaspur: {

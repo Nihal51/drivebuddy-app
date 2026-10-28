@@ -38,11 +38,18 @@ test('Raipur → Mumbai one-way: 1 day + 11 h, the 9:10 PM Mail, 23 h home — �
   expect([p.est?.from, p.est?.to]).toEqual([4070, 4170]);
 });
 
-test('Raipur → Hyderabad at 9 AM: drops ~12:30 PM day 2, waits for the 10:40 PM train', () => {
-  const p = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, 9);
-  expect(p.train?.no).toBe('12771');
-  expect((p.leaveAt ?? 0) - (p.dropAt ?? 0)).toBeGreaterThan(9);
-  expect(p.startHour).toBe(9);
+test('Raipur → Hyderabad: the direct train only Mon, Wed & Fri; other days the Dakshin Exp via Nagpur', () => {
+  const sunday = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 0 });
+  expect(sunday.train?.no).toBe('12771');
+  expect((sunday.leaveAt ?? 0) - (sunday.dropAt ?? 0)).toBeGreaterThan(9);
+  expect(sunday.startHour).toBe(9);
+  const monday = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 1 });
+  expect([monday.train?.no, monday.train?.via]).toEqual(['12721', 'Nagpur']);
+});
+
+test('Raipur → Bengaluru, Thursday 7:30 AM day and night: the Friday Wainganga Exp, never the Thu/Sat-only 12975', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7.5, weekday: 4 }, true);
+  expect(p.train?.no).toBe('12251');
 });
 
 test('Raipur → Delhi: the trains that do not run that day are skipped', () => {
