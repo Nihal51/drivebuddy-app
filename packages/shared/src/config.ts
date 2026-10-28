@@ -90,6 +90,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     kmPerDay: 600,
     localWithinKm: 60,
     stationHours: 1,
+    averageKmh: 50,
   },
   destinations: DEFAULT_DESTINATIONS,
   tripsLive: false,

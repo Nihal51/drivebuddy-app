@@ -33,6 +33,8 @@ export function TripSection({
   values,
   plan,
   startAt,
+  nonstop,
+  onNonstop,
   errors,
   showErrors,
   onChange,
@@ -42,6 +44,9 @@ export function TripSection({
   plan: TripPlan;
   /** When the driver leaves (ms): the time picked, or soon for "as soon as possible". */
   startAt: number;
+  /** One-way: drive day and night, without the night's rest. */
+  nonstop: boolean;
+  onNonstop: (on: boolean) => void;
   errors: BookingErrors;
   /** Show field errors (after a submit attempt or once touched). */
   showErrors: (field: 'destId' | 'destOther' | 'days') => boolean;
@@ -154,6 +159,30 @@ export function TripSection({
         </AppText>
       ) : null}
 
+      {!round ? (
+        <Pressable
+          onPress={() => onNonstop(!nonstop)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: nonstop }}
+          style={styles.toggle}
+          testID="trip-nonstop"
+        >
+          <Ionicons
+            name={nonstop ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={nonstop ? colors.amberText : colors.textMuted}
+          />
+          <View style={styles.flex}>
+            <AppText variant="small" weight="bold">
+              {t.trip.nonstop}
+            </AppText>
+            <AppText variant="tiny" color={colors.textMuted}>
+              {t.trip.nonstopHint}
+            </AppText>
+          </View>
+        </Pressable>
+      ) : null}
+
       <Estimate values={values} plan={plan} startAt={startAt} onUseLocal={onUseLocal} />
     </View>
   );
@@ -185,7 +214,7 @@ function Estimate({
       <AppText color={colors.textMuted}>
         {t.trip.elsewhereNote(rate)}
         {oneWay
-          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnMaxPerDay), rupees(config.outstation.returnHour))}`
+          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay))}`
           : ''}
       </AppText>
     );
@@ -212,20 +241,41 @@ function Estimate({
           {t.trip.route(from, placeName(t, plan.dest), kmText(t, plan.km))} · {tripDays(t, plan)}
         </AppText>
         <View style={styles.lines}>
-          <Line label={t.trip.times(drivingLabel(t, plan), rate)} amount={rupeeRange(plan.est.driving)} />
-          {oneWay && plan.returnDay ? (
-            <Line label={t.trip.returnDay} amount={rupees(plan.est.returnDayCharge)} />
-          ) : oneWay ? (
-            <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
-          ) : null}
-          {oneWay && plan.lateHours > 0 ? (
+          {!oneWay || plan.fullDays > 0 ? (
             <Line
-              label={`${t.trip.lateHours(plan.lateHours)} (${t.trip.returnMax(
-                rupees(config.outstation.returnHour),
-                rupees(config.outstation.returnMaxPerDay),
-              )})`}
-              amount={rupees(plan.est.lateCharge)}
+              label={t.trip.times(
+                oneWay
+                  ? t.trip.drivingDays(plan.fullDays, config.outstation.hoursPerDay)
+                  : t.trip.days(plan.fullDays),
+                rate,
+              )}
+              amount={rupeeRange({
+                from: plan.fullDays * config.prices.outstation.from,
+                to: plan.fullDays * config.prices.outstation.to,
+              })}
             />
+          ) : null}
+          {oneWay && plan.extraHours > 0 ? (
+            <Line
+              label={t.trip.times(
+                t.trip.drivingHours(plan.extraHours, plan.fullDays > 0),
+                rupees(config.outstation.extraHour),
+              )}
+              amount={rupees(plan.est.extraCharge)}
+            />
+          ) : null}
+          {oneWay ? (
+            plan.returnHours > 0 ? (
+              <Line
+                label={`${t.trip.wayHomeHours(plan.returnHours)} (${t.trip.returnMax(
+                  rupees(config.outstation.returnHour),
+                  rupees(config.outstation.returnMaxPerDay),
+                )})`}
+                amount={rupees(plan.est.returnCharge)}
+              />
+            ) : (
+              <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
+            )
           ) : null}
         </View>
         {oneWay ? <Timeline plan={plan} startAt={startAt} from={from} to={placeName(t, plan.dest)} /> : null}
@@ -276,21 +326,41 @@ function Timeline({
   to: string;
 }) {
   const { t } = useI18n();
+  const { config } = useConfig();
   const { colors } = useTheme();
   const styles = useStyles();
   if (plan.dropAt === undefined || plan.homeAt === undefined) return null;
   const at = (hours: number) => formatDateTime(t, startAt + Math.round((hours * 60) / 5) * 5 * 60_000);
   const leaveAt = plan.leaveAt ?? plan.dropAt;
+  const wait = leaveAt - plan.dropAt - (config.outstation.stationHours ?? 1);
+  const h = (n: number) => Math.max(1, Math.round(n));
   const rows: { label: string; value: string }[] = [
     { label: t.trip.leaves(from), value: at(0) },
+    {
+      label: t.trip.driving,
+      value: plan.nonstop
+        ? t.trip.drivingNonstop(h(plan.driveHours))
+        : plan.minDays > 1
+          ? t.trip.drivingDaysRest(h(plan.driveHours), config.outstation.hoursPerDay)
+          : t.trip.onBoard(h(plan.driveHours)),
+    },
     { label: t.trip.drops(to), value: t.trip.about(at(plan.dropAt)) },
-    plan.train
-      ? { label: t.trip.trainHome, value: `${plan.train.no} ${plan.train.name}, ${at(leaveAt)}` }
-      : { label: t.trip.wayHome, value: t.trip.onBoard(Math.max(1, Math.round(plan.homeAt - leaveAt))) },
-    { label: t.trip.homeIn(from), value: t.trip.about(at(plan.homeAt)) },
-    { label: t.trip.daysEnd(plan.days), value: at(plan.days * 24) },
   ];
-  if (plan.returnDay) rows.push({ label: t.trip.returnEnds, value: at(plan.days * 24 + 24) });
+  if (plan.train) {
+    const train = plan.train;
+    const notes = [
+      train.via ? t.trip.via(train.via) : null,
+      train.days?.length ? t.trip.runs(train.days.map((d) => t.dates.weekdays[d] ?? '').join(', ')) : null,
+    ].filter(Boolean);
+    rows.push({
+      label: t.trip.trainHome,
+      value: `${train.no} ${train.name}${notes.length ? ` (${notes.join('; ')})` : ''}, ${at(leaveAt)}`,
+    });
+    if (wait >= 1) rows.push({ label: t.trip.waits, value: t.trip.onBoard(h(wait)) });
+  } else {
+    rows.push({ label: t.trip.wayHome, value: t.trip.onBoard(h(plan.homeAt - leaveAt)) });
+  }
+  rows.push({ label: t.trip.homeIn(from), value: t.trip.about(at(plan.homeAt)) });
   return (
     <View style={styles.lines} testID="trip-timeline">
       <AppText variant="tiny" weight="bold" color={colors.textMuted}>
@@ -302,9 +372,6 @@ function Timeline({
     </View>
   );
 }
-
-/** "2 days" — the first line of the breakdown. */
-const drivingLabel = (t: Messages, plan: TripPlan) => t.trip.days(plan.days);
 
 function Line({ label, amount }: { label: string; amount: string }) {
   const { colors } = useTheme();
@@ -399,5 +466,6 @@ const useStyles = makeStyles((c) => ({
   },
   line: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   amount: { flexShrink: 1, textAlign: 'right', maxWidth: '58%' },
+  toggle: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   tip: { gap: space.xs, backgroundColor: c.cream, borderRadius: radius.sm, padding: space.sm },
 }));

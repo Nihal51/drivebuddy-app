@@ -181,27 +181,30 @@ describe('Booking, step by step', () => {
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
-    // Home by train the same evening: one day covers it, no return charge.
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,550–1,650');
-    expect(screen.getByText(/he is home before the driving days end/)).toBeOnTheScreen();
+    // 6 h of driving and 6 h home by train, by the hour: 12 × ₹120.
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,440');
+    expect(screen.getByText(/6 driving hours × ₹120/)).toBeOnTheScreen();
+    expect(screen.getByText(/Driver’s way home: 6 h from the drop/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 
-    // Mumbai: 2 driving days + 1 return day, whatever the start time.
+    // Mumbai: the timeline names the train home; day and night drops the car sooner.
     await fireEvent.press(screen.getByTestId('dest-mumbai'));
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹4,300–4,500');
-    expect(screen.getByText(/^Return day/)).toBeOnTheScreen();
+    expect(screen.getByText(/1 driving day \(12 h each\)/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Train home \(you book his ticket\)/);
+    await fireEvent.press(screen.getByTestId('trip-nonstop'));
+    expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/day and night/);
+    await fireEvent.press(screen.getByTestId('trip-nonstop'));
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
 
-    // A day's stop on the way: one more driving day.
+    // A day's stop on the way: two full days, the way home the same.
     await fireEvent.press(screen.getByTestId('days-plus'));
     expect(screen.getByTestId('days-value')).toHaveTextContent('2');
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,100–3,300');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,820–4,020');
 
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Raipur → Nagpur · 2 days/);
-    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,100–3,300/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,820–4,020/);
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
@@ -213,9 +216,9 @@ describe('Booking, step by step', () => {
       kind: 'one-way',
       km: 284,
       days: 2,
-      returnHours: 0,
-      estFrom: 3100,
-      estTo: 3300,
+      returnHours: 6,
+      estFrom: 3820,
+      estTo: 4020,
     });
   });
 

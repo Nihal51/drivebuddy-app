@@ -65,6 +65,9 @@ const STEP_FIELDS: Record<Step, BookingField[]> = {
   3: ['name', 'phone', 'notes'],
 };
 
+/** The note the team sees for a day-and-night drive. */
+const NONSTOP_NOTE = 'Day and night driving (non-stop).';
+
 /** "As soon as possible": the driver leaves about this long after the booking. */
 const START_LEAD_MS = 45 * 60_000;
 
@@ -120,6 +123,8 @@ function BookingWizard({
     phone: profile?.phone ?? '',
   }));
   const [step, setStep] = useState<Step>(startPackage ? 2 : 1);
+  // One-way drop: drive day and night, without the night's rest.
+  const [nonstop, setNonstop] = useState(false);
   const [category, setCategory] = useState<Category | undefined>(() =>
     startPackage ? categoryOf(startPackage) : findCategory(initialCategory),
   );
@@ -135,7 +140,13 @@ function BookingWizard({
     track('booking_form_opened', initialPackage ? { package: initialPackage } : {});
   }, [initialPackage]);
 
-  const input: BookingInput = { ...values, preferredTime: preferredFrom(when) };
+  const oneWayNonstop = nonstop && values.packageId === 'one-way-drop';
+  const input: BookingInput = {
+    ...values,
+    preferredTime: preferredFrom(when),
+    // The team sees the day-and-night request first in the notes.
+    notes: oneWayNonstop ? `${NONSTOP_NOTE} ${values.notes}`.trim().slice(0, 500) : values.notes,
+  };
   const errors: BookingErrors = validateBooking(input);
   // Outstation trip / one-way drop: the plan behind the estimate, and the trip saved with the booking.
   // When the driver leaves: the time picked, or "as soon as possible" (about 45 minutes from now).
@@ -148,7 +159,12 @@ function BookingWizard({
         values.city,
         values.destId,
         Number(values.days) || 0,
-        startParts.hour + startParts.minute / 60,
+        {
+          hour: startParts.hour + startParts.minute / 60,
+          // The weekday only when a day was picked: some trains run on a few days only.
+          ...(input.preferredTime && { weekday: startParts.weekday }),
+        },
+        oneWayNonstop,
       )
     : null;
   const trip = plan && values.destId ? tripRecord(plan, values.destOther) : null;
@@ -431,6 +447,8 @@ function BookingWizard({
                 values={values}
                 plan={plan}
                 startAt={startAt}
+                nonstop={nonstop}
+                onNonstop={setNonstop}
                 errors={errors}
                 showErrors={(field) => Boolean(checked[2] || touched[field])}
                 onChange={(patch) => {
