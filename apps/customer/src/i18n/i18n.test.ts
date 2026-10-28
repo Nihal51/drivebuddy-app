@@ -1,7 +1,15 @@
 import { DEFAULT_CONFIG, PACKAGE_IDS, packagePrice } from '@drivebuddy/shared';
 
 import { type Messages, en } from './en';
-import { errorText, formatDateTime, formatPreferred, formatSlot, priceLabel } from './format';
+import {
+  billBreakdown,
+  clockText,
+  errorText,
+  formatDateTime,
+  formatPreferred,
+  formatSlot,
+  priceLabel,
+} from './format';
 import { hi } from './hi';
 
 /** Every leaf of a message set: strings, and functions called with sample arguments. */
@@ -60,4 +68,34 @@ test('prices in words', () => {
   expect(priceLabel(en, { kind: 'from', amount: '₹500' })).toBe('from ₹500');
   expect(priceLabel(hi, { kind: 'from', amount: '₹500' })).toBe('₹500 से');
   expect(priceLabel(en, { kind: 'monthly', amount: '₹20,000' })).toBe('₹20,000/month');
+});
+
+test('the final bill and the trip times, in both languages', () => {
+  const bill = {
+    amount: 6200,
+    dayRate: 1600,
+    days: 2,
+    extraHours: 5,
+    extraHourRate: 120,
+    extraCharge: 600,
+    returnHours: 38,
+    returnHourRate: 120,
+    returnCharge: 2400,
+    ticket: 0,
+    nonstop: true,
+  };
+  expect(billBreakdown(en, bill)).toBe('₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h)');
+  expect(billBreakdown(hi, bill)).toContain('₹600 5 घंटे अतिरिक्त ड्राइविंग');
+  const clock = {
+    startAt: new Date('2026-10-29T02:15:00Z'),
+    dropAt: new Date('2026-10-30T07:10:00Z'),
+    homeAt: new Date('2026-10-31T20:50:00Z'),
+  };
+  expect(clockText(en, clock, 'one-way')).toBe(
+    'Driver left Thu, 29 Oct, 7:45 am · car dropped Fri, 30 Oct, 12:40 pm · driver home Sun, 1 Nov, 2:20 am',
+  );
+  expect(clockText(en, { startAt: clock.startAt, homeAt: clock.homeAt }, 'round')).toBe(
+    'Driver left Thu, 29 Oct, 7:45 am · back Sun, 1 Nov, 2:20 am',
+  );
+  expect(clockText(hi, clock, 'one-way')).toMatch(/^ड्राइवर निकले .* · गाड़ी छोड़ी .* · ड्राइवर घर पहुँचे /);
 });

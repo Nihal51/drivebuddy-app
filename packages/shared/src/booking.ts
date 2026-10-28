@@ -16,11 +16,15 @@ import {
   isPackageId,
 } from './catalog';
 import {
+  type BookingBill,
+  type BookingClock,
   type BookingQuote,
   type BookingTrip,
   ELSEWHERE,
   TRIP_PACKAGES,
   isTripPackage,
+  toBill,
+  toClock,
   toQuote,
   toTrip,
 } from './trip';
@@ -214,6 +218,10 @@ export type Booking = {
   trip?: BookingTrip;
   /** The price agreed on the call, once the team has saved it. */
   quote?: BookingQuote;
+  /** When the driver left, dropped the car and got home (his taps on the trip link). */
+  clock?: BookingClock;
+  /** The final bill from those times, once the team has saved it. */
+  bill?: BookingBill;
 };
 
 /** Firestore Timestamp | Date | anything → Date | undefined, without importing the Firebase SDK here. */
@@ -257,6 +265,8 @@ export function toBooking(id: string, data: Record<string, unknown>): Booking {
     updatedAt: toDate(data.updatedAt),
     trip: toTrip(data.trip),
     quote: toQuote(data.quote),
+    clock: toClock(data.clock),
+    bill: toBill(data.bill),
   };
 }
 

@@ -211,6 +211,12 @@ export const en = {
     priceOnCall: 'price on the call',
     extraHours: (n: number) => (n === 1 ? '1 extra hour' : `${n} extra hours`),
     ticket: (amount: string) => `${amount} ticket`,
+    billExtra: (amount: string, n: number) =>
+      `${amount} for ${n === 1 ? '1 extra hour' : `${n} extra hours`}`,
+    clockLeft: (at: string) => `Driver left ${at}`,
+    clockDropped: (at: string) => `car dropped ${at}`,
+    clockHome: (at: string) => `driver home ${at}`,
+    clockBack: (at: string) => `back ${at}`,
   },
 
   success: {
@@ -312,6 +318,8 @@ export const en = {
     notes: 'Notes',
     trip: 'Trip',
     price: 'Agreed price',
+    tripTimes: 'Trip times',
+    finalBill: 'Final bill (from the real times)',
     bookedOn: 'Booked on',
     yourDriver: 'Your driver',
     callDriver: 'Call driver',

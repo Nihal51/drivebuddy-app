@@ -5,6 +5,8 @@
 
 import {
   type Booking,
+  type BookingBill,
+  type BookingClock,
   type BookingField,
   type BookingQuote,
   type BookingTrip,
@@ -112,6 +114,29 @@ export function tripSummary(
     trip.estFrom > 0
       ? t.trip.estimate(rupeeRange({ from: trip.estFrom, to: trip.estTo }))
       : t.trip.priceOnCall,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The final bill, itemised: "₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h)". */
+export function billBreakdown(t: Messages, b: BookingBill): string {
+  return [
+    b.days > 0 ? t.trip.times(rupees(b.dayRate), t.trip.days(b.days)) : null,
+    b.extraHours > 0 ? t.trip.billExtra(rupees(b.extraCharge), b.extraHours) : null,
+    b.returnHours > 0 ? `${rupees(b.returnCharge)} ${t.trip.returnShort(b.returnHours)}` : null,
+    b.ticket > 0 ? t.trip.ticket(rupees(b.ticket)) : null,
+  ]
+    .filter(Boolean)
+    .join(' + ');
+}
+
+/** "Driver left Thu, 29 Oct, 7:45 am · car dropped … · driver home …" (round trip: "back …"). */
+export function clockText(t: Messages, c: BookingClock, kind: BookingTrip['kind']): string {
+  return [
+    c.startAt ? t.trip.clockLeft(formatDateTime(t, c.startAt)) : null,
+    kind === 'one-way' && c.dropAt ? t.trip.clockDropped(formatDateTime(t, c.dropAt)) : null,
+    c.homeAt ? (kind === 'one-way' ? t.trip.clockHome : t.trip.clockBack)(formatDateTime(t, c.homeAt)) : null,
   ]
     .filter(Boolean)
     .join(' · ');

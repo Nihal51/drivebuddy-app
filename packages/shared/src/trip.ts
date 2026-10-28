@@ -411,6 +411,26 @@ export type BookingQuote = {
   ticket: number;
 };
 
+/** The real times of the trip, from the driver's trip link (website firestore.rules: isClock). */
+export type BookingClock = { startAt?: Date; dropAt?: Date; homeAt?: Date };
+
+/** The final bill from the real times, saved by the team (website firestore.rules: isBill). */
+export type BookingBill = {
+  amount: number;
+  dayRate: number;
+  days: number;
+  extraHours: number;
+  extraHourRate: number;
+  /** extraHours × extraHourRate, at most one day. */
+  extraCharge: number;
+  returnHours: number;
+  returnHourRate: number;
+  returnCharge: number;
+  ticket: number;
+  /** Driven day and night (every 12 h a day). */
+  nonstop: boolean;
+};
+
 /** 2450 → "2,450" (Indian grouping; local copy so trip.ts needs nothing from prices.ts). */
 function digits(n: number): string {
   const s = String(Math.round(Math.abs(n)));
@@ -487,6 +507,49 @@ export function toQuote(v: unknown): BookingQuote | undefined {
     'ticket',
   ] as const;
   const out = {} as BookingQuote;
+  for (const k of keys) {
+    const n = int(v[k]);
+    if (n === null) return undefined;
+    out[k] = n;
+  }
+  return out.amount > 0 ? out : undefined;
+}
+
+/** Firestore Timestamp | Date → Date, without importing the Firebase SDK. */
+function asDate(v: unknown): Date | undefined {
+  if (v instanceof Date) return v;
+  if (isObj(v) && typeof (v as { toDate?: unknown }).toDate === 'function')
+    return (v as { toDate: () => Date }).toDate();
+  return undefined;
+}
+
+/** A stored clock → BookingClock, or undefined if there is none (no start yet). */
+export function toClock(v: unknown): BookingClock | undefined {
+  if (!isObj(v)) return undefined;
+  const out: BookingClock = {};
+  for (const k of ['startAt', 'dropAt', 'homeAt'] as const) {
+    const d = asDate(v[k]);
+    if (d) out[k] = d;
+  }
+  return out.startAt ? out : undefined;
+}
+
+/** A stored final bill → BookingBill, or undefined if it is missing or odd. */
+export function toBill(v: unknown): BookingBill | undefined {
+  if (!isObj(v)) return undefined;
+  const keys = [
+    'amount',
+    'dayRate',
+    'days',
+    'extraHours',
+    'extraHourRate',
+    'extraCharge',
+    'returnHours',
+    'returnHourRate',
+    'returnCharge',
+    'ticket',
+  ] as const;
+  const out = { nonstop: v.nonstop === true } as BookingBill;
   for (const k of keys) {
     const n = int(v[k]);
     if (n === null) return undefined;

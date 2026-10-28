@@ -16,7 +16,15 @@ import { StatusTracker } from '@/components/StatusTracker';
 import { useConfig } from '@/config/ConfigProvider';
 import { watchBooking } from '@/data/bookings';
 import { useI18n } from '@/i18n';
-import { bookingTitle, formatDateTime, formatPreferred, quoteBreakdown, tripSummary } from '@/i18n/format';
+import {
+  billBreakdown,
+  bookingTitle,
+  clockText,
+  formatDateTime,
+  formatPreferred,
+  quoteBreakdown,
+  tripSummary,
+} from '@/i18n/format';
 import { callNumber, openWebPage } from '@/lib/links';
 import { makeStyles, space, useTheme } from '@/theme';
 
@@ -144,6 +152,20 @@ export default function BookingDetailScreen() {
             icon="cash-outline"
             label={t.detail.price}
             value={`${rupees(b.quote.amount)} (${quoteBreakdown(t, b.quote)})`}
+          />
+        ) : null}
+        {b.clock && b.trip ? (
+          <InfoRow
+            icon="timer-outline"
+            label={t.detail.tripTimes}
+            value={clockText(t, b.clock, b.trip.kind)}
+          />
+        ) : null}
+        {b.bill ? (
+          <InfoRow
+            icon="receipt-outline"
+            label={t.detail.finalBill}
+            value={`${rupees(b.bill.amount)} (${billBreakdown(t, b.bill)})`}
           />
         ) : null}
         {b.notes ? <InfoRow icon="document-text-outline" label={t.detail.notes} value={b.notes} /> : null}

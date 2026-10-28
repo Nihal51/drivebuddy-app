@@ -11,6 +11,8 @@ import {
   returnCost,
   searchDestinations,
   startHourOf,
+  toBill,
+  toClock,
   toQuote,
   toTrip,
   tripNote,
@@ -235,4 +237,48 @@ test('the published table is read with its trains and timings; odd ones are drop
   expect(parseTripRules(rules)?.stationHours).toBeUndefined();
   expect(parseTripRules({ ...rules, stationHours: 1 })?.stationHours).toBe(1);
   expect(parseTripRules({ ...rules, averageKmh: 50 })?.averageKmh).toBe(50);
+});
+
+/* The final bill and the trip times (website: lib/tripclock.ts, firestore.rules isBill / isClock). */
+
+test('the final bill and the trip times are read back defensively', () => {
+  const bill = {
+    amount: 6200,
+    dayRate: 1600,
+    days: 2,
+    extraHours: 5,
+    extraHourRate: 120,
+    extraCharge: 600,
+    returnHours: 38,
+    returnHourRate: 120,
+    returnCharge: 2400,
+    ticket: 0,
+    nonstop: true,
+    at: { toDate: () => new Date() },
+  };
+  expect(toBill(bill)).toEqual({
+    amount: 6200,
+    dayRate: 1600,
+    days: 2,
+    extraHours: 5,
+    extraHourRate: 120,
+    extraCharge: 600,
+    returnHours: 38,
+    returnHourRate: 120,
+    returnCharge: 2400,
+    ticket: 0,
+    nonstop: true,
+  });
+  expect(toBill({ ...bill, extraCharge: '600' })).toBeUndefined();
+  expect(toBill({ ...bill, amount: 0 })).toBeUndefined();
+  expect(toBill(null)).toBeUndefined();
+
+  const start = new Date('2026-10-29T02:15:00Z');
+  const drop = new Date('2026-10-30T07:10:00Z');
+  expect(toClock({ startAt: { toDate: () => start }, dropAt: drop })).toEqual({
+    startAt: start,
+    dropAt: drop,
+  });
+  expect(toClock({ dropAt: drop })).toBeUndefined(); // no start, no clock
+  expect(toClock('x')).toBeUndefined();
 });

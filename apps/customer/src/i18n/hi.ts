@@ -206,6 +206,11 @@ export const hi: Messages = {
     priceOnCall: 'कीमत कॉल पर',
     extraHours: (n: number) => `${n} घंटे अतिरिक्त`,
     ticket: (amount: string) => `${amount} टिकट`,
+    billExtra: (amount: string, n: number) => `${amount} ${n} घंटे अतिरिक्त ड्राइविंग`,
+    clockLeft: (at: string) => `ड्राइवर निकले ${at}`,
+    clockDropped: (at: string) => `गाड़ी छोड़ी ${at}`,
+    clockHome: (at: string) => `ड्राइवर घर पहुँचे ${at}`,
+    clockBack: (at: string) => `वापस आए ${at}`,
   },
 
   success: {
@@ -305,6 +310,8 @@ export const hi: Messages = {
     notes: 'नोट्स',
     trip: 'ट्रिप',
     price: 'तय कीमत',
+    tripTimes: 'ट्रिप का समय',
+    finalBill: 'फ़ाइनल बिल (असली समय से)',
     bookedOn: 'बुकिंग की तारीख़',
     yourDriver: 'आपका ड्राइवर',
     callDriver: 'ड्राइवर को कॉल करें',

@@ -4,8 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import AccountScreen from '@/app/(tabs)/account';
 import BookScreen from '@/app/book';
+import BookingDetailScreen from '@/app/booking/[id]';
 import HomeScreen from '@/app/(tabs)/index';
-import { submitBooking } from '@/data/bookings';
+import { submitBooking, watchBooking } from '@/data/bookings';
 
 import { renderScreen, signedOut } from './test-utils';
 
@@ -14,7 +15,7 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({})),
   Stack: { Screen: () => null },
 }));
-jest.mock('@/data/bookings', () => ({ submitBooking: jest.fn() }));
+jest.mock('@/data/bookings', () => ({ submitBooking: jest.fn(), watchBooking: jest.fn() }));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
 
 const mockedSubmit = submitBooking as jest.Mock;
@@ -274,5 +275,69 @@ describe('Account', () => {
     expect(screen.getByText('Delete your DriveBuddy account?')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('confirm-delete-account'));
     expect(auth.deleteAccount).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Booking detail', () => {
+  test('a finished one-way drop shows the trip times and the final bill', async () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'b1' });
+    (watchBooking as jest.Mock).mockImplementation((_id: string, onBooking: (b: unknown) => void) => {
+      onBooking({
+        id: 'b1',
+        name: 'Ravi Sharma',
+        phone: '9876543210',
+        city: 'Raipur',
+        packageId: 'one-way-drop',
+        packageRaw: 'one-way-drop',
+        pickup: 'Shankar Nagar',
+        preferredTime: '2026-10-29T07:30',
+        notes: '',
+        status: 'completed',
+        source: 'app',
+        ref: 'DB-1042',
+        trip: {
+          to: 'Bengaluru',
+          destId: 'bengaluru',
+          kind: 'one-way',
+          km: 1370,
+          days: 2,
+          returnHours: 38,
+          estFrom: 5980,
+          estTo: 6180,
+        },
+        clock: {
+          startAt: new Date('2026-10-29T02:15:00Z'),
+          dropAt: new Date('2026-10-30T07:10:00Z'),
+          homeAt: new Date('2026-10-31T20:50:00Z'),
+        },
+        bill: {
+          amount: 6200,
+          dayRate: 1600,
+          days: 2,
+          extraHours: 5,
+          extraHourRate: 120,
+          extraCharge: 600,
+          returnHours: 38,
+          returnHourRate: 120,
+          returnCharge: 2400,
+          ticket: 0,
+          nonstop: true,
+        },
+      });
+      return () => {};
+    });
+    await renderScreen(<BookingDetailScreen />, {
+      auth: { ...signedOut, ready: true, user: { uid: 'u1', email: 'ravi@example.com' } as never },
+    });
+    expect(screen.getByText('TRIP TIMES')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Driver left Thu, 29 Oct, 7:45 am · car dropped Fri, 30 Oct, 12:40 pm · driver home Sun, 1 Nov, 2:20 am',
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('FINAL BILL (FROM THE REAL TIMES)')).toBeOnTheScreen();
+    expect(
+      screen.getByText('₹6,200 (₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h))'),
+    ).toBeOnTheScreen();
   });
 });
