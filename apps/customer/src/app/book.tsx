@@ -7,11 +7,13 @@ import {
   type PackageId,
   isPackageId,
   isTripPackage,
+  istParts,
   packagePrice,
   planTrip,
   preferredTimeValue,
   prettyPhone,
   rupeeRange,
+  tripInstant,
   tripRecord,
   validateBooking,
 } from '@drivebuddy/shared';
@@ -62,6 +64,9 @@ const STEP_FIELDS: Record<Step, BookingField[]> = {
   2: ['city', 'destId', 'destOther', 'days', 'pickup'],
   3: ['name', 'phone', 'notes'],
 };
+
+/** "As soon as possible": the driver leaves about this long after the booking. */
+const START_LEAD_MS = 45 * 60_000;
 
 /** The preferred-time value the form stores, from the picker's state. */
 function preferredFrom(when: When): string {
@@ -133,8 +138,18 @@ function BookingWizard({
   const input: BookingInput = { ...values, preferredTime: preferredFrom(when) };
   const errors: BookingErrors = validateBooking(input);
   // Outstation trip / one-way drop: the plan behind the estimate, and the trip saved with the booking.
+  // When the driver leaves: the time picked, or "as soon as possible" (about 45 minutes from now).
+  const startAt = (input.preferredTime && tripInstant(input.preferredTime)?.getTime()) || now + START_LEAD_MS;
+  const startParts = istParts(startAt);
   const plan = isTripPackage(values.packageId)
-    ? planTrip(config, values.packageId, values.city, values.destId, Number(values.days) || 0)
+    ? planTrip(
+        config,
+        values.packageId,
+        values.city,
+        values.destId,
+        Number(values.days) || 0,
+        startParts.hour + startParts.minute / 60,
+      )
     : null;
   const trip = plan && values.destId ? tripRecord(plan, values.destOther) : null;
   const timeMissing = when.mode === 'schedule' && !when.slot;
@@ -394,6 +409,18 @@ function BookingWizard({
             ) : null}
           </View>
 
+          {/* A trip: the start comes first — it decides the train home and so the estimate. */}
+          {plan ? (
+            <View onLayout={(e) => record('preferredTime', e.nativeEvent.layout.y)}>
+              <WhenPicker
+                value={when}
+                onChange={setWhen}
+                now={now}
+                error={checked[2] && timeMissing ? t.errors.preferredTime.required : undefined}
+              />
+            </View>
+          ) : null}
+
           {plan ? (
             <View
               onLayout={(e) => {
@@ -403,6 +430,7 @@ function BookingWizard({
               <TripSection
                 values={values}
                 plan={plan}
+                startAt={startAt}
                 errors={errors}
                 showErrors={(field) => Boolean(checked[2] || touched[field])}
                 onChange={(patch) => {
@@ -430,14 +458,16 @@ function BookingWizard({
             />
           </View>
 
-          <View onLayout={(e) => record('preferredTime', e.nativeEvent.layout.y)}>
-            <WhenPicker
-              value={when}
-              onChange={setWhen}
-              now={now}
-              error={checked[2] && timeMissing ? t.errors.preferredTime.required : undefined}
-            />
-          </View>
+          {plan ? null : (
+            <View onLayout={(e) => record('preferredTime', e.nativeEvent.layout.y)}>
+              <WhenPicker
+                value={when}
+                onChange={setWhen}
+                now={now}
+                error={checked[2] && timeMissing ? t.errors.preferredTime.required : undefined}
+              />
+            </View>
+          )}
         </>
       ) : null}
 

@@ -42,7 +42,7 @@ test('an outstation trip or one-way drop carries the trip and estimate', () => {
   };
   const trip = tripRecord(planTrip(DEFAULT_CONFIG, 'one-way-drop', 'Raipur', 'nagpur'), '');
   expect(whatsappBookingMessage(en, input, trip)).toContain(
-    'Trip: Raipur → Nagpur · one-way drop · 284 km · 1 day · estimate ₹1,450–1,650',
+    'Trip: Raipur → Nagpur · one-way drop · 284 km · 1 day · estimate ₹1,550–1,650',
   );
   expect(whatsappBookingMessage(hi, input, trip)).toContain('ट्रिप: रायपुर → Nagpur');
   expect(whatsappBookingMessage(hi, input, trip, DEFAULT_CONFIG.destinations)).toContain(

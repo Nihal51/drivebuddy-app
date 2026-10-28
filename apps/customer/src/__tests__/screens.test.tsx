@@ -32,7 +32,7 @@ describe('Home', () => {
     // All eight services: hourly and drop as cards, the rest (monthly too) in the list.
     expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
     expect(screen.getByTestId('tile-hourly')).toHaveTextContent(/from ₹350/);
-    expect(screen.getByTestId('tile-drop')).toHaveTextContent(/₹1,450–1,650\/day/);
+    expect(screen.getByTestId('tile-drop')).toHaveTextContent(/₹1,550–1,650\/day/);
     expect(screen.getByTestId('tile-monthly')).toHaveTextContent(/Monthly driver.*from ₹16,000\/mo/);
     expect(screen.getByTestId('tile-hospital')).toHaveTextContent(/Priority/);
   });
@@ -181,25 +181,27 @@ describe('Booking, step by step', () => {
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
-    // Home by bus the same evening: one day covers it, no return charge.
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,450–1,650');
-    expect(screen.getByText(/within the paid days/)).toBeOnTheScreen();
+    // Home by train the same evening: one day covers it, no return charge.
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,550–1,650');
+    expect(screen.getByText(/he is home before the driving days end/)).toBeOnTheScreen();
+    expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 
-    // Delhi: still on the train 9 h after the 3 paid days (~22½ h by timetable) → 9 × ₹120.
-    await fireEvent.press(screen.getByTestId('dest-delhi'));
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹5,430–6,030');
-    expect(screen.getByText(/9 h after the last day/)).toBeOnTheScreen();
+    // Mumbai: 2 driving days + 1 return day, whatever the start time.
+    await fireEvent.press(screen.getByTestId('dest-mumbai'));
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹4,300–4,500');
+    expect(screen.getByText(/^Return day/)).toBeOnTheScreen();
+    expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Train home \(you book his ticket\)/);
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
 
     // A day's stop on the way: one more driving day.
     await fireEvent.press(screen.getByTestId('days-plus'));
     expect(screen.getByTestId('days-value')).toHaveTextContent('2');
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,900–3,300');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,100–3,300');
 
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Raipur → Nagpur · 2 days/);
-    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹2,900–3,300/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,100–3,300/);
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
@@ -212,7 +214,7 @@ describe('Booking, step by step', () => {
       km: 284,
       days: 2,
       returnHours: 0,
-      estFrom: 2900,
+      estFrom: 3100,
       estTo: 3300,
     });
   });

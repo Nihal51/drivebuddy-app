@@ -64,7 +64,7 @@ export type AppConfig = {
   app: { minVersion: string; playStoreUrl: string; appStoreUrl: string };
 };
 
-/** Snapshot of site-settings.ts on 19 Oct 2026. Only a fallback — see above. */
+/** Snapshot of site-settings.ts on 28 Oct 2026. Only a fallback — see above. */
 export const DEFAULT_CONFIG: AppConfig = {
   schema: 1,
   contact: {
@@ -78,7 +78,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     oneHour: 300,
     threeHours: 600,
     fullDay: { from: 1000, to: 1200 },
-    outstation: { from: 1450, to: 1650 },
+    outstation: { from: 1550, to: 1650 },
     nightFrom: 500,
   },
   outstation: {
@@ -87,8 +87,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     returnHour: 120,
     returnMaxPerDay: 1200,
     mealAllowance: 300,
-    kmPerDay: 400,
+    kmPerDay: 600,
     localWithinKm: 60,
+    stationHours: 1,
   },
   destinations: DEFAULT_DESTINATIONS,
   tripsLive: false,

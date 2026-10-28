@@ -17,7 +17,7 @@ import { Chip } from '@/components/Chip';
 import { TextField } from '@/components/TextField';
 import { useConfig } from '@/config/ConfigProvider';
 import { type Messages, useI18n } from '@/i18n';
-import { errorText, kmText, tripDays } from '@/i18n/format';
+import { errorText, formatDateTime, kmText, tripDays } from '@/i18n/format';
 import { TOUCH, makeStyles, radius, space, useTheme } from '@/theme';
 
 /** The destination's name in the customer's language. */
@@ -26,11 +26,13 @@ export const placeName = (t: Messages, d: TripDestination) =>
 
 /**
  * For an outstation trip or one-way drop: where to, how many days, and the
- * estimate — worked out on the phone from the table the website publishes.
+ * estimate — worked out on the phone from the table the website publishes,
+ * for the time the driver leaves (`startAt`).
  */
 export function TripSection({
   values,
   plan,
+  startAt,
   errors,
   showErrors,
   onChange,
@@ -38,6 +40,8 @@ export function TripSection({
 }: {
   values: BookingInput;
   plan: TripPlan;
+  /** When the driver leaves (ms): the time picked, or soon for "as soon as possible". */
+  startAt: number;
   errors: BookingErrors;
   /** Show field errors (after a submit attempt or once touched). */
   showErrors: (field: 'destId' | 'destOther' | 'days') => boolean;
@@ -150,7 +154,7 @@ export function TripSection({
         </AppText>
       ) : null}
 
-      <Estimate values={values} plan={plan} onUseLocal={onUseLocal} />
+      <Estimate values={values} plan={plan} startAt={startAt} onUseLocal={onUseLocal} />
     </View>
   );
 }
@@ -158,10 +162,12 @@ export function TripSection({
 function Estimate({
   values,
   plan,
+  startAt,
   onUseLocal,
 }: {
   values: BookingInput;
   plan: TripPlan;
+  startAt: number;
   onUseLocal: () => void;
 }) {
   const { t } = useI18n();
@@ -179,7 +185,7 @@ function Estimate({
       <AppText color={colors.textMuted}>
         {t.trip.elsewhereNote(rate)}
         {oneWay
-          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay))}`
+          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnMaxPerDay), rupees(config.outstation.returnHour))}`
           : ''}
       </AppText>
     );
@@ -207,18 +213,22 @@ function Estimate({
         </AppText>
         <View style={styles.lines}>
           <Line label={t.trip.times(drivingLabel(t, plan), rate)} amount={rupeeRange(plan.est.driving)} />
-          {oneWay && plan.returnHours > 0 ? (
-            <Line
-              label={`${t.trip.homeLate(plan.returnHours)} (${t.trip.returnMax(
-                rupees(config.outstation.returnHour),
-                rupees(config.outstation.returnMaxPerDay),
-              )})`}
-              amount={rupees(plan.est.returnCharge)}
-            />
+          {oneWay && plan.returnDay ? (
+            <Line label={t.trip.returnDay} amount={rupees(plan.est.returnDayCharge)} />
           ) : oneWay ? (
             <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
           ) : null}
+          {oneWay && plan.lateHours > 0 ? (
+            <Line
+              label={`${t.trip.lateHours(plan.lateHours)} (${t.trip.returnMax(
+                rupees(config.outstation.returnHour),
+                rupees(config.outstation.returnMaxPerDay),
+              )})`}
+              amount={rupees(plan.est.lateCharge)}
+            />
+          ) : null}
         </View>
+        {oneWay ? <Timeline plan={plan} startAt={startAt} from={from} to={placeName(t, plan.dest)} /> : null}
         {plan.local ? (
           <View style={styles.tip}>
             <AppText variant="small">
@@ -250,6 +260,49 @@ function Estimate({
   );
 }
 
+/**
+ * The one-way drop hour by hour: when he leaves, drops the car, catches his
+ * train or bus, is home — and when the paid days end.
+ */
+function Timeline({
+  plan,
+  startAt,
+  from,
+  to,
+}: {
+  plan: TripPlan;
+  startAt: number;
+  from: string;
+  to: string;
+}) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  if (plan.dropAt === undefined || plan.homeAt === undefined) return null;
+  const at = (hours: number) => formatDateTime(t, startAt + Math.round((hours * 60) / 5) * 5 * 60_000);
+  const leaveAt = plan.leaveAt ?? plan.dropAt;
+  const rows: { label: string; value: string }[] = [
+    { label: t.trip.leaves(from), value: at(0) },
+    { label: t.trip.drops(to), value: t.trip.about(at(plan.dropAt)) },
+    plan.train
+      ? { label: t.trip.trainHome, value: `${plan.train.no} ${plan.train.name}, ${at(leaveAt)}` }
+      : { label: t.trip.wayHome, value: t.trip.onBoard(Math.max(1, Math.round(plan.homeAt - leaveAt))) },
+    { label: t.trip.homeIn(from), value: t.trip.about(at(plan.homeAt)) },
+    { label: t.trip.daysEnd(plan.days), value: at(plan.days * 24) },
+  ];
+  if (plan.returnDay) rows.push({ label: t.trip.returnEnds, value: at(plan.days * 24 + 24) });
+  return (
+    <View style={styles.lines} testID="trip-timeline">
+      <AppText variant="tiny" weight="bold" color={colors.textMuted}>
+        {t.trip.timelineTitle.toUpperCase()}
+      </AppText>
+      {rows.map((r) => (
+        <Line key={r.label} label={r.label} amount={r.value} />
+      ))}
+    </View>
+  );
+}
+
 /** "2 days" — the first line of the breakdown. */
 const drivingLabel = (t: Messages, plan: TripPlan) => t.trip.days(plan.days);
 
@@ -261,7 +314,7 @@ function Line({ label, amount }: { label: string; amount: string }) {
       <AppText variant="small" color={colors.textMuted} style={styles.flex}>
         {label}
       </AppText>
-      <AppText variant="small" weight="bold">
+      <AppText variant="small" weight="bold" style={styles.amount}>
         {amount}
       </AppText>
     </View>
@@ -345,5 +398,6 @@ const useStyles = makeStyles((c) => ({
     marginTop: space.xs,
   },
   line: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  amount: { flexShrink: 1, textAlign: 'right', maxWidth: '58%' },
   tip: { gap: space.xs, backgroundColor: c.cream, borderRadius: radius.sm, padding: space.sm },
 }));
