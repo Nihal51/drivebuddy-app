@@ -186,6 +186,13 @@ export const hi: Messages = {
     homeIn: (city: string) => `${city} में घर`,
     about: (when: string) => `लगभग ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
+    shortDrive: (h: number, first: number, localAfter: number, firstPrice: string, rate: string) =>
+      h <= first
+        ? `${h} घंटे ड्राइविंग: ${first} घंटे तक = ${firstPrice}`
+        : h <= localAfter
+          ? `${h} घंटे ड्राइविंग: पहले ${first} घंटे ${firstPrice} + ${h - first} घंटे × ${rate}`
+          : `${h} घंटे ड्राइविंग: ${localAfter} घंटे से ज़्यादा = शहर का पूरा दिन`,
+    shortDriveBill: (amount: string, h: number) => `${amount} — ${h} घंटे ड्राइविंग`,
     chooseCity: 'अनुमान देखने के लिए ऊपर अपना शहर चुनें।',
     chooseDest: 'अनुमान देखने के लिए चुनें कि कहाँ जाना है।',
     elsewhereNote: (rate: string) =>

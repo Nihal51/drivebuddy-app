@@ -4,6 +4,7 @@ import {
   POPULAR_DESTINATIONS,
   dayRateFor,
   daySpan,
+  shortDriveCharge,
   isTripPackage,
   notesWithTrip,
   parseDestinations,
@@ -29,10 +30,30 @@ const config = DEFAULT_CONFIG;
    drop until he is home, waiting included: each 24 h ₹1,200, the rest ₹120 an hour,
    more than 6 = ₹1,200. The typical time home (the website looks up real trains). */
 
-test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — ₹1,440', () => {
+test('Raipur → Nagpur one-way: 6 h of driving (₹600 for 3 h + 3 × ₹120) + 6 h home (₹720) — ₹1,680', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
   expect([p.km, p.fullDays, p.extraHours, p.days, p.returnHours, p.local]).toEqual([284, 0, 6, 1, 6, false]);
-  expect([p.est?.from, p.est?.to]).toEqual([1440, 1440]);
+  expect([p.est?.from, p.est?.to]).toEqual([1680, 1680]);
+});
+
+test('a drive shorter than a day, as on the website: ₹600 for 3 h, then ₹120 an hour, more than 6 h a local day; his way home on top', () => {
+  expect([1, 3, 4, 6, 7].map((h) => shortDriveCharge(config, h).from)).toEqual([600, 600, 720, 960, 1000]);
+  expect(shortDriveCharge(config, 7)).toEqual({ from: 1000, to: 1200 });
+  const { shortDriveFirstHours: _f, shortDriveLocalDayAfter: _l, ...old } = config.outstation;
+  expect(shortDriveCharge({ ...config, outstation: old }, 5).from).toBe(600);
+  const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est;
+  expect([at('bhilai')?.from, at('bilaspur')?.from, at('kawardha')?.from, at('korba')?.from]).toEqual([
+    840, 960, 1080, 1440,
+  ]);
+  expect([at('jharsuguda')?.from, at('jharsuguda')?.to]).toEqual([1720, 1920]);
+  // Read from the website file, or the phone's saved copy.
+  const r = parseTripRules({
+    ...config.outstation,
+    shortDriveFirstHours: 3,
+    shortDriveLocalDayAfterHours: 6,
+  });
+  expect([r?.shortDriveFirstHours, r?.shortDriveLocalDayAfter]).toEqual([3, 6]);
+  expect(parseTripRules({ ...old })?.shortDriveFirstHours).toBeUndefined();
 });
 
 test('Raipur → Mumbai one-way: 22.4 h = 1 day + 11 h, more than 7 = 2 full days; 19 h home — ₹4,300–4,500', () => {
@@ -176,7 +197,7 @@ test('the day price by distance, as on the website: nearer places cost less a da
   // From Bilaspur, Raipur is close by.
   expect(planTrip(config, 'outstation', 'Bilaspur', 'raipur').est?.from).toBe(1300);
   // One-way: a short drop stays by the hour.
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bilaspur').est?.from).toBe(720);
+  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bilaspur').est?.from).toBe(960);
 });
 
 test('the saved trip', () => {
@@ -199,6 +220,20 @@ test('read back defensively', () => {
   expect(toTrip({ to: '' })).toBeUndefined();
   expect(toTrip({ to: 'Nagpur', km: 1.5, days: 1, returnHours: 0, estFrom: 0, estTo: 0 })).toBeUndefined();
   expect(toQuote({ amount: 100 })).toBeUndefined();
+  // A short drive's quote carries its charge (₹600 for 3 h); older quotes do not.
+  const q = {
+    amount: 960,
+    dayRate: 1400,
+    days: 0,
+    returnHours: 3,
+    returnHourRate: 120,
+    returnCharge: 360,
+    extraHours: 3,
+    extraHourRate: 120,
+    ticket: 0,
+  };
+  expect(toQuote({ ...q, extraCharge: 600 })?.extraCharge).toBe(600);
+  expect(toQuote(q)?.extraCharge).toBeUndefined();
 });
 
 test('which packages carry a trip', () => {

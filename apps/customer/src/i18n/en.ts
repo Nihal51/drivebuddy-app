@@ -191,6 +191,13 @@ export const en = {
     homeIn: (city: string) => `Home in ${city}`,
     about: (when: string) => `about ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
+    shortDrive: (h: number, first: number, localAfter: number, firstPrice: string, rate: string) =>
+      h <= first
+        ? `${h} h of driving: up to ${first} h = ${firstPrice}`
+        : h <= localAfter
+          ? `${h} h of driving: ${firstPrice} for the first ${first} h + ${h - first} h × ${rate}`
+          : `${h} h of driving: more than ${localAfter} h = a local full day`,
+    shortDriveBill: (amount: string, h: number) => `${amount} for ${h} h of driving`,
     chooseCity: 'Choose your city above to see the estimate.',
     chooseDest: 'Choose where you are going to see the estimate.',
     elsewhereNote: (rate: string) =>

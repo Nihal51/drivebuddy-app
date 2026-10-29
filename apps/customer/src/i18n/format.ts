@@ -123,7 +123,11 @@ export function tripSummary(
 export function billBreakdown(t: Messages, b: BookingBill): string {
   return [
     b.days > 0 ? t.trip.times(rupees(b.dayRate), t.trip.days(b.days)) : null,
-    b.extraHours > 0 ? t.trip.billExtra(rupees(b.extraCharge), b.extraHours) : null,
+    b.extraHours > 0
+      ? b.days === 0
+        ? t.trip.shortDriveBill(rupees(b.extraCharge), b.extraHours)
+        : t.trip.billExtra(rupees(b.extraCharge), b.extraHours)
+      : null,
     b.returnHours > 0 ? `${rupees(b.returnCharge)} ${t.trip.returnShort(b.returnHours)}` : null,
     b.ticket > 0 ? t.trip.ticket(rupees(b.ticket)) : null,
   ]
@@ -147,7 +151,11 @@ export function quoteBreakdown(t: Messages, q: BookingQuote): string {
   return [
     q.days > 0 ? t.trip.times(rupees(q.dayRate), t.trip.days(q.days)) : null,
     q.returnHours > 0 ? `${rupees(q.returnCharge)} ${t.trip.returnShort(q.returnHours)}` : null,
-    q.extraHours > 0 ? t.trip.times(rupees(q.extraHourRate), t.trip.extraHours(q.extraHours)) : null,
+    q.extraHours > 0
+      ? q.days === 0 && q.extraCharge !== undefined && q.extraCharge !== q.extraHours * q.extraHourRate
+        ? t.trip.shortDriveBill(rupees(q.extraCharge), q.extraHours)
+        : t.trip.times(rupees(q.extraHourRate), t.trip.extraHours(q.extraHours))
+      : null,
     q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
   ]
     .filter(Boolean)

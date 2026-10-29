@@ -182,9 +182,9 @@ describe('Booking, step by step', () => {
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
-    // 6 h of driving and 6 h home, by the hour: 12 × ₹120.
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,440');
-    expect(screen.getByText(/6 driving hours × ₹120/)).toBeOnTheScreen();
+    // 6 h of driving: ₹600 for the first 3 h + 3 × ₹120; 6 h home × ₹120.
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,680');
+    expect(screen.getByText(/6 h of driving: ₹600 for the first 3 h \+ 3 h × ₹120/)).toBeOnTheScreen();
     expect(screen.getByText(/Driver’s way home: 6 h from the drop/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 
