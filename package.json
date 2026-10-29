@@ -29,7 +29,7 @@
     "node": ">=20.19.4"
   },
   "devDependencies": {
-    "eslint": "^9.39.5",
+    "eslint": "^10.13.0",
     "eslint-config-expo": "~57.0.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
