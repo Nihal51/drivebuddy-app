@@ -214,7 +214,7 @@ function Estimate({
       <AppText color={colors.textMuted}>
         {t.trip.elsewhereNote(rate)}
         {oneWay
-          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay))}`
+          ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay), config.outstation.returnFullDayAfter ?? 24)}`
           : ''}
       </AppText>
     );
@@ -270,6 +270,7 @@ function Estimate({
                 label={`${t.trip.wayHomeHours(plan.returnHours)} (${t.trip.returnMax(
                   rupees(config.outstation.returnHour),
                   rupees(config.outstation.returnMaxPerDay),
+                  config.outstation.returnFullDayAfter ?? 24,
                 )})`}
                 amount={rupees(plan.est.returnCharge)}
               />
@@ -304,6 +305,8 @@ function Estimate({
           rupees(config.outstation.extraHour),
           rupees(config.outstation.mealAllowance),
           oneWay,
+          config.outstation.extraFullDayAfter,
+          config.outstation.returnFullDayAfter,
         )}
       </AppText>
     </View>
@@ -332,7 +335,6 @@ function Timeline({
   if (plan.dropAt === undefined || plan.homeAt === undefined) return null;
   const at = (hours: number) => formatDateTime(t, startAt + Math.round((hours * 60) / 5) * 5 * 60_000);
   const leaveAt = plan.leaveAt ?? plan.dropAt;
-  const wait = leaveAt - plan.dropAt - (config.outstation.stationHours ?? 1);
   const h = (n: number) => Math.max(1, Math.round(n));
   const rows: { label: string; value: string }[] = [
     { label: t.trip.leaves(from), value: at(0) },
@@ -346,20 +348,7 @@ function Timeline({
     },
     { label: t.trip.drops(to), value: t.trip.about(at(plan.dropAt)) },
   ];
-  if (plan.train) {
-    const train = plan.train;
-    const notes = [
-      train.via ? t.trip.via(train.via) : null,
-      train.days?.length ? t.trip.runs(train.days.map((d) => t.dates.weekdays[d] ?? '').join(', ')) : null,
-    ].filter(Boolean);
-    rows.push({
-      label: t.trip.trainHome,
-      value: `${train.no} ${train.name}${notes.length ? ` (${notes.join('; ')})` : ''}, ${at(leaveAt)}`,
-    });
-    if (wait >= 1) rows.push({ label: t.trip.waits, value: t.trip.onBoard(h(wait)) });
-  } else {
-    rows.push({ label: t.trip.wayHome, value: t.trip.onBoard(h(plan.homeAt - leaveAt)) });
-  }
+  rows.push({ label: t.trip.wayHome, value: t.trip.onBoard(h(plan.homeAt - leaveAt)) });
   rows.push({ label: t.trip.homeIn(from), value: t.trip.about(at(plan.homeAt)) });
   return (
     <View style={styles.lines} testID="trip-timeline">

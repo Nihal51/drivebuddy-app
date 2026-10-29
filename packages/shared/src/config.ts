@@ -86,6 +86,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     extraHour: 120,
     returnHour: 120,
     returnMaxPerDay: 1200,
+    returnFullDayAfter: 6,
+    extraFullDayAfter: 7,
     mealAllowance: 300,
     kmPerDay: 600,
     localWithinKm: 60,

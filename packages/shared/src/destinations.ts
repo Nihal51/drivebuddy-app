@@ -1,5 +1,5 @@
 /**
- * The destinations table as the website published it on 2026-10-28 (generated from
+ * The destinations table as the website published it on 2026-10-29 (generated from
  * lib/outstation.ts there — do not edit by hand). Only a fallback: the app uses
  * the live table from /app-config.json whenever it has one.
  */
@@ -50,7 +50,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     region: 'cg',
     from: {
       Raipur: { km: 40, oneWay: { days: 1, returnHours: 2, driveHours: 0.8, homeHours: 0.75 }, roundDays: 1 },
-      Bhilai: { km: 10, oneWay: { days: 1, returnHours: 1, driveHours: 0.2, homeHours: 0 }, roundDays: 1 },
+      Bhilai: { km: 10, oneWay: { days: 1, returnHours: 2, driveHours: 0.2, homeHours: 0.2 }, roundDays: 1 },
       Durg: { km: 0, oneWay: { days: 1, returnHours: 0, driveHours: 0, homeHours: 0 }, roundDays: 1 },
       Bilaspur: {
         km: 150,
@@ -344,21 +344,17 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Jabalpur',
     nameHi: 'जबलपुर',
     region: 'india',
-    trains: [
-      { no: '11702', name: 'Mook Mati Exp', dep: '06:00', hours: 7.8 },
-      { no: '12854', name: 'Amarkantak Exp', dep: '21:35', hours: 9.3 },
-    ],
     from: {
-      Raipur: { km: 383, oneWay: { days: 1, returnHours: 17, driveHours: 7.66, homeHours: 9 }, roundDays: 2 },
+      Raipur: { km: 383, oneWay: { days: 1, returnHours: 10, driveHours: 7.66, homeHours: 9 }, roundDays: 2 },
       Bhilai: {
         km: 370,
-        oneWay: { days: 1, returnHours: 16, driveHours: 7.4, homeHours: 8.5 },
+        oneWay: { days: 1, returnHours: 10, driveHours: 7.4, homeHours: 8.5 },
         roundDays: 2,
       },
-      Durg: { km: 360, oneWay: { days: 1, returnHours: 17, driveHours: 7.2, homeHours: 8.5 }, roundDays: 2 },
+      Durg: { km: 360, oneWay: { days: 1, returnHours: 10, driveHours: 7.2, homeHours: 8.5 }, roundDays: 2 },
       Bilaspur: {
         km: 350,
-        oneWay: { days: 1, returnHours: 17, driveHours: 7, homeHours: 8.5 },
+        oneWay: { days: 1, returnHours: 10, driveHours: 7, homeHours: 8.5 },
         roundDays: 1,
       },
     },
@@ -368,23 +364,17 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Visakhapatnam',
     nameHi: 'विशाखापत्तनम',
     region: 'india',
-    trains: [
-      { no: '12807', name: 'Samta Exp', dep: '09:20', hours: 9.7, days: [0, 2, 3, 4, 6] },
-      { no: '20830', name: 'Vande Bharat', dep: '14:50', hours: 7.2, days: [0, 1, 2, 3, 5, 6] },
-      { no: '18530', name: 'VSKP–Durg Exp', dep: '16:50', hours: 11.7 },
-      { no: '18518', name: 'VSKP–Korba Exp', dep: '21:00', hours: 10 },
-    ],
     from: {
       Raipur: {
         km: 546,
-        oneWay: { days: 1, returnHours: 14, driveHours: 10.92, homeHours: 10 },
+        oneWay: { days: 1, returnHours: 11, driveHours: 10.92, homeHours: 10 },
         roundDays: 2,
       },
-      Bhilai: { km: 550, oneWay: { days: 1, returnHours: 14, driveHours: 11, homeHours: 11 }, roundDays: 2 },
-      Durg: { km: 560, oneWay: { days: 1, returnHours: 14, driveHours: 11.2, homeHours: 11 }, roundDays: 2 },
+      Bhilai: { km: 550, oneWay: { days: 1, returnHours: 12, driveHours: 11, homeHours: 11 }, roundDays: 2 },
+      Durg: { km: 560, oneWay: { days: 1, returnHours: 12, driveHours: 11.2, homeHours: 11 }, roundDays: 2 },
       Bilaspur: {
         km: 640,
-        oneWay: { days: 1, returnHours: 14, driveHours: 12.8, homeHours: 12 },
+        oneWay: { days: 1, returnHours: 13, driveHours: 12.8, homeHours: 12 },
         roundDays: 3,
       },
     },
@@ -526,25 +516,21 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Varanasi',
     nameHi: 'वाराणसी',
     region: 'india',
-    trains: [
-      { no: '15159', name: 'Sarnath Exp', dep: '12:30', hours: 17.25 },
-      { no: '15231', name: 'Barauni–Gondia Exp', dep: '21:35', hours: 16.75 },
-    ],
     from: {
       Raipur: {
         km: 644,
-        oneWay: { days: 1, returnHours: 19, driveHours: 12.88, homeHours: 17 },
+        oneWay: { days: 1, returnHours: 18, driveHours: 12.88, homeHours: 17 },
         roundDays: 3,
       },
       Bhilai: {
         km: 660,
-        oneWay: { days: 2, returnHours: 23, driveHours: 13.2, homeHours: 18 },
+        oneWay: { days: 2, returnHours: 19, driveHours: 13.2, homeHours: 18 },
         roundDays: 3,
       },
-      Durg: { km: 670, oneWay: { days: 2, returnHours: 23, driveHours: 13.4, homeHours: 18 }, roundDays: 3 },
+      Durg: { km: 670, oneWay: { days: 2, returnHours: 19, driveHours: 13.4, homeHours: 18 }, roundDays: 3 },
       Bilaspur: {
         km: 500,
-        oneWay: { days: 1, returnHours: 20, driveHours: 10, homeHours: 15 },
+        oneWay: { days: 1, returnHours: 16, driveHours: 10, homeHours: 15 },
         roundDays: 2,
       },
     },
@@ -634,23 +620,17 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Hyderabad',
     nameHi: 'हैदराबाद',
     region: 'india',
-    trains: [
-      { no: '12723', name: 'Telangana Exp', dep: '06:25', hours: 15.4, via: 'Nagpur' },
-      { no: '12791', name: 'Secunderabad–Danapur Exp', dep: '09:25', hours: 15.4, via: 'Nagpur' },
-      { no: '12771', name: 'Secunderabad–Raipur Exp', dep: '22:40', hours: 14.7, days: [1, 3, 5] },
-      { no: '12721', name: 'Dakshin Exp', dep: '23:25', hours: 16.4, via: 'Nagpur' },
-    ],
     from: {
       Raipur: {
         km: 780,
-        oneWay: { days: 2, returnHours: 30, driveHours: 15.6, homeHours: 15 },
+        oneWay: { days: 2, returnHours: 16, driveHours: 15.6, homeHours: 15 },
         roundDays: 3,
       },
-      Bhilai: { km: 750, oneWay: { days: 2, returnHours: 30, driveHours: 15, homeHours: 15 }, roundDays: 3 },
-      Durg: { km: 740, oneWay: { days: 2, returnHours: 31, driveHours: 14.8, homeHours: 15 }, roundDays: 3 },
+      Bhilai: { km: 750, oneWay: { days: 2, returnHours: 16, driveHours: 15, homeHours: 15 }, roundDays: 3 },
+      Durg: { km: 740, oneWay: { days: 2, returnHours: 16, driveHours: 14.8, homeHours: 15 }, roundDays: 3 },
       Bilaspur: {
         km: 890,
-        oneWay: { days: 2, returnHours: 29, driveHours: 17.8, homeHours: 16.5 },
+        oneWay: { days: 2, returnHours: 18, driveHours: 17.8, homeHours: 16.5 },
         roundDays: 3,
       },
     },
@@ -660,17 +640,10 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Kolkata',
     nameHi: 'कोलकाता',
     region: 'india',
-    trains: [
-      { no: '12860', name: 'Gitanjali Exp', dep: '13:40', hours: 13 },
-      { no: '18030', name: 'Shalimar–LTT Exp', dep: '15:00', hours: 15.4 },
-      { no: '12810', name: 'Howrah–Mumbai Mail', dep: '19:30', hours: 13.2 },
-      { no: '12130', name: 'Azad Hind Exp', dep: '21:40', hours: 13.2 },
-      { no: '12834', name: 'Howrah–Ahmedabad Exp', dep: '23:05', hours: 14.4 },
-    ],
     from: {
       Raipur: {
         km: 831,
-        oneWay: { days: 2, returnHours: 16, driveHours: 16.62, homeHours: 13.25 },
+        oneWay: { days: 2, returnHours: 15, driveHours: 16.62, homeHours: 13.25 },
         roundDays: 3,
       },
       Bhilai: {
@@ -685,7 +658,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
       },
       Bilaspur: {
         km: 750,
-        oneWay: { days: 2, returnHours: 15, driveHours: 15, homeHours: 11.25 },
+        oneWay: { days: 2, returnHours: 13, driveHours: 15, homeHours: 11.25 },
         roundDays: 3,
       },
     },
@@ -695,26 +668,25 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Pune',
     nameHi: 'पुणे',
     region: 'india',
-    trains: [{ no: '12129', name: 'Azad Hind Exp', dep: '18:35', hours: 20 }],
     from: {
       Raipur: {
         km: 1007,
-        oneWay: { days: 2, returnHours: 24, driveHours: 20.14, homeHours: 20 },
+        oneWay: { days: 2, returnHours: 21, driveHours: 20.14, homeHours: 20 },
         roundDays: 4,
       },
       Bhilai: {
         km: 970,
-        oneWay: { days: 2, returnHours: 24, driveHours: 19.4, homeHours: 19.5 },
+        oneWay: { days: 2, returnHours: 21, driveHours: 19.4, homeHours: 19.5 },
         roundDays: 4,
       },
       Durg: {
         km: 970,
-        oneWay: { days: 2, returnHours: 24, driveHours: 19.4, homeHours: 19.5 },
+        oneWay: { days: 2, returnHours: 21, driveHours: 19.4, homeHours: 19.5 },
         roundDays: 4,
       },
       Bilaspur: {
         km: 1100,
-        oneWay: { days: 2, returnHours: 24, driveHours: 22, homeHours: 22 },
+        oneWay: { days: 2, returnHours: 23, driveHours: 22, homeHours: 22 },
         roundDays: 4,
       },
     },
@@ -724,30 +696,25 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Mumbai',
     nameHi: 'मुंबई',
     region: 'india',
-    trains: [
-      { no: '12859', name: 'Gitanjali Exp', dep: '06:00', hours: 17.5 },
-      { no: '12809', name: 'Mumbai–Howrah Mail', dep: '21:10', hours: 18.9 },
-      { no: '18029', name: 'LTT–Shalimar Exp', dep: '22:00', hours: 21.7 },
-    ],
     from: {
       Raipur: {
         km: 1118,
-        oneWay: { days: 2, returnHours: 23, driveHours: 22.36, homeHours: 18 },
+        oneWay: { days: 2, returnHours: 19, driveHours: 22.36, homeHours: 18 },
         roundDays: 4,
       },
       Bhilai: {
         km: 1080,
-        oneWay: { days: 2, returnHours: 23, driveHours: 21.6, homeHours: 17.25 },
+        oneWay: { days: 2, returnHours: 19, driveHours: 21.6, homeHours: 17.25 },
         roundDays: 4,
       },
       Durg: {
         km: 1070,
-        oneWay: { days: 2, returnHours: 23, driveHours: 21.4, homeHours: 17.25 },
+        oneWay: { days: 2, returnHours: 19, driveHours: 21.4, homeHours: 17.25 },
         roundDays: 4,
       },
       Bilaspur: {
         km: 1210,
-        oneWay: { days: 2, returnHours: 24, driveHours: 24.2, homeHours: 20.5 },
+        oneWay: { days: 2, returnHours: 22, driveHours: 24.2, homeHours: 20.5 },
         roundDays: 4,
       },
     },
@@ -757,26 +724,21 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Delhi',
     nameHi: 'दिल्ली',
     region: 'india',
-    trains: [
-      { no: '18238', name: 'Chhattisgarh Exp', dep: '04:25', hours: 28 },
-      { no: '12808', name: 'Samta Exp', dep: '07:00', hours: 22.8, days: [1, 2, 4, 5, 6] },
-      { no: '12410', name: 'Gondwana Exp', dep: '15:05', hours: 22.4, days: [1, 2, 3, 4, 6] },
-    ],
     from: {
       Raipur: {
         km: 1214,
-        oneWay: { days: 2, returnHours: 38, driveHours: 24.28, homeHours: 22.5 },
+        oneWay: { days: 2, returnHours: 24, driveHours: 24.28, homeHours: 22.5 },
         roundDays: 4,
       },
       Bhilai: {
         km: 1190,
-        oneWay: { days: 2, returnHours: 38, driveHours: 23.8, homeHours: 22 },
+        oneWay: { days: 2, returnHours: 23, driveHours: 23.8, homeHours: 22 },
         roundDays: 4,
       },
-      Durg: { km: 1180, oneWay: { days: 2, returnHours: 38, driveHours: 23.6, homeHours: 22 }, roundDays: 4 },
+      Durg: { km: 1180, oneWay: { days: 2, returnHours: 23, driveHours: 23.6, homeHours: 22 }, roundDays: 4 },
       Bilaspur: {
         km: 1130,
-        oneWay: { days: 2, returnHours: 38, driveHours: 22.6, homeHours: 21 },
+        oneWay: { days: 2, returnHours: 22, driveHours: 22.6, homeHours: 21 },
         roundDays: 4,
       },
     },
@@ -786,32 +748,25 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Bengaluru',
     nameHi: 'बेंगलुरु',
     region: 'india',
-    trains: [
-      { no: '12295', name: 'Sanghamitra Exp', dep: '09:15', hours: 29.8, via: 'Nagpur' },
-      { no: '12975', name: 'Mysuru–Jaipur Exp', dep: '13:00', hours: 28.6, days: [4, 6], via: 'Nagpur' },
-      { no: '18262', name: 'Yelahanka–Bilaspur Exp', dep: '21:30', hours: 27.6, days: [4] },
-      { no: '12251', name: 'Wainganga Exp', dep: '23:40', hours: 24.4, days: [2, 5] },
-      { no: '22366', name: 'Bengaluru–Danapur Exp', dep: '23:50', hours: 31.7, via: 'Nagpur' },
-    ],
     from: {
       Raipur: {
         km: 1370,
-        oneWay: { days: 3, returnHours: 46, driveHours: 27.4, homeHours: 28 },
+        oneWay: { days: 3, returnHours: 29, driveHours: 27.4, homeHours: 28 },
         roundDays: 5,
       },
       Bhilai: {
         km: 1350,
-        oneWay: { days: 3, returnHours: 45, driveHours: 27, homeHours: 27.25 },
+        oneWay: { days: 3, returnHours: 29, driveHours: 27, homeHours: 27.25 },
         roundDays: 5,
       },
       Durg: {
         km: 1340,
-        oneWay: { days: 3, returnHours: 45, driveHours: 26.8, homeHours: 27.25 },
+        oneWay: { days: 3, returnHours: 29, driveHours: 26.8, homeHours: 27.25 },
         roundDays: 5,
       },
       Bilaspur: {
         km: 1480,
-        oneWay: { days: 3, returnHours: 45, driveHours: 29.6, homeHours: 30 },
+        oneWay: { days: 3, returnHours: 31, driveHours: 29.6, homeHours: 30 },
         roundDays: 5,
       },
     },

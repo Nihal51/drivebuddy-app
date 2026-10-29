@@ -21,10 +21,11 @@ import {
 
 const config = DEFAULT_CONFIG;
 
-/* The worked examples agreed with the owner (website: scripts/outstation.test.mjs, 28 Oct 2026):
-   each 12 h of driving is a day at ₹1,550–1,650, the rest ₹120 an hour (a shorter
-   drive: all by the hour); the way home from the drop until he is home, waiting
-   included, ₹120 an hour, at most ₹1,200 a day. Timings from the start. */
+/* The worked examples agreed with the owner (website: scripts/outstation.test.mjs, 29 Oct 2026):
+   each 12 h of driving is a day at ₹1,550–1,650, the rest ₹120 an hour, more than
+   7 left over = one more day (a shorter drive: by the hour); the way home from the
+   drop until he is home, waiting included: each 24 h ₹1,200, the rest ₹120 an hour,
+   more than 6 = ₹1,200. The typical time home (the website looks up real trains). */
 
 test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — ₹1,440', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
@@ -32,45 +33,43 @@ test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — 
   expect([p.est?.from, p.est?.to]).toEqual([1440, 1440]);
 });
 
-test('Raipur → Mumbai one-way: 1 day + 11 h, the 9:10 PM Mail, 23 h home — ₹4,070–4,170', () => {
+test('Raipur → Mumbai one-way: 22.4 h = 1 day + 11 h, more than 7 = 2 full days; 19 h home — ₹4,300–4,500', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'mumbai');
-  expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([1, 11, 2, 23]);
-  expect(p.train?.no).toBe('12809');
-  expect([p.est?.extraCharge, p.est?.returnCharge]).toEqual([1320, 1200]);
-  expect([p.est?.from, p.est?.to]).toEqual([4070, 4170]);
+  expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 0, 2, 19]);
+  expect([p.est?.extraCharge, p.est?.returnCharge]).toEqual([0, 1200]);
+  expect([p.est?.from, p.est?.to]).toEqual([4300, 4500]);
 });
 
-test('Raipur → Hyderabad: the direct train only Mon, Wed & Fri; other days the Dakshin Exp via Nagpur', () => {
-  const sunday = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 0 });
-  expect(sunday.train?.no).toBe('12771');
-  expect((sunday.leaveAt ?? 0) - (sunday.dropAt ?? 0)).toBeGreaterThan(9);
-  expect(sunday.startHour).toBe(9);
-  const monday = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 1 });
-  expect([monday.train?.no, monday.train?.via]).toEqual(['12721', 'Nagpur']);
+test('Raipur → Hyderabad: 15.6 h = 1 day + 4 h by the hour; 16 h home = a full day — ₹3,230–3,330', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 0 });
+  expect([p.fullDays, p.extraHours, p.returnHours, p.startHour]).toEqual([1, 4, 16, 9]);
+  expect([p.est?.from, p.est?.to]).toEqual([3230, 3330]);
+  // The typical way home: an hour to the station, then on board; no timetable in the app.
+  expect((p.leaveAt ?? 0) - (p.dropAt ?? 0)).toBeCloseTo(1);
 });
 
-test('Raipur → Bengaluru, Thursday 7:30 AM day and night: the Friday Wainganga Exp, never the Thu/Sat-only 12975', () => {
-  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7.5, weekday: 4 }, true);
-  expect(p.train?.no).toBe('12251');
+test('Raipur → Bengaluru: 2 days + 4 h; 29 h home = 1 day + 5 h — ₹5,380–5,580', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 1 });
+  expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 4, 3, 29]);
+  expect([p.est?.returnCharge, p.est?.from, p.est?.to]).toEqual([1800, 5380, 5580]);
+  // Day and night: the same price, the car there a day sooner.
+  const nonstop = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7.5, weekday: 4 }, true);
+  expect([nonstop.days, nonstop.est?.from]).toEqual([2, 5380]);
+  expect(nonstop.dropAt).toBeLessThan(p.dropAt ?? 0);
 });
 
-test('Raipur → Delhi: the trains that do not run that day are skipped', () => {
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi').train?.no).toBe('18238');
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 0, { hour: 7, weekday: 0 }).train?.no).toBe(
-    '12808',
-  );
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 0, { hour: 7, weekday: 1 }).train?.no).toBe(
-    '18238',
-  );
+test('Raipur → Delhi: booked days count in full; never more than 60', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'delhi');
+  expect([p.fullDays, p.extraHours, p.returnHours, p.est?.from]).toEqual([2, 1, 24, 4420]);
   const four = planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 4);
   expect([four.days, four.fullDays, four.extraHours]).toEqual([4, 4, 0]);
   expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 500).days).toBe(60);
 });
 
-test('Raipur → Bengaluru on a Monday: the daily change at Nagpur', () => {
-  const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 1 });
-  expect([p.fullDays, p.extraHours, p.days]).toEqual([2, 4, 3]);
-  expect(p.train?.via).toBe('Nagpur');
+test('an older website file without the full-day rules: the leftover hours stay by the hour', () => {
+  const { extraFullDayAfter: _e, returnFullDayAfter: _r, ...rules } = config.outstation;
+  const p = planTrip({ ...config, outstation: rules }, 'one-way-drop', 'Raipur', 'mumbai');
+  expect([p.fullDays, p.extraHours, p.est?.extraCharge]).toEqual([1, 11, 1320]);
 });
 
 test('day and night: the same driving price, an earlier drop', () => {
@@ -103,7 +102,6 @@ test('an older website file without the timings: the table figure', () => {
     ...config,
     destinations: config.destinations.map((d) => ({
       ...d,
-      trains: undefined,
       from: Object.fromEntries(
         Object.entries(d.from).map(([c, l]) => [
           c,
@@ -113,7 +111,8 @@ test('an older website file without the timings: the table figure', () => {
     })),
   };
   const p = planTrip(old, 'one-way-drop', 'Raipur', 'mumbai', 0, 22);
-  expect([p.returnHours, p.dropAt, p.fullDays, p.extraHours]).toEqual([23, undefined, 1, 11]);
+  const table = config.destinations.find((d) => d.id === 'mumbai')!.from.Raipur.oneWay.returnHours;
+  expect([p.returnHours, p.dropAt, p.fullDays, p.extraHours]).toEqual([table, undefined, 2, 0]);
 });
 
 test('the way home: ₹120 an hour, at most ₹1,200 in any 24 hours', () => {
@@ -198,7 +197,7 @@ test('search: popular places first, then by name in English or Hindi', () => {
 test('the trip as a line for the team, and in the notes when the website does not take trips yet', () => {
   const t = tripRecord(planTrip(config, 'one-way-drop', 'Raipur', 'delhi'), '');
   const line =
-    'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 38 h getting home · est. ₹5,620–5,820';
+    'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 24 h getting home · est. ₹4,420–4,620';
   expect(tripNote(t, 'Raipur')).toBe(line);
   expect(notesWithTrip('  Swift, automatic ', t, 'Raipur')).toBe(`${line}\nSwift, automatic`);
   expect(notesWithTrip('', t, 'Raipur')).toBe(line);
@@ -211,16 +210,17 @@ test('the trip as a line for the team, and in the notes when the website does no
   expect(tripNote(big, 'Raipur')).toContain('est. ₹1,25,000');
 });
 
-test('the published table is read with its trains and timings; odd ones are dropped, never the table', () => {
+test('the published table is read with its timings; odd ones are dropped, never the table', () => {
   const json = JSON.parse(JSON.stringify(config.destinations));
   const parsed = parseDestinations(json);
   expect(parsed).toEqual(config.destinations);
   const delhi = json.find((d: { id: string }) => d.id === 'delhi');
-  delhi.trains[0].dep = '25:00';
+  // An older website file still lists trains: read, and left out.
+  delhi.trains = [{ no: '18238', name: 'Chhattisgarh Exp', dep: '13:00', hours: 23 }];
   delhi.from.Raipur.oneWay.homeHours = -1;
   const again = parseDestinations(json);
   const d = again?.find((x) => x.id === 'delhi');
-  expect(d?.trains).toBeUndefined();
+  expect(d && 'trains' in d).toBe(false);
   expect(d?.from.Raipur.oneWay.driveHours).toBeUndefined();
   expect(d?.from.Raipur.oneWay.returnHours).toBe(
     config.destinations.find((x) => x.id === 'delhi')?.from.Raipur.oneWay.returnHours,
@@ -237,6 +237,11 @@ test('the published table is read with its trains and timings; odd ones are drop
   expect(parseTripRules(rules)?.stationHours).toBeUndefined();
   expect(parseTripRules({ ...rules, stationHours: 1 })?.stationHours).toBe(1);
   expect(parseTripRules({ ...rules, averageKmh: 50 })?.averageKmh).toBe(50);
+  // The full-day rules, as the website publishes them (or as the phone saved them).
+  const r = parseTripRules({ ...rules, returnFullDayAfterHours: 6, extraFullDayAfterHours: 7 });
+  expect([r?.returnFullDayAfter, r?.extraFullDayAfter]).toEqual([6, 7]);
+  expect(parseTripRules({ ...rules, returnFullDayAfter: 6 })?.returnFullDayAfter).toBe(6);
+  expect(parseTripRules({ ...rules, returnFullDayAfterHours: 30 })?.returnFullDayAfter).toBeUndefined();
 });
 
 /* The final bill and the trip times (website: lib/tripclock.ts, firestore.rules isBill / isClock). */
@@ -281,4 +286,26 @@ test('the final bill and the trip times are read back defensively', () => {
   });
   expect(toClock({ dropAt: drop })).toBeUndefined(); // no start, no clock
   expect(toClock('x')).toBeUndefined();
+});
+
+test('the way home: each 24 h a day; up to 6 h left over by the hour, more = a full day (website rule, 29 Oct 2026)', () => {
+  const c = (h: number) => returnCost(h, 120, 1200, 6);
+  expect([0, 5, 6, 7, 8, 24, 30, 31, 32, 56].map(c)).toEqual([
+    0, 600, 720, 1200, 1200, 1200, 1920, 2400, 2400, 3600,
+  ]);
+  // An older website file without the setting: the old rule.
+  expect(returnCost(8, 120, 1200)).toBe(960);
+  expect(
+    parseTripRules({ ...DEFAULT_CONFIG.outstation, returnFullDayAfterHours: 6 })?.returnFullDayAfter,
+  ).toBe(6);
+  expect(
+    parseTripRules({ ...DEFAULT_CONFIG.outstation, returnFullDayAfterHours: 99 })?.returnFullDayAfter,
+  ).toBeUndefined();
+});
+
+test('driving: more than 7 hours left over after the full days count as one more day (website rule, 29 Oct 2026)', () => {
+  const p = planTrip(config, 'one-way-drop', 'Raipur', 'mumbai'); // 22.4 h = 1 day + 11 h → 2 days
+  expect([p.fullDays, p.extraHours]).toEqual([2, 0]);
+  const n = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur'); // 6 h: by the hour
+  expect([n.fullDays, n.extraHours]).toEqual([0, 6]);
 });

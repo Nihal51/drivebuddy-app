@@ -182,16 +182,20 @@ describe('Booking, step by step', () => {
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
-    // 6 h of driving and 6 h home by train, by the hour: 12 × ₹120.
+    // 6 h of driving and 6 h home, by the hour: 12 × ₹120.
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,440');
     expect(screen.getByText(/6 driving hours × ₹120/)).toBeOnTheScreen();
     expect(screen.getByText(/Driver’s way home: 6 h from the drop/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 
-    // Mumbai: the timeline names the train home; day and night drops the car sooner.
+    // Mumbai: 22 h of driving, 10 h left over is more than 7 = 2 full days; the typical
+    // way home (the website looks up the trains); day and night drops the car sooner.
     await fireEvent.press(screen.getByTestId('dest-mumbai'));
-    expect(screen.getByText(/1 driving day \(12 h each\)/)).toBeOnTheScreen();
-    expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Train home \(you book his ticket\)/);
+    expect(screen.getByText(/2 driving days \(12 h each\)/)).toBeOnTheScreen();
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹4,300–4,500');
+    expect(screen.getByTestId('trip-timeline')).toHaveTextContent(
+      /Way home, typical time \(you book his ticket\)/,
+    );
     await fireEvent.press(screen.getByTestId('trip-nonstop'));
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/day and night/);
     await fireEvent.press(screen.getByTestId('trip-nonstop'));

@@ -170,7 +170,8 @@ export const hi: Messages = {
     wayHomeHours: (n: number) => `ड्राइवर की घर वापसी: कार पहुँचाने से घर पहुँचने तक ${n} घंटे, इंतज़ार भी`,
     homeInTime: 'ड्राइवर की घर वापसी',
     noCharge: 'कोई चार्ज नहीं',
-    returnMax: (rate: string, max: string) => `${rate}/घंटा, दिन में अधिकतम ${max}`,
+    returnMax: (rate: string, max: string, after: number) =>
+      `हर दिन ${max}; बचे घंटे ${rate}/घंटा, ${after} से ज़्यादा तो पूरा दिन`,
     returnShort: (n: number) => `घर वापसी (${n} घंटे)`,
     nonstop: 'दिन-रात ड्राइविंग',
     nonstopHint: 'रात में आराम नहीं, तो जल्दी पहुँचेगा — ड्राइविंग की कीमत वही।',
@@ -178,13 +179,9 @@ export const hi: Messages = {
     driving: 'ड्राइविंग',
     drivingNonstop: (h: number) => `लगभग ${h} घंटे, दिन-रात`,
     drivingDaysRest: (h: number, perDay: number) => `लगभग ${h} घंटे: रोज़ लगभग ${perDay} घंटे, रात में आराम`,
-    via: (city: string) => `${city} में ट्रेन बदलेगा`,
-    runs: (days: string) => `चलती है: ${days}`,
-    waits: 'ट्रेन का इंतज़ार',
     leaves: (city: string) => `${city} से निकलेगा`,
     drops: (place: string) => `${place} में कार पहुँचाएगा`,
-    trainHome: 'घर की ट्रेन (टिकट आप बुक करें)',
-    wayHome: 'घर की बस या ट्रेन (टिकट आप बुक करें)',
+    wayHome: 'घर वापसी, आम तौर पर लगने वाला समय (टिकट आप बुक करें)',
     onBoard: (h: number) => `लगभग ${h} घंटे`,
     homeIn: (city: string) => `${city} में घर`,
     about: (when: string) => `लगभग ${when}`,
@@ -192,14 +189,21 @@ export const hi: Messages = {
     chooseCity: 'अनुमान देखने के लिए ऊपर अपना शहर चुनें।',
     chooseDest: 'अनुमान देखने के लिए चुनें कि कहाँ जाना है।',
     elsewhereNote: (rate: string) => `हम दूरी देखकर कॉल पर कीमत बताएँगे: ${rate} प्रति दिन।`,
-    elsewhereReturn: (rate: string, max: string) =>
-      `ड्राइवर की घर वापसी, कार पहुँचाने से घर पहुँचने तक: ${rate} प्रति घंटा, दिन में अधिकतम ${max}।`,
+    elsewhereReturn: (rate: string, max: string, after: number) =>
+      `ड्राइवर की घर वापसी, कार पहुँचाने से घर पहुँचने तक: हर 24 घंटे ${max}; बचे घंटे ${rate} प्रति घंटा, ${after} घंटे से ज़्यादा तो पूरा दिन।`,
     sameCity: 'यह आपका पिकअप शहर है — शहर के अंदर के लिए लोकल पैकेज चुनें।',
     localTip: (place: string, km: string, price: string) =>
       `${place} सिर्फ़ लगभग ${km} दूर है — शहर में पूरा दिन (${price}) आमतौर पर सस्ता पड़ता है।`,
     useLocal: 'पूरा दिन चुनें',
-    smallPrint: (hours: number, extra: string, meal: string, oneWay: boolean) =>
-      `यह अनुमान है: सही कीमत ड्राइवर के निकलने से पहले कॉल पर तय होगी। ${oneWay ? `हर ${hours} घंटे की ड्राइविंग एक दिन, उसके बाद हर घंटा ${extra} — कम ड्राइविंग हो तो पूरी घंटे के हिसाब से। कार पहुँचाने से घर पहुँचने तक ड्राइवर की वापसी (ट्रेन का इंतज़ार भी) भी घंटे के हिसाब से। आख़िरी बिल असल समय से बनेगा। उसका बस या ट्रेन का टिकट आप बुक करें।` : `हर दिन ड्राइवर के शुरुआत से 24 घंटे का है — ${hours} घंटे तक ड्राइविंग (उसके बाद ${extra} प्रति घंटा)।`} पेट्रोल/डीज़ल, टोल और पार्किंग अलग से। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
+    smallPrint: (
+      hours: number,
+      extra: string,
+      meal: string,
+      oneWay: boolean,
+      extraAfter?: number,
+      homeAfter?: number,
+    ) =>
+      `यह अनुमान है: सही कीमत ड्राइवर के निकलने से पहले कॉल पर तय होगी। ${oneWay ? `हर ${hours} घंटे की ड्राइविंग एक दिन; बचे घंटे ${extra} प्रति घंटा${extraAfter !== undefined ? `, ${extraAfter} से ज़्यादा तो पूरा दिन` : ''}। कार पहुँचाने से घर पहुँचने तक ड्राइवर की वापसी (ट्रेन का इंतज़ार भी): हर 24 घंटे एक दिन, बचे घंटे प्रति घंटा${homeAfter !== undefined ? `, ${homeAfter} से ज़्यादा तो पूरा दिन` : ''}। आख़िरी बिल असल समय से बनेगा। उसका बस या ट्रेन का टिकट आप बुक करें।` : `हर दिन ड्राइवर के शुरुआत से 24 घंटे का है — ${hours} घंटे तक ड्राइविंग (उसके बाद ${extra} प्रति घंटा)।`} पेट्रोल/डीज़ल, टोल और पार्किंग अलग से। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
     summaryRound: 'आना-जाना',
     summaryOneWay: 'वन-वे ड्रॉप',
     estimate: (range: string) => `अनुमान ${range}`,

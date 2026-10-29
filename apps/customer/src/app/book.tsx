@@ -161,7 +161,7 @@ function BookingWizard({
         Number(values.days) || 0,
         {
           hour: startParts.hour + startParts.minute / 60,
-          // The weekday only when a day was picked: some trains run on a few days only.
+          // The weekday only when a day was picked.
           ...(input.preferredTime && { weekday: startParts.weekday }),
         },
         oneWayNonstop,

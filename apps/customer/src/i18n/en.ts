@@ -175,7 +175,8 @@ export const en = {
     wayHomeHours: (n: number) => `Driver’s way home: ${n} h from the drop until he is home, waiting included`,
     homeInTime: 'Driver’s way home',
     noCharge: 'No charge',
-    returnMax: (rate: string, max: string) => `${rate}/h, max ${max} a day`,
+    returnMax: (rate: string, max: string, after: number) =>
+      `${max} a day; hours left over ${rate} each, more than ${after} = a full day`,
     returnShort: (n: number) => `way home (${n} h)`,
     nonstop: 'Drive day and night',
     nonstopHint: 'No overnight rest, so he gets there sooner — the same price for the driving.',
@@ -183,13 +184,9 @@ export const en = {
     driving: 'Driving',
     drivingNonstop: (h: number) => `about ${h} h, day and night`,
     drivingDaysRest: (h: number, perDay: number) => `about ${h} h: about ${perDay} h a day, resting at night`,
-    via: (city: string) => `change at ${city}`,
-    runs: (days: string) => `runs ${days}`,
-    waits: 'He waits for it',
     leaves: (city: string) => `Leaves ${city}`,
     drops: (place: string) => `Drops the car in ${place}`,
-    trainHome: 'Train home (you book his ticket)',
-    wayHome: 'Bus or train home (you book his ticket)',
+    wayHome: 'Way home, typical time (you book his ticket)',
     onBoard: (h: number) => `about ${h} h`,
     homeIn: (city: string) => `Home in ${city}`,
     about: (when: string) => `about ${when}`,
@@ -197,14 +194,21 @@ export const en = {
     chooseCity: 'Choose your city above to see the estimate.',
     chooseDest: 'Choose where you are going to see the estimate.',
     elsewhereNote: (rate: string) => `We work out the distance and call you with the price: ${rate} a day.`,
-    elsewhereReturn: (rate: string, max: string) =>
-      `His way home, from the drop until he is home: ${rate} an hour, max ${max} a day.`,
+    elsewhereReturn: (rate: string, max: string, after: number) =>
+      `His way home, from the drop until he is home: ${max} for each 24 hours; the hours left over ${rate} each, more than ${after} count as a full day.`,
     sameCity: 'That is your pickup city — for driving around town, choose a local package.',
     localTip: (place: string, km: string, price: string) =>
       `${place} is only about ${km} away — a full day in the city (${price}) usually costs less.`,
     useLocal: 'Switch to full day',
-    smallPrint: (hours: number, extra: string, meal: string, oneWay: boolean) =>
-      `An estimate: we confirm the exact price on the call, before the driver leaves. ${oneWay ? `Each ${hours} hours of driving is a day, and each hour beyond ${extra} — a shorter drive is all by the hour. His way home, from the drop until he is home (waiting for his train included), is by the hour too. The final bill uses the real times. You book his bus or train ticket home.` : `Each day is the driver’s 24 hours from the start, with up to ${hours} hours of driving (${extra} an hour beyond).`} Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    smallPrint: (
+      hours: number,
+      extra: string,
+      meal: string,
+      oneWay: boolean,
+      extraAfter?: number,
+      homeAfter?: number,
+    ) =>
+      `An estimate: we confirm the exact price on the call, before the driver leaves. ${oneWay ? `Each ${hours} hours of driving is a day; hours left over are ${extra} each${extraAfter !== undefined ? `, and more than ${extraAfter} count as a full day` : ''}. His way home, from the drop until he is home (waiting for his train included): each 24 hours a day, the hours left over by the hour${homeAfter !== undefined ? `, more than ${homeAfter} a full day` : ''}. The final bill uses the real times. You book his bus or train ticket home.` : `Each day is the driver’s 24 hours from the start, with up to ${hours} hours of driving (${extra} an hour beyond).`} Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
     summaryRound: 'round trip',
     summaryOneWay: 'one-way drop',
     estimate: (range: string) => `estimate ${range}`,

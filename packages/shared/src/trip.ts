@@ -5,19 +5,21 @@
  *
  * The maths lives on the website (lib/outstation.ts in Nihal51/very_new). It
  * publishes, in /app-config.json, the rules and a table of destinations with
- * the km, the hours of driving and the average way home from each pickup
- * city, and the regular trains home with their running days — so the app
- * repeats the website's planTrip for the customer's own start and can never
- * disagree with it (one-way drops):
+ * the km, the hours of driving and the typical way home from each pickup
+ * city — so the app repeats the website's planTrip for the customer's own
+ * start and can never disagree with it (one-way drops):
  *
  *     estimate = full days × prices.outstation       each hoursPerDay (12 h) of driving
- *              + extra hours × outstation.extraHour  the driving left over (a shorter drive: all of it)
- *              + way home × outstation.returnHour    from the drop until he is home, waiting included
- *                                                    (at most returnMaxPerDay in any 24 h)
+ *              + extra hours × outstation.extraHour  the driving left over (more than
+ *                                                    extraFullDayAfter: one more full day)
+ *              + way home                            from the drop until he is home, waiting included:
+ *                                                    each 24 h returnMaxPerDay, the hours left over
+ *                                                    × returnHour (more than returnFullDayAfter: a day)
  *
- * The start date and time decide when he drops the car (12 h of driving and
- * 12 of rest, or day and night) and which train he catches. Round trips: the
- * days of the trip.
+ * The start time decides when he drops the car (12 h of driving and 12 of
+ * rest, or day and night). The way home is the typical time; the website
+ * looks up the real trains for a date and the team confirms the price on the
+ * call. Round trips: the days of the trip.
  */
 
 import { CITIES, type City, type PackageId } from './catalog';
@@ -44,8 +46,20 @@ export type TripRules = {
   extraHour: number;
   /** Per hour of the driver's way home, from the drop until he is home. */
   returnHour: number;
-  /** The most the way home costs in any 24 hours. */
+  /** A full day of the way home (each 24 hours). */
   returnMaxPerDay: number;
+  /**
+   * The way home's hours left over after its full days: up to this many by
+   * the hour, more = a full day (website: outstation.returnFullDayAfterHours,
+   * 6). Older website files lack it: 24 (the old rule, by the hour up to the cap).
+   */
+  returnFullDayAfter?: number;
+  /**
+   * Driving hours left over after the full days: up to this many at
+   * extraHour, more = one more full day (website:
+   * outstation.extraFullDayAfterHours, 7). Older website files lack it: no rounding.
+   */
+  extraFullDayAfter?: number;
   /** From the drop to the station, hours (older website files lack it: 1). */
   stationHours?: number;
   /** Highway average with stops, km/h (older website files lack it: 50). */
@@ -71,28 +85,12 @@ export type CityLeg = {
   roundDays: number;
 };
 
-/**
- * A regular train home: departure (India time, "HH:MM") and hours to Raipur.
- * `days`: the weekdays it leaves (0 = Sunday … 6 = Saturday), left out =
- * daily; `via`: a change of train on the way.
- */
-export type HomeTrain = {
-  no: string;
-  name: string;
-  dep: string;
-  hours: number;
-  days?: number[];
-  via?: string;
-};
-
 export type TripDestination = {
   /** Stable id, saved on bookings. */
   id: string;
   name: string;
   nameHi: string;
   region: 'cg' | 'india';
-  /** Long routes with few trains a day: the regular ones home. */
-  trains?: HomeTrain[];
   from: Record<City, CityLeg>;
 };
 
@@ -154,11 +152,18 @@ export type TripEstimate = {
   returnCharge: number;
 };
 
-/** What `hours` cost at `rate` an hour, at most `maxPerDay` in any 24 hours (as on the website). */
-export function returnCost(hours: number, rate: number, maxPerDay: number): number {
+/**
+ * What `hours` of the way home cost (as on the website, lib/outstation.ts):
+ * each full 24 hours is a day (`maxPerDay`); the hours left over are `rate`
+ * each up to `fullDayAfter`, more count as one more day.
+ *   6 → ₹720; 8 → ₹1,200; 32 → ₹2,400; 56 → ₹3,600.
+ */
+export function returnCost(hours: number, rate: number, maxPerDay: number, fullDayAfter = 24): number {
   const h = Math.max(0, Math.round(Number.isFinite(hours) ? hours : 0));
   const fullDays = Math.floor(h / 24);
-  return fullDays * Math.min(24 * rate, maxPerDay) + Math.min((h - 24 * fullDays) * rate, maxPerDay);
+  const left = h - 24 * fullDays;
+  const day = Math.min(24 * rate, maxPerDay);
+  return fullDays * day + (left > fullDayAfter ? day : Math.min(left * rate, maxPerDay));
 }
 
 export type TripPlan = {
@@ -188,8 +193,6 @@ export type TripPlan = {
   dropAt?: number;
   leaveAt?: number;
   homeAt?: number;
-  /** The regular train he catches, on routes with a timetable. */
-  train?: HomeTrain;
   /** Closer than localWithinKm: a local package is usually cheaper. */
   local: boolean;
   /** The pickup city itself was picked. */
@@ -201,12 +204,6 @@ export type TripPlan = {
 export type TripStart = { hour: number; weekday?: number };
 
 const MAX_DAYS = 60;
-
-/** "21:35" → 21.583… (hour of the day). */
-const clock = (hhmm: string) => {
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h || 0) + (m || 0) / 60;
-};
 
 /** "2026-11-03T09:30" (the stored preferred time) → 9.5; '' or odd → undefined. */
 export function startHourOf(preferredTime: string): number | undefined {
@@ -234,18 +231,6 @@ export function dropTime(hoursPerDay: number, hours: number, nonstop = false, ex
   return at + extraDays * 24;
 }
 
-/** The first time a train leaves at or after `ready`, on a day it runs; an unknown weekday counts only daily trains. */
-function nextDeparture(t: HomeTrain, ready: number, start: TripStart): number | undefined {
-  let at = ready + ((((clock(t.dep) - (start.hour + ready)) % 24) + 24) % 24);
-  if (!t.days || t.days.length === 0) return at;
-  if (start.weekday === undefined) return undefined;
-  for (let i = 0; i < 8; i++, at += 24) {
-    const weekday = (start.weekday + Math.floor((start.hour + at) / 24 + 1e-9)) % 7;
-    if (t.days.includes(weekday)) return at;
-  }
-  return undefined;
-}
-
 /**
  * The trip for the form, exactly as the website's planTrip. `bookedDays` is
  * what the customer chose (0 = as few as the distance allows); `start` the
@@ -268,7 +253,6 @@ export function planTrip(
     raw.weekday !== undefined && Number.isInteger(raw.weekday) && raw.weekday >= 0 && raw.weekday <= 6
       ? raw.weekday
       : undefined;
-  const at: TripStart = weekday === undefined ? { hour } : { hour, weekday };
   const dest = destId && destId !== ELSEWHERE ? config.destinations.find((d) => d.id === destId) : undefined;
   const booked = Math.min(MAX_DAYS, Math.max(0, Math.floor(bookedDays) || 0));
   const leg = dest && city ? dest.from[city] : undefined;
@@ -309,43 +293,32 @@ export function planTrip(
     ? Math.max(1, Math.ceil((lastDayAt - 1e-9) / 24))
     : full + (rest > 1 + 1e-9 || full === 0 ? 1 : 0);
   const extraDays = booked > calendar ? booked - calendar : 0;
-  const fullDays = extraDays > 0 ? booked : full;
-  const extraHours = extraDays > 0 ? 0 : leftover;
+  // More than extraFullDayAfter hours left over: one more full day instead (as on the website).
+  const roundUp = leftover > (rules.extraFullDayAfter ?? 24);
+  const fullDays = extraDays > 0 ? booked : full + (roundUp ? 1 : 0);
+  const extraHours = extraDays > 0 || roundUp ? 0 : leftover;
 
-  // The way home: the station, then the train or bus that gets him home soonest.
-  let timing: Pick<TripPlan, 'returnHours' | 'dropAt' | 'leaveAt' | 'homeAt' | 'train'> = {
+  // The way home (the allowance, as on the website): getting to the station, then the typical hours home.
+  // The website looks up the real trains for a date; the app keeps the typical time.
+  let timing: Pick<TripPlan, 'returnHours' | 'dropAt' | 'leaveAt' | 'homeAt'> = {
     returnHours: leg.oneWay.returnHours,
   };
   const homeHours = leg.oneWay.homeHours;
   if (homeHours !== undefined && leg.oneWay.driveHours !== undefined) {
     const dropAt = lastDayAt + (straight ? 0 : extraDays * 24);
-    const ready = dropAt + (rules.stationHours ?? 1);
-    let leaveAt = ready;
-    let homeAt = ready + homeHours;
-    let train: HomeTrain | undefined;
-    const offset = homeHours - (dest.from.Raipur.oneWay.homeHours ?? homeHours);
-    for (const t of dest.trains ?? []) {
-      const leaves = nextDeparture(t, ready, at);
-      if (leaves === undefined) continue;
-      const arrives = leaves + t.hours + offset;
-      if (!train || arrives < homeAt) {
-        train = t;
-        leaveAt = leaves;
-        homeAt = arrives;
-      }
-    }
-    timing = {
-      returnHours: Math.max(0, Math.ceil(homeAt - dropAt - 1e-9)),
-      dropAt,
-      leaveAt,
-      homeAt,
-      ...(train && { train }),
-    };
+    const leaveAt = dropAt + (rules.stationHours ?? 1);
+    const homeAt = leaveAt + homeHours;
+    timing = { returnHours: Math.max(0, Math.ceil(homeAt - dropAt - 1e-9)), dropAt, leaveAt, homeAt };
   }
 
   const extraCharge = extraHours * rules.extraHour;
   const driving = { from: fullDays * rate.from + extraCharge, to: fullDays * rate.to + extraCharge };
-  const returnCharge = returnCost(timing.returnHours, rules.returnHour, rules.returnMaxPerDay);
+  const returnCharge = returnCost(
+    timing.returnHours,
+    rules.returnHour,
+    rules.returnMaxPerDay,
+    rules.returnFullDayAfter,
+  );
   return {
     ...base,
     km: leg.km,
@@ -576,7 +549,18 @@ export function parseTripRules(v: unknown): TripRules | null {
   if (!keys.every((k) => isPositive(v[k]))) return null;
   const station = v.stationHours;
   const kmh = v.averageKmh;
+  // The website publishes returnFullDayAfterHours; the phone's saved copy keeps returnFullDayAfter.
+  const after = v.returnFullDayAfterHours ?? v.returnFullDayAfter;
+  const extraAfter = v.extraFullDayAfterHours ?? v.extraFullDayAfter;
   return {
+    ...(typeof extraAfter === 'number' &&
+      Number.isInteger(extraAfter) &&
+      extraAfter >= 0 &&
+      extraAfter <= 23 && { extraFullDayAfter: extraAfter }),
+    ...(typeof after === 'number' &&
+      Number.isInteger(after) &&
+      after >= 0 &&
+      after <= 23 && { returnFullDayAfter: after }),
     ...(typeof station === 'number' &&
       Number.isFinite(station) &&
       station >= 0 &&
@@ -609,37 +593,6 @@ function parseLeg(v: unknown): CityLeg | null {
   return { km, oneWay: { days, returnHours: back, ...timed }, roundDays: round };
 }
 
-/** The regular trains home; any odd row drops the whole list (the estimate then uses the average). */
-function parseTrains(v: unknown): HomeTrain[] | undefined {
-  if (!Array.isArray(v) || v.length === 0 || v.length > 20) return undefined;
-  const out: HomeTrain[] = [];
-  for (const t of v) {
-    if (!isObj(t)) return undefined;
-    const { no, name, dep } = t;
-    const h = hours(t.hours);
-    if (typeof no !== 'string' || !/^\d{4,5}$/.test(no)) return undefined;
-    if (typeof name !== 'string' || !name.trim() || name.length > 60) return undefined;
-    if (typeof dep !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(dep) || !h) return undefined;
-    const days = t.days;
-    if (
-      days !== undefined &&
-      (!Array.isArray(days) || days.length > 7 || !days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))
-    )
-      return undefined;
-    const via = t.via;
-    if (via !== undefined && (typeof via !== 'string' || !via.trim() || via.length > 40)) return undefined;
-    out.push({
-      no,
-      name,
-      dep,
-      hours: h,
-      ...(Array.isArray(days) && days.length > 0 && { days: days as number[] }),
-      ...(typeof via === 'string' && { via }),
-    });
-  }
-  return out;
-}
-
 /** The published destinations table, rebuilt field by field; null if any row is wrong. */
 export function parseDestinations(v: unknown): TripDestination[] | null {
   if (!Array.isArray(v) || v.length === 0 || v.length > 500) return null;
@@ -657,8 +610,7 @@ export function parseDestinations(v: unknown): TripDestination[] | null {
       if (!leg) return null;
       from[city] = leg;
     }
-    const trains = parseTrains(row.trains);
-    out.push({ id, name, nameHi: nameHi || name, region, ...(trains && { trains }), from });
+    out.push({ id, name, nameHi: nameHi || name, region, from });
   }
   return out;
 }
