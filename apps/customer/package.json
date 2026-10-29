@@ -14,7 +14,7 @@
     "test:coverage": "jest --coverage",
     "doctor": "expo-doctor",
     "build:preview": "eas build --profile preview --platform android",
-    "update:preview": "npx --yes eas-cli@latest update --channel preview --environment preview --auto",
+    "update:preview": "npx --yes eas-cli@latest update --channel preview --auto",
     "build:play": "eas build --profile production --platform android",
     "build:production": "eas build --profile production --platform all",
     "submit:android": "eas submit --profile production --platform android",
