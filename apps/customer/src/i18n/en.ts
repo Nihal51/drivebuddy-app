@@ -193,7 +193,8 @@ export const en = {
     times: (what: string, rate: string) => `${what} × ${rate}`,
     chooseCity: 'Choose your city above to see the estimate.',
     chooseDest: 'Choose where you are going to see the estimate.',
-    elsewhereNote: (rate: string) => `We work out the distance and call you with the price: ${rate} a day.`,
+    elsewhereNote: (rate: string) =>
+      `We work out the distance and call you with the price: ${rate} a day, depending on how far it is.`,
     elsewhereReturn: (rate: string, max: string, after: number) =>
       `His way home, from the drop until he is home: ${max} for each 24 hours; the hours left over ${rate} each, more than ${after} count as a full day.`,
     sameCity: 'That is your pickup city — for driving around town, choose a local package.',

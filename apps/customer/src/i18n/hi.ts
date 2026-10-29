@@ -188,7 +188,8 @@ export const hi: Messages = {
     times: (what: string, rate: string) => `${what} × ${rate}`,
     chooseCity: 'अनुमान देखने के लिए ऊपर अपना शहर चुनें।',
     chooseDest: 'अनुमान देखने के लिए चुनें कि कहाँ जाना है।',
-    elsewhereNote: (rate: string) => `हम दूरी देखकर कॉल पर कीमत बताएँगे: ${rate} प्रति दिन।`,
+    elsewhereNote: (rate: string) =>
+      `हम दूरी देखकर कॉल पर कीमत बताएँगे: ${rate} प्रति दिन, दूरी के हिसाब से।`,
     elsewhereReturn: (rate: string, max: string, after: number) =>
       `ड्राइवर की घर वापसी, कार पहुँचाने से घर पहुँचने तक: हर 24 घंटे ${max}; बचे घंटे ${rate} प्रति घंटा, ${after} घंटे से ज़्यादा तो पूरा दिन।`,
     sameCity: 'यह आपका पिकअप शहर है — शहर के अंदर के लिए लोकल पैकेज चुनें।',

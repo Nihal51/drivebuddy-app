@@ -26,8 +26,14 @@ export type AppConfig = {
     oneHour: number;
     threeHours: number;
     fullDay: Range;
-    /** Per day of an outstation trip or one-way drop. */
+    /** Per day of an outstation trip or one-way drop farther than the last nearby tier. */
     outstation: Range;
+    /**
+     * Cheaper days for places closer by, nearest first: up to `upToKm` (one
+     * way, by road, from the pickup city) a day costs from–to (website:
+     * prices.outstationNear). Empty: prices.outstation everywhere.
+     */
+    outstationNear: NearRate[];
     nightFrom: number;
   };
   /** How outstation estimates work (site-settings.ts → outstation). */
@@ -79,6 +85,10 @@ export const DEFAULT_CONFIG: AppConfig = {
     threeHours: 600,
     fullDay: { from: 1000, to: 1200 },
     outstation: { from: 1550, to: 1650 },
+    outstationNear: [
+      { upToKm: 150, from: 1300, to: 1400 },
+      { upToKm: 300, from: 1450, to: 1550 },
+    ],
     nightFrom: 500,
   },
   outstation: {
@@ -135,6 +145,24 @@ const isCount = (v: unknown): v is number =>
 const isMobile = (v: unknown): v is string => typeof v === 'string' && /^[6-9]\d{9}$/.test(v);
 const isHttps = (v: unknown): v is string => typeof v === 'string' && /^https:\/\/\S+$/.test(v);
 const isRange = (v: unknown): v is Range => isObj(v) && isMoney(v.from) && isMoney(v.to) && v.from <= v.to;
+
+/** A day price for places up to `upToKm` away (one way, by road). */
+export type NearRate = Range & { upToKm: number };
+
+/** The nearby day prices: nearest first, at most 6; anything odd → null (the whole file is refused). */
+function parseNearRates(v: unknown): NearRate[] | null {
+  if (!Array.isArray(v) || v.length > 6) return null;
+  const out: NearRate[] = [];
+  for (const t of v) {
+    if (!isObj(t) || !isRange(t)) return null;
+    const km = (t as { upToKm?: unknown }).upToKm;
+    if (typeof km !== 'number' || !Number.isInteger(km) || km <= 0 || km > 1000) return null;
+    const before = out[out.length - 1];
+    if (before && km <= before.upToKm) return null;
+    out.push({ upToKm: km, from: t.from, to: t.to });
+  }
+  return out;
+}
 const isVersion = (v: unknown): v is string => typeof v === 'string' && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v);
 const isStoreUrl = (v: unknown, host: string) =>
   v === '' || (typeof v === 'string' && v.startsWith(`https://${host}/`));
@@ -174,6 +202,14 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
   const tripRules = hasTrips ? parseTripRules(outstation) : DEFAULT_CONFIG.outstation;
   const tripTable = hasTrips ? parseDestinations(destinations) : DEFAULT_CONFIG.destinations;
   if (!tripRules || !tripTable) return null;
+  // Nearby day prices (added 29 Oct 2026). A website file from before then
+  // charged one day price everywhere: no tiers. Before trips: the built-in ones.
+  const near = !hasTrips
+    ? DEFAULT_CONFIG.prices.outstationNear.map((t) => ({ ...t }))
+    : prices.outstationNear === undefined
+      ? []
+      : parseNearRates(prices.outstationNear);
+  if (!near) return null;
 
   const ok =
     isMobile(contact.phone) &&
@@ -230,6 +266,7 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
       outstation: hasTrips
         ? { from: p.outstation.from, to: p.outstation.to }
         : { ...DEFAULT_CONFIG.prices.outstation },
+      outstationNear: near,
       nightFrom: p.nightFrom,
     },
     outstation: tripRules,

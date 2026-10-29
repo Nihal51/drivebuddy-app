@@ -2,6 +2,8 @@ import {
   type BookingErrors,
   type BookingInput,
   ELSEWHERE,
+  dayRateFor,
+  daySpan,
   type TripDestination,
   type TripPlan,
   rupeeRange,
@@ -204,7 +206,9 @@ function Estimate({
   const { colors } = useTheme();
   const styles = useStyles();
   const oneWay = plan.kind === 'one-way';
-  const rate = rupeeRange(config.prices.outstation);
+  // This place's day price (nearer places cost less a day); a place not in the list: the whole span.
+  const day = dayRateFor(config, plan.km);
+  const rate = rupeeRange(day);
 
   let body: ReactNode;
   if (!values.city) {
@@ -212,7 +216,7 @@ function Estimate({
   } else if (values.destId === ELSEWHERE) {
     body = (
       <AppText color={colors.textMuted}>
-        {t.trip.elsewhereNote(rate)}
+        {t.trip.elsewhereNote(rupeeRange(daySpan(config)))}
         {oneWay
           ? ` ${t.trip.elsewhereReturn(rupees(config.outstation.returnHour), rupees(config.outstation.returnMaxPerDay), config.outstation.returnFullDayAfter ?? 24)}`
           : ''}
@@ -249,10 +253,7 @@ function Estimate({
                   : t.trip.days(plan.fullDays),
                 rate,
               )}
-              amount={rupeeRange({
-                from: plan.fullDays * config.prices.outstation.from,
-                to: plan.fullDays * config.prices.outstation.to,
-              })}
+              amount={rupeeRange({ from: plan.fullDays * day.from, to: plan.fullDays * day.to })}
             />
           ) : null}
           {oneWay && plan.extraHours > 0 ? (

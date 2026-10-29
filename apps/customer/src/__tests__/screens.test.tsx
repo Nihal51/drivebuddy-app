@@ -201,15 +201,15 @@ describe('Booking, step by step', () => {
     await fireEvent.press(screen.getByTestId('trip-nonstop'));
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
 
-    // A day's stop on the way: two full days, the way home the same.
+    // A day's stop on the way: two full days at the price up to 300 km (Nagpur, 284 km), the way home the same.
     await fireEvent.press(screen.getByTestId('days-plus'));
     expect(screen.getByTestId('days-value')).toHaveTextContent('2');
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,820–4,020');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,620–3,820');
 
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Raipur → Nagpur · 2 days/);
-    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,820–4,020/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,620–3,820/);
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
@@ -222,8 +222,8 @@ describe('Booking, step by step', () => {
       km: 284,
       days: 2,
       returnHours: 6,
-      estFrom: 3820,
-      estTo: 4020,
+      estFrom: 3620,
+      estTo: 3820,
     });
   });
 

@@ -48,6 +48,26 @@ test('an older website file without trip estimates still works, with the built-i
   expect(parsed?.tripsLive).toBe(false);
 });
 
+test('the nearby day prices: read when published, none from a website file from before them', () => {
+  const raw = clone(DEFAULT_CONFIG);
+  expect(parseAppConfig(raw)?.prices.outstationNear).toEqual(DEFAULT_CONFIG.prices.outstationNear);
+  const { outstationNear: _n, ...oldPrices } = clone(DEFAULT_CONFIG.prices);
+  // That website charged one day price everywhere.
+  expect(parseAppConfig({ ...raw, prices: oldPrices })?.prices.outstationNear).toEqual([]);
+  const withNear = (outstationNear: unknown) =>
+    parseAppConfig({ ...raw, prices: { ...raw.prices, outstationNear } });
+  expect(withNear([])?.prices.outstationNear).toEqual([]);
+  expect(
+    withNear([
+      { upToKm: 300, from: 1450, to: 1550 },
+      { upToKm: 150, from: 1300, to: 1400 },
+    ]),
+  ).toBeNull();
+  expect(withNear([{ upToKm: 150, from: 1400, to: 1300 }])).toBeNull();
+  expect(withNear([{ upToKm: 0, from: 1300, to: 1400 }])).toBeNull();
+  expect(withNear('cheap')).toBeNull();
+});
+
 test('a broken trip block or destination row rejects the file', () => {
   const raw = clone(DEFAULT_CONFIG) as unknown as Record<string, unknown>;
   const bad = (patch: Record<string, unknown>) => parseAppConfig({ ...raw, ...patch });

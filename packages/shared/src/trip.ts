@@ -9,7 +9,8 @@
  * city — so the app repeats the website's planTrip for the customer's own
  * start and can never disagree with it (one-way drops):
  *
- *     estimate = full days × prices.outstation       each hoursPerDay (12 h) of driving
+ *     estimate = full days × the day price           each hoursPerDay (12 h) of driving (dayRateFor:
+ *                                                    nearer places cost less a day)
  *              + extra hours × outstation.extraHour  the driving left over (more than
  *                                                    extraFullDayAfter: one more full day)
  *              + way home                            from the drop until he is home, waiting included:
@@ -93,6 +94,28 @@ export type TripDestination = {
   region: 'cg' | 'india';
   from: Record<City, CityLeg>;
 };
+
+/**
+ * The day price for a place `km` away (one way, by road, from the pickup
+ * city), as the website's dayRateFor: the first nearby tier it falls in,
+ * else prices.outstation. Bilaspur 113 km → ₹1,300–1,400; Nagpur 284 km →
+ * ₹1,450–1,550; farther → ₹1,550–1,650. Unknown (0): prices.outstation.
+ */
+export function dayRateFor(config: Pick<AppConfig, 'prices'>, km: number | undefined): Range {
+  const d = Math.round(Number(km) || 0);
+  const tier = d > 0 ? (config.prices.outstationNear ?? []).find((t) => d <= t.upToKm) : undefined;
+  const r = tier ?? config.prices.outstation;
+  return { from: r.from, to: r.to };
+}
+
+/** The lowest to the highest day price, nearest to farthest: "₹1,300–1,650" in the app. */
+export function daySpan(config: Pick<AppConfig, 'prices'>): Range {
+  const near = config.prices.outstationNear ?? [];
+  return {
+    from: Math.min(config.prices.outstation.from, ...near.map((t) => t.from)),
+    to: config.prices.outstation.to,
+  };
+}
 
 /** When the customer has not picked a time, the estimate assumes the driver leaves at 7 AM (as the website). */
 export const DEFAULT_START_HOUR = 7;
@@ -264,7 +287,7 @@ export function planTrip(
     return { ...base, ...none, km: 0, minDays: 1, days, fullDays: days, local: false };
   }
   const rules = config.outstation;
-  const rate = config.prices.outstation;
+  const rate = dayRateFor(config, leg.km);
   const local = leg.km < rules.localWithinKm;
 
   if (kind === 'round') {

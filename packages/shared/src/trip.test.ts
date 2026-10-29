@@ -2,6 +2,8 @@ import { DEFAULT_CONFIG } from './config';
 import {
   ELSEWHERE,
   POPULAR_DESTINATIONS,
+  dayRateFor,
+  daySpan,
   isTripPackage,
   notesWithTrip,
   parseDestinations,
@@ -132,7 +134,8 @@ test('the stored preferred time gives the start hour', () => {
 test('a round trip is the days of the trip; back home within the 24 hours is one day', () => {
   const p = planTrip(config, 'outstation', 'Raipur', 'nagpur');
   expect([p.kind, p.days, p.fullDays, p.returnHours]).toEqual(['round', 1, 1, 0]);
-  expect([p.est?.from, p.est?.to]).toEqual([1550, 1650]);
+  // Nagpur is 284 km away: the day price up to 300 km.
+  expect([p.est?.from, p.est?.to]).toEqual([1450, 1550]);
   expect(planTrip(config, 'outstation', 'Raipur', 'jharsuguda').days).toBe(1);
   expect(planTrip(config, 'outstation', 'Raipur', 'jabalpur').days).toBe(2);
   expect(planTrip(config, 'outstation', 'Raipur', 'delhi').days).toBe(4);
@@ -153,7 +156,27 @@ test('nearby, the same city, somewhere else, or no city yet', () => {
 
 test('prices follow the downloaded config', () => {
   const dearer = { ...config, prices: { ...config.prices, outstation: { from: 1600, to: 1700 } } };
-  expect(planTrip(dearer, 'outstation', 'Raipur', 'nagpur').est?.from).toBe(1600);
+  expect(planTrip(dearer, 'outstation', 'Raipur', 'jharsuguda').est?.from).toBe(1600);
+  const flat = { ...config, prices: { ...config.prices, outstationNear: [] } };
+  expect(planTrip(flat, 'outstation', 'Raipur', 'nagpur').est?.from).toBe(1550);
+});
+
+test('the day price by distance, as on the website: nearer places cost less a day', () => {
+  // Up to 150 km ₹1,300–1,400; up to 300 km ₹1,450–1,550; farther ₹1,550–1,650.
+  expect(dayRateFor(config, 113)).toEqual({ from: 1300, to: 1400 });
+  expect(dayRateFor(config, 150)).toEqual({ from: 1300, to: 1400 });
+  expect(dayRateFor(config, 151)).toEqual({ from: 1450, to: 1550 });
+  expect(dayRateFor(config, 301)).toEqual({ from: 1550, to: 1650 });
+  expect(dayRateFor(config, 0)).toEqual({ from: 1550, to: 1650 });
+  expect(daySpan(config)).toEqual({ from: 1300, to: 1650 });
+  const bilaspur = planTrip(config, 'outstation', 'Raipur', 'bilaspur');
+  expect([bilaspur.days, bilaspur.est?.from, bilaspur.est?.to]).toEqual([1, 1300, 1400]);
+  expect(planTrip(config, 'outstation', 'Raipur', 'bilaspur', 3).est?.from).toBe(3900);
+  expect(planTrip(config, 'outstation', 'Raipur', 'jabalpur').est?.from).toBe(3100);
+  // From Bilaspur, Raipur is close by.
+  expect(planTrip(config, 'outstation', 'Bilaspur', 'raipur').est?.from).toBe(1300);
+  // One-way: a short drop stays by the hour.
+  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bilaspur').est?.from).toBe(720);
 });
 
 test('the saved trip', () => {
