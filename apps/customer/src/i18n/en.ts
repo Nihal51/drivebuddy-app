@@ -47,14 +47,30 @@ export const en = {
   home: {
     greeting: (name: string) => `Hello, ${name}`,
     welcome: 'Welcome to DriveBuddy',
-    title: 'Your driver, at your door in 30 minutes',
-    badges: { verified: 'Verified', sober: 'Sober', experienced: '5+ years' },
+    title: 'Where are we driving today?',
+    fast: 'Driver in ~30 min',
+    pickupCity: 'Pickup city',
+    tabs: { hourly: 'Hourly', day: 'Full day', drop: 'One-way', outstation: 'Outstation' },
+    whereTo: 'Where to?',
+    bookNow: 'Book a driver',
+    now: 'Now',
+    popularFrom: (city: string) => `Popular from ${city}`,
     moreServices: 'More services',
+    seeAll: 'See all',
+    whyTitle: 'Why DriveBuddy',
+    trust: {
+      verified: 'Police-verified',
+      fast: 'At your door in 30 min',
+      allDay: '24/7 on call',
+      experienced: '5+ years driving',
+      payAfter: 'Pay after the trip',
+      status: 'Live trip status',
+    },
     helpTitle: 'Prefer to talk?',
     helpBody: 'Call or WhatsApp — we answer 24/7.',
   },
 
-  /** The services: two big cards and a list on Home, tiles in the first booking step. */
+  /** The services: tabs and tiles on Home, tiles in the first booking step. */
   categories: {
     hourly: { name: 'By the hour', blurb: '1 or 3 hours' },
     day: { name: 'Full day', blurb: '8 hours in the city' },

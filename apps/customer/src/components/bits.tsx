@@ -22,7 +22,7 @@ export function SectionTitle({ children, action }: { children: string; action?: 
 }
 
 /** The DB logo + wordmark, as on the website header. */
-export function BrandMark() {
+export function BrandMark({ onDark = false }: { onDark?: boolean }) {
   const { colors } = useTheme();
   const styles = useStyles();
   return (
@@ -30,9 +30,9 @@ export function BrandMark() {
       <View style={styles.logoTile}>
         <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
       </View>
-      <AppText variant="heading" weight="heavy">
+      <AppText variant="heading" weight="heavy" color={onDark ? colors.onHero : undefined}>
         Drive
-        <AppText variant="heading" weight="heavy" color={colors.amberText}>
+        <AppText variant="heading" weight="heavy" color={onDark ? colors.featureAccent : colors.amberText}>
           Buddy
         </AppText>
       </AppText>

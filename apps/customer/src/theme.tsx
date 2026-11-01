@@ -35,8 +35,10 @@ const light = {
   /** Warm highlighted panels. */
   cream: '#fffbeb',
   creamLine: '#fde68a',
-  /** The dark hero card on Home. */
+  /** The dark top of Home. */
   hero: '#141210',
+  /** Chips and buttons on the dark hero. */
+  heroSoft: '#2b2724',
   /** The dark service card on Home ("Drop to a city"), and its text and accent. */
   feature: '#18181b',
   onFeature: '#ffffff',
@@ -81,6 +83,7 @@ const dark: Palette = {
   cream: '#1f1a10',
   creamLine: '#4a3b17',
   hero: '#1c1917',
+  heroSoft: '#332e2a',
   feature: '#292524',
   onFeature: '#ffffff',
   featureAccent: '#fbbf24',

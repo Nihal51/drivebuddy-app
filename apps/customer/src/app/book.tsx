@@ -3,6 +3,7 @@ import {
   type BookingField,
   type BookingInput,
   CITIES,
+  type City,
   EMPTY_BOOKING,
   type PackageId,
   isPackageId,
@@ -80,7 +81,12 @@ export default function BookScreen() {
   const { ready, user } = useAuth();
   const { colors } = useTheme();
   const styles = useStyles();
-  const params = useLocalSearchParams<{ package?: string; category?: string }>();
+  const params = useLocalSearchParams<{
+    package?: string;
+    category?: string;
+    city?: string;
+    dest?: string;
+  }>();
   // Wait for a saved login (and its profile) so the form can start pre-filled.
   if (!ready) {
     return (
@@ -94,6 +100,8 @@ export default function BookScreen() {
       key={user?.uid ?? 'guest'}
       initialPackage={params.package}
       initialCategory={params.category}
+      initialCity={params.city}
+      initialDest={params.dest}
     />
   );
 }
@@ -105,9 +113,15 @@ export default function BookScreen() {
 function BookingWizard({
   initialPackage,
   initialCategory,
+  initialCity,
+  initialDest,
 }: {
   initialPackage?: string;
   initialCategory?: string;
+  /** The pickup city picked on Home. */
+  initialCity?: string;
+  /** Outstation / one-way drop: a destination tapped on Home. */
+  initialDest?: string;
 }) {
   const { t } = useI18n();
   const { colors } = useTheme();
@@ -119,6 +133,11 @@ function BookingWizard({
   const [values, setValues] = useState<BookingInput>(() => ({
     ...EMPTY_BOOKING,
     packageId: startPackage,
+    city: (CITIES as readonly string[]).includes(initialCity ?? '') ? (initialCity as City) : '',
+    destId:
+      isTripPackage(startPackage) && config.destinations.some((d) => d.id === initialDest)
+        ? (initialDest as string)
+        : '',
     name: profile?.name ?? '',
     phone: profile?.phone ?? '',
   }));

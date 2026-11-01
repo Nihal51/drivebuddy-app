@@ -40,6 +40,7 @@ export function Screen({
   onRefresh,
   contentStyle,
   footer,
+  top,
 }: {
   children: ReactNode;
   edges?: Edge[];
@@ -49,6 +50,8 @@ export function Screen({
   contentStyle?: ViewStyle;
   /** Pinned below the scrolling content (e.g. a submit button). */
   footer?: ReactNode;
+  /** Scrolls with the page, edge to edge above the column, on the dark hero colour (Home). */
+  top?: ReactNode;
 }) {
   const { colors } = useTheme();
   const styles = useStyles();
@@ -88,15 +91,15 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView edges={edges} style={styles.safe}>
+    <SafeAreaView edges={edges} style={[styles.safe, top ? styles.safeTop : null]}>
       {/* "padding" on both platforms: Android draws edge to edge, so the window
           no longer shrinks for the keyboard by itself. */}
       <KeyboardAvoidingView style={styles.flex} behavior="padding" enabled={Platform.OS !== 'web'}>
         <RevealContext.Provider value={reveal}>
           <ScrollView
             ref={scroll}
-            style={styles.flex}
-            contentContainerStyle={[styles.content, contentStyle]}
+            style={[styles.flex, top ? styles.page : null]}
+            contentContainerStyle={[styles.content, top ? styles.contentTop : null, contentStyle]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="none"
             refreshControl={
@@ -110,7 +113,8 @@ export function Screen({
               ) : undefined
             }
           >
-            <View ref={content} style={styles.column}>
+            {top}
+            <View ref={content} style={[styles.column, top ? styles.columnTop : null]}>
               {children}
             </View>
           </ScrollView>
@@ -126,6 +130,11 @@ const useStyles = makeStyles((c) => ({
   flex: { flex: 1 },
   content: { padding: space.lg, paddingBottom: space.xxl * 2, alignItems: 'center' },
   column: { width: '100%', maxWidth: 640, gap: space.lg },
+  // With a `top`: the status bar area takes its colour; the page below stays the page colour.
+  safeTop: { backgroundColor: c.hero },
+  page: { backgroundColor: c.background },
+  contentTop: { paddingTop: 0, paddingHorizontal: 0 },
+  columnTop: { maxWidth: 640 + space.lg * 2, paddingHorizontal: space.lg },
   footer: {
     paddingHorizontal: space.lg,
     paddingVertical: space.md,

@@ -13,6 +13,8 @@ import { renderScreen, signedOut } from './test-utils';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({})),
+  useFocusEffect: (effect: () => void) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   Stack: { Screen: () => null },
 }));
 jest.mock('@/data/bookings', () => ({ submitBooking: jest.fn(), watchBooking: jest.fn() }));
@@ -25,17 +27,30 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-  test('a hello from our driver, two big cards and every other service, with live prices', async () => {
+  test('the dark top, the main card with live prices, and the other services', async () => {
     const config = { ...DEFAULT_CONFIG, prices: { ...DEFAULT_CONFIG.prices, oneHour: 350, threeHours: 650 } };
     await renderScreen(<HomeScreen />, { config });
-    expect(screen.getByText('Your driver, at your door in 30 minutes')).toBeOnTheScreen();
+    expect(screen.getByText('Where are we driving today?')).toBeOnTheScreen();
     expect(screen.getByText('Welcome to DriveBuddy')).toBeOnTheScreen();
-    // All eight services: hourly and drop as cards, the rest (monthly too) in the list.
-    expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
-    expect(screen.getByTestId('tile-hourly')).toHaveTextContent(/from ₹350/);
-    expect(screen.getByTestId('tile-drop')).toHaveTextContent(/₹1,550–1,650\/day/);
+    expect(screen.getByText('Driver in ~30 min')).toBeOnTheScreen();
+    // The four main ways to book as tabs; one-way drop open, with popular places from Raipur.
+    expect(screen.getAllByTestId(/^tab-/)).toHaveLength(4);
+    expect(screen.getByTestId('tab-drop')).toBeSelected();
+    expect(screen.getByText('POPULAR FROM RAIPUR')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-place-bilaspur')).toHaveTextContent(/Bilaspur.*from ₹960/);
+    expect(screen.getByTestId('home-place-nagpur')).toHaveTextContent(/Nagpur.*from ₹1,440/);
+    expect(screen.queryByTestId('home-place-raipur')).toBeNull();
+    // By the hour: the two packages and their prices.
+    await fireEvent.press(screen.getByTestId('tab-hourly'));
+    expect(screen.getByTestId('home-package-1-hour-300')).toHaveTextContent(/₹350/);
+    expect(screen.getByTestId('home-package-3-hours-600')).toHaveTextContent(/₹650/);
+    // The other four services.
+    expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
     expect(screen.getByTestId('tile-monthly')).toHaveTextContent(/Monthly driver.*from ₹16,000\/mo/);
     expect(screen.getByTestId('tile-hospital')).toHaveTextContent(/Priority/);
+    // Why DriveBuddy, without any "no surge" claim.
+    expect(screen.getByTestId('home-trust')).toHaveTextContent(/Police-verified.*Pay after the trip/);
+    expect(screen.queryByText(/surge/i)).toBeNull();
   });
 
   test('greets a logged-in customer by name', async () => {
@@ -48,20 +63,50 @@ describe('Home', () => {
     expect(screen.getByText('Hello, Ravi')).toBeOnTheScreen();
   });
 
-  test('a one-service card opens the details step; a two-service one opens the choice', async () => {
+  test('every tap opens the booking with the pickup city, and the place tapped', async () => {
     await renderScreen(<HomeScreen />);
-    await fireEvent.press(screen.getByTestId('tile-drop'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { package: 'one-way-drop' } });
-    await fireEvent.press(screen.getByTestId('tile-hourly'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { category: 'hourly' } });
+    await fireEvent.press(screen.getByTestId('home-city-Bhilai'));
+    expect(screen.getByText('POPULAR FROM BHILAI')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('home-where-to'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { package: 'one-way-drop', city: 'Bhilai' },
+    });
+    await fireEvent.press(screen.getByTestId('home-place-raipur'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { package: 'one-way-drop', city: 'Bhilai', dest: 'raipur' },
+    });
+    await fireEvent.press(screen.getByTestId('tab-outstation'));
+    await fireEvent.press(screen.getByTestId('home-place-korba'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { package: 'outstation', city: 'Bhilai', dest: 'korba' },
+    });
+    await fireEvent.press(screen.getByTestId('tab-hourly'));
+    await fireEvent.press(screen.getByTestId('home-book'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { category: 'hourly', city: 'Bhilai' },
+    });
+    await fireEvent.press(screen.getByTestId('home-package-3-hours-600'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { category: 'hourly', city: 'Bhilai', package: '3-hours-600' },
+    });
     await fireEvent.press(screen.getByTestId('tile-monthly'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { category: 'monthly' } });
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/book',
+      params: { category: 'monthly', city: 'Bhilai' },
+    });
+    await fireEvent.press(screen.getByTestId('home-see-all'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/book', params: { city: 'Bhilai' } });
   });
 
   test('switches to Hindi', async () => {
     await renderScreen(<HomeScreen />);
     await fireEvent.press(screen.getByRole('radio', { name: 'हिंदी' }));
-    expect(screen.getByText('आपका ड्राइवर, 30 मिनट में आपके दरवाज़े पर')).toBeOnTheScreen();
+    expect(screen.getByText('आज कहाँ चलना है?')).toBeOnTheScreen();
     expect(screen.getByText('रात का ड्राइवर')).toBeOnTheScreen();
   });
 
@@ -75,7 +120,10 @@ describe('Home', () => {
 
 const mockedParams = useLocalSearchParams as jest.Mock;
 /** Opens the booking as Home would: with a service already chosen (step 2), or none (step 1). */
-async function openBooking(params: { package?: string; category?: string } = {}, opts = {}) {
+async function openBooking(
+  params: { package?: string; category?: string; city?: string; dest?: string } = {},
+  opts = {},
+) {
   mockedParams.mockReturnValue(params);
   await renderScreen(<BookScreen />, opts);
 }
@@ -173,6 +221,18 @@ describe('Booking, step by step', () => {
     await fireEvent.press(screen.getByTestId('submit-booking'));
     expect(mockedSubmit.mock.calls[0][1]).toBe('uid-9');
     expect(screen.getByTestId('track-booking')).toBeOnTheScreen();
+  });
+
+  test('a place tapped on Home opens with the city and the place chosen, and the estimate', async () => {
+    await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'nagpur' });
+    expect(screen.getByTestId('city-Raipur')).toBeChecked();
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,440');
+  });
+
+  test('a city or place the app does not know is left for the customer to choose', async () => {
+    await openBooking({ package: 'one-way-drop', city: 'Mumbai', dest: 'atlantis' });
+    expect(screen.getByTestId('city-Raipur')).not.toBeChecked();
+    expect(screen.queryByTestId('trip-estimate')).toBeNull();
   });
 
   test('a one-way drop shows the estimate and saves the trip with it', async () => {

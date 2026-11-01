@@ -11,6 +11,8 @@ import { renderScreen } from './test-utils';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({})),
+  useFocusEffect: (effect: () => void) =>
+    jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   Stack: { Screen: () => null },
 }));
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));
@@ -54,11 +56,11 @@ describe('the "please update" switch', () => {
 describe('dark theme', () => {
   test('Home renders with the dark palette', async () => {
     await renderScreen(<HomeScreen />, { scheme: 'dark' });
-    const title = screen.getByText('Your driver, at your door in 30 minutes');
+    const title = screen.getByText('More services');
     expect(title).toBeOnTheScreen();
-    // Text in the dark palette; the dark service card in its dark colour.
+    // Text in the dark palette; the white title on the dark top.
     expect(title).toHaveStyle({ color: palettes.dark.text });
-    expect(screen.getByTestId('tile-drop')).toHaveStyle({ backgroundColor: palettes.dark.feature });
+    expect(screen.getByText('Where are we driving today?')).toHaveStyle({ color: palettes.dark.onHero });
   });
 
   test('both palettes define every colour', () => {
