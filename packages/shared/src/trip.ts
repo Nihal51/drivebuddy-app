@@ -51,6 +51,16 @@ export type TripRules = {
    * files lack it: the whole drive at extraHour.
    */
   shortDriveMinimum?: number;
+  /**
+   * One-way (website 1 Nov 2026): the driving and his way home together
+   * never cost more than this for each 24 hours he is away (leaves → home);
+   * after the first 24, the hours left over at extraHour, up to one more.
+   * Older website files lack it: no limit.
+   */
+  awayDayMax?: number;
+  /** One-way: added once when he is away longTripAfterHours or more (website 1 Nov 2026). */
+  longTripFee?: number;
+  longTripAfterHours?: number;
   /** Per hour of the driver's way home, from the drop until he is home. */
   returnHour: number;
   /** A full day of the way home (each 24 hours). */
@@ -191,7 +201,44 @@ export type TripEstimate = {
   extraCharge: number;
   /** The way home (one-way). */
   returnCharge: number;
+  /** One-way: whole hours he is away (leaves → home); 0 when unknown or a round trip. */
+  awayHours: number;
+  /** What the most for the time away takes off, at each end of the range. */
+  limitOff: Range;
+  /** The long-trip charge. */
+  longFee: number;
 };
+
+const wholeHours = (h: number) => Math.max(0, Math.ceil((Number.isFinite(h) ? h : 0) - 1e-9));
+
+/**
+ * One-way, as the website (lib/outstation.ts awayLimit): the most the driving
+ * and the way home together cost when he is away `hours`: up to 24 h,
+ * awayDayMax; then awayDayMax for each further 24 h, and the hours left over
+ * at extraHour, never more than one more. Undefined without awayDayMax.
+ *   16 h → ₹1,600; 26 h → ₹1,840; 54 h → ₹3,920.
+ */
+export function awayLimit(config: Pick<AppConfig, 'outstation'>, hours: number): number | undefined {
+  const { awayDayMax: max, extraHour } = config.outstation;
+  if (!max) return undefined;
+  const h = wholeHours(hours);
+  if (h <= 24) return max;
+  const more = h - 24;
+  const days = Math.floor(more / 24);
+  return max * (1 + days) + Math.min((more - days * 24) * extraHour, max);
+}
+
+/** One-way: the long-trip charge for `hours` away (website longTripFee), else 0. */
+export function longTripFee(config: Pick<AppConfig, 'outstation'>, hours: number): number {
+  const { longTripFee: fee, longTripAfterHours: after } = config.outstation;
+  return fee && after !== undefined && wholeHours(hours) >= after ? fee : 0;
+}
+
+/** What the limit takes off `charges` for `hours` away (0 when under it). */
+export function limitOff(config: Pick<AppConfig, 'outstation'>, charges: number, hours: number): number {
+  const limit = awayLimit(config, hours);
+  return limit === undefined ? 0 : Math.max(0, Math.round(charges) - limit);
+}
 
 /**
  * What `hours` of the way home cost (as on the website, lib/outstation.ts):
@@ -319,7 +366,16 @@ export function planTrip(
       days,
       fullDays: days,
       local,
-      est: { from: driving.from, to: driving.to, driving, extraCharge: 0, returnCharge: 0 },
+      est: {
+        from: driving.from,
+        to: driving.to,
+        driving,
+        extraCharge: 0,
+        returnCharge: 0,
+        awayHours: 0,
+        limitOff: { from: 0, to: 0 },
+        longFee: 0,
+      },
     };
   }
 
@@ -362,6 +418,15 @@ export function planTrip(
     rules.returnMaxPerDay,
     rules.returnFullDayAfter,
   );
+  // Never more than the most for the hours he is away, and the long-trip charge (as the website).
+  const awayHours = timing.homeAt !== undefined ? wholeHours(timing.homeAt) : 0;
+  const off = awayHours
+    ? {
+        from: limitOff(config, driving.from + returnCharge, awayHours),
+        to: limitOff(config, driving.to + returnCharge, awayHours),
+      }
+    : { from: 0, to: 0 };
+  const longFee = awayHours ? longTripFee(config, awayHours) : 0;
   return {
     ...base,
     km: leg.km,
@@ -374,11 +439,14 @@ export function planTrip(
     ...timing,
     local,
     est: {
-      from: driving.from + returnCharge,
-      to: driving.to + returnCharge,
+      from: driving.from + returnCharge - off.from + longFee,
+      to: driving.to + returnCharge - off.to + longFee,
       driving,
       extraCharge,
       returnCharge,
+      awayHours,
+      limitOff: off,
+      longFee,
     },
   };
 }
@@ -426,6 +494,9 @@ export type BookingQuote = {
   extraHourRate: number;
   /** The extra hours' charge (quotes from 29 Oct 2026): a drive shorter than a day at the short-drive price. Missing: extraHours × extraHourRate. */
   extraCharge?: number;
+  /** One-way (quotes from 1 Nov 2026): what the most for the time away took off, and the long-trip charge. */
+  limitOff?: number;
+  longFee?: number;
   ticket: number;
 };
 
@@ -444,6 +515,9 @@ export type BookingBill = {
   returnHours: number;
   returnHourRate: number;
   returnCharge: number;
+  /** One-way (bills from 1 Nov 2026): what the most for the time away took off, and the long-trip charge. */
+  limitOff?: number;
+  longFee?: number;
   ticket: number;
   /** Driven day and night (every 12 h a day). */
   nonstop: boolean;
@@ -532,6 +606,10 @@ export function toQuote(v: unknown): BookingQuote | undefined {
   }
   const extra = int(v.extraCharge);
   if (extra !== null) out.extraCharge = extra;
+  const off = int(v.limitOff);
+  if (off) out.limitOff = off;
+  const fee = int(v.longFee);
+  if (fee) out.longFee = fee;
   return out.amount > 0 ? out : undefined;
 }
 
@@ -575,6 +653,10 @@ export function toBill(v: unknown): BookingBill | undefined {
     if (n === null) return undefined;
     out[k] = n;
   }
+  const off = int(v.limitOff);
+  if (off) out.limitOff = off;
+  const fee = int(v.longFee);
+  if (fee) out.longFee = fee;
   return out.amount > 0 ? out : undefined;
 }
 
@@ -600,7 +682,18 @@ export function parseTripRules(v: unknown): TripRules | null {
   const after = v.returnFullDayAfterHours ?? v.returnFullDayAfter;
   const extraAfter = v.extraFullDayAfterHours ?? v.extraFullDayAfter;
   const shortMin = v.shortDriveMinimum;
+  const awayMax = v.awayDayMax;
+  const fee = v.longTripFee;
+  const feeAfter = v.longTripAfterHours;
+  const rupeesOk = (n: unknown, max: number): n is number =>
+    typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= max;
   return {
+    ...(rupeesOk(awayMax, 100000) && { awayDayMax: awayMax }),
+    ...(rupeesOk(fee, 5000) &&
+      typeof feeAfter === 'number' &&
+      Number.isInteger(feeAfter) &&
+      feeAfter >= 0 &&
+      feeAfter <= 72 && { longTripFee: fee, longTripAfterHours: feeAfter }),
     ...(typeof shortMin === 'number' &&
       Number.isInteger(shortMin) &&
       shortMin > 0 &&

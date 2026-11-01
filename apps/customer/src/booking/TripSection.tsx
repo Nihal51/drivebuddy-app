@@ -288,6 +288,22 @@ function Estimate({
               <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
             )
           ) : null}
+          {/* The most for the hours he is away, and the long-trip charge (as the website). */}
+          {plan.est.limitOff.to > 0 ? (
+            <Line
+              label={t.trip.awayMost(plan.est.awayHours, rupees(config.outstation.awayDayMax ?? 0))}
+              amount={`−${rupeeRange({
+                from: Math.min(plan.est.limitOff.from, plan.est.limitOff.to),
+                to: Math.max(plan.est.limitOff.from, plan.est.limitOff.to),
+              })}`}
+            />
+          ) : null}
+          {plan.est.longFee > 0 ? (
+            <Line
+              label={t.trip.longTrip(plan.est.awayHours, config.outstation.longTripAfterHours ?? 0)}
+              amount={rupees(plan.est.longFee)}
+            />
+          ) : null}
         </View>
         {oneWay ? <Timeline plan={plan} startAt={startAt} from={from} to={placeName(t, plan.dest)} /> : null}
         {plan.local ? (

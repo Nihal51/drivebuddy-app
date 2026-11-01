@@ -229,6 +229,11 @@ export const hi: Messages = {
     priceOnCall: 'कीमत कॉल पर',
     extraHours: (n: number) => `${n} घंटे अतिरिक्त`,
     ticket: (amount: string) => `${amount} टिकट`,
+    awayMost: (h: number, max: string) =>
+      `${h} घंटे बाहर (घर से निकलने से लौटने तक): हर दिन ज़्यादा से ज़्यादा ${max}`,
+    longTrip: (h: number, after: number) => `लंबी ट्रिप: ${h} घंटे बाहर (${after} घंटे या ज़्यादा)`,
+    limitShort: (amount: string) => `− ${amount} (बाहर रहने की अधिकतम कीमत)`,
+    longShort: (amount: string) => `${amount} लंबी ट्रिप`,
     billExtra: (amount: string, n: number) => `${amount} ${n} घंटे अतिरिक्त ड्राइविंग`,
     clockLeft: (at: string) => `ड्राइवर निकले ${at}`,
     clockDropped: (at: string) => `गाड़ी छोड़ी ${at}`,

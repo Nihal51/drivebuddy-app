@@ -234,6 +234,10 @@ export const en = {
     priceOnCall: 'price on the call',
     extraHours: (n: number) => (n === 1 ? '1 extra hour' : `${n} extra hours`),
     ticket: (amount: string) => `${amount} ticket`,
+    awayMost: (h: number, max: string) => `Most for ${h} h away (he leaves → he is home): ${max} a day`,
+    longTrip: (h: number, after: number) => `Long trip: ${h} h away (${after} h or more)`,
+    limitShort: (amount: string) => `− ${amount} (the most for the time away)`,
+    longShort: (amount: string) => `${amount} long trip`,
     billExtra: (amount: string, n: number) =>
       `${amount} for ${n === 1 ? '1 extra hour' : `${n} extra hours`}`,
     clockLeft: (at: string) => `Driver left ${at}`,

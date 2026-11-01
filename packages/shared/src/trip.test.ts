@@ -1,6 +1,9 @@
 import { DEFAULT_CONFIG } from './config';
 import {
   ELSEWHERE,
+  awayLimit,
+  limitOff,
+  longTripFee,
   POPULAR_DESTINATIONS,
   dayRateFor,
   daySpan,
@@ -23,6 +26,11 @@ import {
 } from './trip';
 
 const config = DEFAULT_CONFIG;
+/** The driving and the way home alone, before the most for the time away and the long-trip charge. */
+const before = (p: { est?: { driving: { from: number; to: number }; returnCharge: number } }) => [
+  (p.est?.driving.from ?? 0) + (p.est?.returnCharge ?? 0),
+  (p.est?.driving.to ?? 0) + (p.est?.returnCharge ?? 0),
+];
 
 /* The worked examples agreed with the owner (website: scripts/outstation.test.mjs, 29 Oct 2026):
    each 12 h of driving is a day at ₹1,550–1,650, the rest ₹120 an hour, more than
@@ -33,7 +41,9 @@ const config = DEFAULT_CONFIG;
 test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — ₹1,440', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
   expect([p.km, p.fullDays, p.extraHours, p.days, p.returnHours, p.local]).toEqual([284, 0, 6, 1, 6, false]);
-  expect([p.est?.from, p.est?.to]).toEqual([1440, 1440]);
+  expect(before(p)).toEqual([1440, 1440]);
+  // About 12 h away: ₹250 for a long trip (website 1 Nov 2026).
+  expect([p.est?.awayHours, p.est?.from, p.est?.to]).toEqual([12, 1690, 1690]);
 });
 
 test('a drive shorter than a day, as on the website: ₹120 an hour, at least ₹600; his way home on top', () => {
@@ -43,9 +53,8 @@ test('a drive shorter than a day, as on the website: ₹120 an hour, at least �
   const { shortDriveMinimum: _m, ...old } = config.outstation;
   expect(shortDriveCharge({ ...config, outstation: old }, 3).from).toBe(360);
   const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est?.from;
-  expect([at('bhilai'), at('bilaspur'), at('kawardha'), at('korba'), at('jharsuguda')]).toEqual([
-    840, 960, 1080, 1200, 1560,
-  ]);
+  expect([at('bhilai'), at('bilaspur'), at('kawardha'), at('korba')]).toEqual([840, 960, 1080, 1200]);
+  expect(before(planTrip(config, 'one-way-drop', 'Raipur', 'jharsuguda'))).toEqual([1560, 1560]);
   // Read from the website file (or the phone's saved copy, same name).
   expect(parseTripRules({ ...config.outstation, shortDriveMinimum: 600 })?.shortDriveMinimum).toBe(600);
   expect(parseTripRules({ ...old })?.shortDriveMinimum).toBeUndefined();
@@ -56,13 +65,15 @@ test('Raipur → Mumbai one-way: 22.4 h = 1 day + 11 h, more than 7 = 2 full day
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'mumbai');
   expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 0, 2, 19]);
   expect([p.est?.extraCharge, p.est?.returnCharge]).toEqual([0, 1200]);
-  expect([p.est?.from, p.est?.to]).toEqual([4300, 4500]);
+  expect(before(p)).toEqual([4300, 4500]);
+  // 54 h away: at most 2 × ₹1,600 + 6 × ₹120, and ₹250 for a long trip.
+  expect([p.est?.awayHours, p.est?.from, p.est?.to]).toEqual([54, 4170, 4170]);
 });
 
 test('Raipur → Hyderabad: 15.6 h = 1 day + 4 h by the hour; 16 h home = a full day — ₹3,230–3,330', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 0 });
   expect([p.fullDays, p.extraHours, p.returnHours, p.startHour]).toEqual([1, 4, 16, 9]);
-  expect([p.est?.from, p.est?.to]).toEqual([3230, 3330]);
+  expect(before(p)).toEqual([3230, 3330]);
   // The typical way home: an hour to the station, then on board; no timetable in the app.
   expect((p.leaveAt ?? 0) - (p.dropAt ?? 0)).toBeCloseTo(1);
 });
@@ -70,19 +81,61 @@ test('Raipur → Hyderabad: 15.6 h = 1 day + 4 h by the hour; 16 h home = a full
 test('Raipur → Bengaluru: 2 days + 4 h; 29 h home = 1 day + 5 h — ₹5,380–5,580', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 1 });
   expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 4, 3, 29]);
-  expect([p.est?.returnCharge, p.est?.from, p.est?.to]).toEqual([1800, 5380, 5580]);
+  expect([p.est?.returnCharge, ...before(p)]).toEqual([1800, 5380, 5580]);
+  // Under the most for 81 h away: just the long-trip charge.
+  expect([p.est?.from, p.est?.to]).toEqual([5380 + 250, 5580 + 250]);
   // Day and night: the same price, the car there a day sooner.
   const nonstop = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7.5, weekday: 4 }, true);
-  expect([nonstop.days, nonstop.est?.from]).toEqual([2, 5380]);
+  expect([nonstop.days, before(nonstop)[0]]).toEqual([2, 5380]);
   expect(nonstop.dropAt).toBeLessThan(p.dropAt ?? 0);
 });
 
 test('Raipur → Delhi: booked days count in full; never more than 60', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'delhi');
-  expect([p.fullDays, p.extraHours, p.returnHours, p.est?.from]).toEqual([2, 1, 24, 4420]);
+  expect([p.fullDays, p.extraHours, p.returnHours, before(p)[0], p.est?.from]).toEqual([
+    2, 1, 24, 4420, 4670,
+  ]);
   const four = planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 4);
   expect([four.days, four.fullDays, four.extraHours]).toEqual([4, 4, 0]);
   expect(planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 500).days).toBe(60);
+});
+
+test('the most for the time away, and the long-trip charge — as on the website (1 Nov 2026)', () => {
+  expect([1, 12, 16, 24].map((h) => awayLimit(config, h))).toEqual([1600, 1600, 1600, 1600]);
+  expect([awayLimit(config, 26), awayLimit(config, 37.5), awayLimit(config, 53.1)]).toEqual([
+    1600 + 240,
+    3200,
+    3200 + 720,
+  ]);
+  expect([11, 12, 40].map((h) => longTripFee(config, h))).toEqual([0, 250, 250]);
+  expect(limitOff(config, 2040, 16)).toBe(440);
+  const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est;
+  // Raipur → Ambikapur: 7 h drive (₹840) + 9 h home (₹1,200) = ₹2,040; 16 h away → ₹1,600 + ₹250.
+  expect(at('ambikapur')).toMatchObject({ awayHours: 16, from: 1850, to: 1850, longFee: 250 });
+  expect(at('ambikapur')?.limitOff).toEqual({ from: 440, to: 440 });
+  expect([at('jagdalpur')?.from, at('jabalpur')?.from, at('visakhapatnam')?.from]).toEqual([
+    1850, 1850, 1850,
+  ]);
+  expect(at('puri')?.from).toBe(1600 + 240 + 250);
+  // Short drops: as before.
+  expect([at('bilaspur')?.from, at('korba')?.from, at('raigarh')?.from]).toEqual([960, 1200, 1320]);
+  // Round trips: the days only.
+  expect(planTrip(config, 'outstation', 'Raipur', 'jabalpur').est).toMatchObject({ longFee: 0, from: 3100 });
+  // An older website file without the rule: no limit, no charge.
+  const { awayDayMax: _a, longTripFee: _f, longTripAfterHours: _h, ...old } = config.outstation;
+  expect(planTrip({ ...config, outstation: old }, 'one-way-drop', 'Raipur', 'ambikapur').est?.from).toBe(
+    2040,
+  );
+  // Read from the website file; nonsense is left out.
+  expect(
+    parseTripRules({ ...old, awayDayMax: 1600, longTripFee: 250, longTripAfterHours: 12 }),
+  ).toMatchObject({
+    awayDayMax: 1600,
+    longTripFee: 250,
+    longTripAfterHours: 12,
+  });
+  const bad = parseTripRules({ ...old, awayDayMax: -1, longTripFee: 250 });
+  expect([bad?.awayDayMax, bad?.longTripFee]).toEqual([undefined, undefined]);
 });
 
 test('an older website file without the full-day rules: the leftover hours stay by the hour', () => {
@@ -230,6 +283,9 @@ test('read back defensively', () => {
   };
   expect(toQuote({ ...q, extraCharge: 600 })?.extraCharge).toBe(600);
   expect(toQuote(q)?.extraCharge).toBeUndefined();
+  // Quotes and bills from 1 Nov 2026: the most for the time away, and the long-trip charge.
+  expect(toQuote({ ...q, limitOff: 440, longFee: 250 })).toMatchObject({ limitOff: 440, longFee: 250 });
+  expect(toQuote(q)).not.toHaveProperty('limitOff');
 });
 
 test('which packages carry a trip', () => {
@@ -251,7 +307,7 @@ test('search: popular places first, then by name in English or Hindi', () => {
 test('the trip as a line for the team, and in the notes when the website does not take trips yet', () => {
   const t = tripRecord(planTrip(config, 'one-way-drop', 'Raipur', 'delhi'), '');
   const line =
-    'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 24 h getting home · est. ₹4,420–4,620';
+    'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 24 h getting home · est. ₹4,670–4,870';
   expect(tripNote(t, 'Raipur')).toBe(line);
   expect(notesWithTrip('  Swift, automatic ', t, 'Raipur')).toBe(`${line}\nSwift, automatic`);
   expect(notesWithTrip('', t, 'Raipur')).toBe(line);
