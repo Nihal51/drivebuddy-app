@@ -152,6 +152,19 @@ export const en = {
     service: 'Service',
     pickup: 'Pickup address',
     pickupPlaceholder: 'House / street, area, landmark',
+    locate: 'Use my current location',
+    pinOnMap: 'Pin it on the map',
+    locationOptional: 'Optional — helps the driver find the exact gate.',
+    locationDenied:
+      'Location is off for DriveBuddy. Drag the pin to your pickup spot, or just type the address.',
+    locationFailed:
+      'We could not get your location. Drag the pin to your pickup spot, or just type the address.',
+    pinned: (acc?: number) =>
+      acc !== undefined ? `Location pinned (±${acc} m)` : 'Location pinned on the map',
+    checkMap: 'Check in Google Maps',
+    removePin: 'Remove',
+    mapHint: 'Drag the pin, or tap the map, to mark the exact pickup spot.',
+    mapLabel: 'Map: drag the pin to your pickup spot',
     when: 'When',
     asap: 'As soon as possible',
     schedule: 'Pick a time',
@@ -287,6 +300,7 @@ export const en = {
     city: 'City',
     service: 'Service',
     pickup: 'Pickup',
+    pickupMap: 'Pickup on the map',
     when: 'Preferred time',
     notes: 'Notes',
     trip: 'Trip',

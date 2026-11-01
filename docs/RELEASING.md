@@ -10,7 +10,7 @@ uploads run on EAS (Expo's cloud), so **no Mac is needed, even for iPhone**.
 - [ ] Notifications arrive (SETUP step 5)
 - [ ] Privacy policy is live and has the account-deletion section:
       https://thedrivebuddy.in/privacy/#delete-account
-- [ ] `version` in `apps/customer/app.config.ts` is what you want shown (`1.0.0`)
+- [ ] `version` in `apps/customer/app.config.ts` is what you want shown (`1.1.0`)
 - [ ] **iPhone only:** add _Sign in with Apple_ next to Google (App Store rule
       4.8 for apps with a third-party login). Ask Claude to add it before the
       iOS submission; it is a small change.

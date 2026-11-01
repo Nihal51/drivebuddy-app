@@ -54,7 +54,7 @@ IN THE APP
 • Use the app in English or Hindi
 
 PRIVACY
-We ask only for what we need to send you a driver. The app does not use your location, contacts or photos, and shows no ads. You can delete your account from the app at any time.
+We ask only for what we need to send you a driver. Your location is used only if you tap "Use my current location" to pin your pickup spot, and never in the background. The app does not use your contacts or photos, and shows no ads. You can delete your account from the app at any time.
 
 Questions? Call or WhatsApp +91 91114 73929, email drivebuddyind@gmail.com, or visit thedrivebuddy.in.
 ```

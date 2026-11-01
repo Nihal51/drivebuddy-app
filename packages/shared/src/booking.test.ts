@@ -73,6 +73,18 @@ test('a trip package needs a destination, and a typed place for "somewhere else"
   expect(BOOKING_FIELDS).toContain('destId');
 });
 
+test('the exact pickup spot is saved only when it is a real place in India', () => {
+  const at = { lat: 21.25138412, lng: 81.62964123, acc: 14.6 };
+  expect(newBookingFields(GOOD, null, null, at).pickupGeo).toEqual({
+    lat: 21.251384,
+    lng: 81.629641,
+    acc: 15,
+  });
+  expect(newBookingFields(GOOD, null, null, { lat: 51.5, lng: -0.1 })).not.toHaveProperty('pickupGeo');
+  expect(newBookingFields(GOOD, null, null, null)).not.toHaveProperty('pickupGeo');
+  expect(BOOKING_CREATE_KEYS).toContain('pickupGeo');
+});
+
 test('a trip is saved only on a trip package, and only with the matching kind', () => {
   const drop: BookingInput = { ...GOOD, packageId: 'one-way-drop', destId: 'nagpur' };
   const trip = tripRecord(planTrip(DEFAULT_CONFIG, 'one-way-drop', 'Raipur', 'delhi'), '');

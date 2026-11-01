@@ -38,3 +38,22 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 process.env.EXPO_PUBLIC_FIREBASE_API_KEY = 'test-api-key';
 process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID = 'drive-buddy-test';
 process.env.EXPO_PUBLIC_SITE_URL = 'https://thedrivebuddy.in';
+
+// The pickup location: GPS and the map (a web view) are native; tests drive them by hand.
+jest.mock('expo-location', () => ({
+  Accuracy: { High: 4 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getCurrentPositionAsync: jest.fn(async () => ({
+    coords: { latitude: 21.251384, longitude: 81.629641, accuracy: 14.6 },
+  })),
+}));
+jest.mock('react-native-webview', () => {
+  const { View } = require('react-native');
+  const React = require('react');
+  const WebView = React.forwardRef((props, ref) => {
+    React.useImperativeHandle(ref, () => ({ injectJavaScript: jest.fn() }));
+    return React.createElement(View, { testID: props.testID, onMessage: props.onMessage });
+  });
+  WebView.displayName = 'WebView';
+  return { WebView };
+});

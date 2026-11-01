@@ -49,7 +49,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   owner: process.env.EXPO_OWNER || 'thedrivebuddy',
   scheme: 'drivebuddy',
   // Shown in the stores. Bump for every store release; EAS bumps the build numbers itself.
-  version: '1.0.0',
+  // 1.1.0: the pickup location (expo-location, react-native-webview) — new native modules,
+  // so a new runtime: apps built before it never receive updates that need them.
+  version: '1.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   // Over-the-air updates (EAS Update): text, screens and bug fixes reach installed
@@ -85,9 +87,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: WHITE,
     },
     ...(googleServicesFile ? { googleServicesFile } : {}),
-    // Nothing beyond internet and notifications. No location, contacts or storage:
-    // fewer permissions = a simpler Play "Data safety" form and more trust.
+    // Internet, notifications, and location only while the customer taps "Use my current
+    // location" for the pickup (expo-location below). No background location, contacts or
+    // storage: fewer permissions = a simpler Play "Data safety" form and more trust.
     blockedPermissions: [
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
       // No ads and no ad tracking: keeps the Play "Advertising ID" answer a plain No.
       'com.google.android.gms.permission.AD_ID',
       'android.permission.READ_EXTERNAL_STORAGE',
@@ -105,6 +109,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
     'expo-font',
     'expo-localization',
+    [
+      'expo-location',
+      {
+        // Asked only when the customer taps "Use my current location" for the pickup.
+        locationWhenInUsePermission:
+          'DriveBuddy uses your location only when you tap "Use my current location", to pin your pickup spot for the driver.',
+        isAndroidBackgroundLocationEnabled: false,
+        isIosBackgroundLocationEnabled: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {

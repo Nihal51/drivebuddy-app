@@ -7,6 +7,7 @@
  * refused. booking.test.ts holds this file to that list.
  */
 
+import { type PickupGeo, toPickupGeo } from './geo';
 import {
   type BookingStatus,
   type City,
@@ -139,6 +140,7 @@ export const BOOKING_CREATE_KEYS = [
   'source',
   'customerUid',
   'trip',
+  'pickupGeo',
 ] as const;
 
 /** `source` on bookings made in this app; the website writes 'website'. */
@@ -157,6 +159,8 @@ export type NewBookingFields = {
   customerUid?: string;
   /** Outstation trip / one-way drop only. */
   trip?: BookingTrip;
+  /** The exact pickup spot, if the customer pinned it (geo.ts). */
+  pickupGeo?: PickupGeo;
 };
 
 /**
@@ -169,6 +173,7 @@ export function newBookingFields(
   input: BookingInput,
   customerUid?: string | null,
   trip?: BookingTrip | null,
+  pickupGeo?: PickupGeo | null,
 ): NewBookingFields {
   if (hasErrors(validateBooking(input)) || !isCity(input.city) || !isPackageId(input.packageId)) {
     throw new Error('newBookingFields: the booking has not passed validateBooking');
@@ -188,6 +193,9 @@ export function newBookingFields(
   if (trip && isTripPackage(input.packageId) && trip.kind === TRIP_PACKAGES[input.packageId]) {
     fields.trip = { ...trip };
   }
+  // Re-checked: only a real spot in India is written (firestore.rules isGeo).
+  const geo = pickupGeo ? toPickupGeo(pickupGeo.lat, pickupGeo.lng, pickupGeo.acc) : null;
+  if (geo) fields.pickupGeo = geo;
   return fields;
 }
 

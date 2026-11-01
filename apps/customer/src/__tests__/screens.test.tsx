@@ -190,7 +190,7 @@ describe('Booking, step by step', () => {
         notes: '',
       },
       null,
-      { pingUrl: '', trip: null, tripsLive: false },
+      { pingUrl: '', trip: null, tripsLive: false, pickupGeo: null },
     );
     expect(screen.getByText('Booking received!')).toBeOnTheScreen();
     expect(screen.getByText(/\+91 98765 43210/)).toBeOnTheScreen();
@@ -230,6 +230,47 @@ describe('Booking, step by step', () => {
     await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'nagpur' });
     expect(screen.getByTestId('city-Raipur')).toBeChecked();
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,700');
+  });
+
+  test('the exact pickup spot: GPS or a pin on the map, sent with the booking (optional)', async () => {
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b9' });
+    await openBooking({ package: '3-hours-600', city: 'Raipur' });
+    expect(screen.queryByTestId('pickup-pinned')).toBeNull();
+    // GPS: the spot with its accuracy.
+    await fireEvent.press(screen.getByTestId('pickup-locate'));
+    expect(await screen.findByText('Location pinned (±15 m)')).toBeOnTheScreen();
+    // The map opened; a pin moved by hand replaces it, without an accuracy.
+    await fireEvent(screen.getByTestId('pickup-map'), 'onMessage', {
+      nativeEvent: { data: JSON.stringify({ lat: 21.2501, lng: 81.6302 }) },
+    });
+    expect(screen.getByText('Location pinned on the map')).toBeOnTheScreen();
+    // Nonsense from the map is ignored.
+    await fireEvent(screen.getByTestId('pickup-map'), 'onMessage', {
+      nativeEvent: { data: '{"lat":51.5,"lng":-0.1}' },
+    });
+    expect(screen.getByText('Location pinned on the map')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, near the temple');
+    await next();
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    expect(mockedSubmit.mock.calls[0][2].pickupGeo).toEqual({ lat: 21.2501, lng: 81.6302 });
+  });
+
+  test('location turned off: the typed address is enough', async () => {
+    const Location = jest.requireMock('expo-location') as { requestForegroundPermissionsAsync: jest.Mock };
+    Location.requestForegroundPermissionsAsync.mockResolvedValueOnce({ status: 'denied' });
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b10' });
+    await openBooking({ package: '3-hours-600', city: 'Raipur' });
+    await fireEvent.press(screen.getByTestId('pickup-locate'));
+    expect(await screen.findByText(/Location is off for DriveBuddy/)).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, near the temple');
+    await next();
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    expect(mockedSubmit.mock.calls[0][2].pickupGeo).toBeNull();
   });
 
   test('a city or place the app does not know is left for the customer to choose', async () => {

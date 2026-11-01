@@ -9,6 +9,7 @@ import {
   type BookingInput,
   type BookingTrip,
   newBookingFields,
+  type PickupGeo,
   notesWithTrip,
   sortNewestFirst,
   toBooking,
@@ -40,17 +41,24 @@ export async function submitBooking(
     trip?: BookingTrip | null;
     /** The website takes `trip` (AppConfig.tripsLive); if not, it goes in the notes. */
     tripsLive?: boolean;
+    /** The exact pickup spot, if the customer pinned it. */
+    pickupGeo?: PickupGeo | null;
   } = {},
 ): Promise<SubmitResult> {
   if (!isFirebaseConfigured()) return { ok: false, reason: 'config' };
 
   let id: string | undefined;
   try {
-    const { trip, tripsLive = false } = opts;
+    const { trip, tripsLive = false, pickupGeo = null } = opts;
     const fields =
       trip && !tripsLive && input.city
-        ? newBookingFields({ ...input, notes: notesWithTrip(input.notes, trip, input.city) }, customerUid)
-        : newBookingFields(input, customerUid, trip);
+        ? newBookingFields(
+            { ...input, notes: notesWithTrip(input.notes, trip, input.city) },
+            customerUid,
+            null,
+            pickupGeo,
+          )
+        : newBookingFields(input, customerUid, trip, pickupGeo);
     // The id is made on the phone, so even a slow save can be traced later.
     const ref = doc(collection(firestore(), 'bookings'));
     id = ref.id;

@@ -1,7 +1,9 @@
 import {
   type BookingInput,
   type BookingTrip,
+  type PickupGeo,
   type TripDestination,
+  mapsLink,
   normalisePhone,
 } from '@drivebuddy/shared';
 
@@ -17,6 +19,7 @@ export function whatsappBookingMessage(
   v: BookingInput,
   trip?: BookingTrip | null,
   destinations?: readonly TripDestination[],
+  pickupGeo?: PickupGeo | null,
 ): string {
   const w = t.whatsappBooking;
   return [
@@ -28,6 +31,7 @@ export function whatsappBookingMessage(
     `${w.service}: ${packageName(t, v.packageId || null)}`,
     trip && v.city ? `${w.trip}: ${tripSummary(t, trip, v.city, destinations)}` : null,
     `${w.pickup}: ${v.pickup.trim()}`,
+    pickupGeo ? `${w.pickupMap}: ${mapsLink(pickupGeo)}` : null,
     `${w.when}: ${formatPreferred(t, v.preferredTime)}`,
     v.notes.trim() ? `${w.notes}: ${v.notes.trim()}` : null,
   ]

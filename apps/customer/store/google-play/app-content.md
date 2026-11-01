@@ -1,7 +1,7 @@
 # App content answers (Play Console → _Policy and programmes_ → App content)
 
 Every answer below matches what the app really does (checked against the code
-on 19 Oct 2026). If the app changes — a new permission, a new data type, ads —
+on 1 Nov 2026, version 1.1.0 with the pickup location). If the app changes — a new permission, a new data type, ads —
 these answers must change too, or Play can remove the app.
 
 ## Privacy policy
@@ -75,19 +75,21 @@ given to another company for its own use; Firebase, Expo, Sentry and PostHog
 only process data for DriveBuddy, and the assigned driver works for
 DriveBuddy, so none of that counts as sharing.)
 
-| Section → data type                           | Required or optional | Purposes                     | Why                                                                                                      |
-| --------------------------------------------- | -------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Personal info → **Name**                      | Required             | App functionality            | Who the driver asks for                                                                                  |
-| Personal info → **Phone number**              | Required             | App functionality            | We call to confirm the booking                                                                           |
-| Personal info → **Address**                   | Required             | App functionality            | Pickup address                                                                                           |
-| Personal info → **Email address**             | Optional             | Account management           | Only if the customer logs in with Google                                                                 |
-| Personal info → **User IDs**                  | Optional             | Account management           | The Firebase login ID, only when logged in                                                               |
-| Device or other IDs → **Device or other IDs** | Optional             | App functionality, Analytics | The notification token (only if notifications are on); the random ID of the anonymous stats              |
-| App activity → **App interactions**           | Optional             | Analytics                    | Anonymous usage stats — **only if `EXPO_PUBLIC_POSTHOG_KEY` is set**; users can switch it off in Account |
-| App info and performance → **Crash logs**     | Required             | App functionality, Analytics | **Only if `EXPO_PUBLIC_SENTRY_DSN` is set**                                                              |
-| App info and performance → **Diagnostics**    | Required             | App functionality, Analytics | Phone model and OS version in a crash report — **only with Sentry**                                      |
+| Section → data type                           | Required or optional | Purposes                     | Why                                                                                                            |
+| --------------------------------------------- | -------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Personal info → **Name**                      | Required             | App functionality            | Who the driver asks for                                                                                        |
+| Personal info → **Phone number**              | Required             | App functionality            | We call to confirm the booking                                                                                 |
+| Personal info → **Address**                   | Required             | App functionality            | Pickup address                                                                                                 |
+| Location → **Precise location**               | Optional             | App functionality            | Only when the customer taps "Use my current location" to pin the pickup spot; one fix, never in the background |
+| Personal info → **Email address**             | Optional             | Account management           | Only if the customer logs in with Google                                                                       |
+| Personal info → **User IDs**                  | Optional             | Account management           | The Firebase login ID, only when logged in                                                                     |
+| Device or other IDs → **Device or other IDs** | Optional             | App functionality, Analytics | The notification token (only if notifications are on); the random ID of the anonymous stats                    |
+| App activity → **App interactions**           | Optional             | Analytics                    | Anonymous usage stats — **only if `EXPO_PUBLIC_POSTHOG_KEY` is set**; users can switch it off in Account       |
+| App info and performance → **Crash logs**     | Required             | App functionality, Analytics | **Only if `EXPO_PUBLIC_SENTRY_DSN` is set**                                                                    |
+| App info and performance → **Diagnostics**    | Required             | App functionality, Analytics | Phone model and OS version in a crash report — **only with Sentry**                                            |
 
-Not collected (leave unticked): location, financial info, health, messages,
+Not collected (leave unticked): approximate location (the app asks for precise
+location, once, only on the tap above), financial info, health, messages,
 photos and videos, audio, files, calendar, contacts, web browsing, installed
 apps, other personal info (race, religion…).
 
@@ -97,6 +99,10 @@ interactions. Answer for the build you actually upload.
 
 ## Other declarations Play may ask for
 
+- **Location permission:** foreground only ("while using the app"), asked only
+  when the customer taps _Use my current location_; background location is
+  blocked in `app.config.ts`, so Play's background-location declaration does
+  not apply.
 - **Foreground service, exact alarms, full-screen notifications, photo and
   video permissions, accessibility services:** the app uses none — answer No
   / not applicable.

@@ -5,10 +5,10 @@ the language tags:
 
 ```
 <en-IN>
-First version of the DriveBuddy app: book a verified driver for your own car in Raipur, Bhilai, Durg and Bilaspur, see clear prices before you book, follow your bookings live and get a notification when your driver is assigned. In English and Hindi.
+First version of the DriveBuddy app: book a verified driver for your own car in Raipur, Bhilai, Durg and Bilaspur, see clear prices before you book, pin your exact pickup spot on a map, follow your bookings live and get a notification when your driver is assigned. In English and Hindi.
 </en-IN>
 <hi-IN>
-DriveBuddy ऐप का पहला वर्ज़न: रायपुर, भिलाई, दुर्ग और बिलासपुर में अपनी कार के लिए वेरिफ़ाइड ड्राइवर बुक करें, बुकिंग से पहले साफ़ कीमतें देखें, अपनी बुकिंग लाइव देखें और ड्राइवर तय होते ही सूचना पाएँ। हिंदी और अंग्रेज़ी में।
+DriveBuddy ऐप का पहला वर्ज़न: रायपुर, भिलाई, दुर्ग और बिलासपुर में अपनी कार के लिए वेरिफ़ाइड ड्राइवर बुक करें, बुकिंग से पहले साफ़ कीमतें देखें, मैप पर अपनी सही पिकअप जगह पिन करें, अपनी बुकिंग लाइव देखें और ड्राइवर तय होते ही सूचना पाएँ। हिंदी और अंग्रेज़ी में।
 </hi-IN>
 ```
 

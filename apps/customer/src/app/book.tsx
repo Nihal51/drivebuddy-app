@@ -6,6 +6,7 @@ import {
   type City,
   EMPTY_BOOKING,
   type PackageId,
+  type PickupGeo,
   isPackageId,
   isTripPackage,
   istParts,
@@ -32,6 +33,7 @@ import {
 
 import { useAuth } from '@/auth/AuthProvider';
 import { CATEGORIES, type Category, categoryOf, findCategory } from '@/booking/categories';
+import { PickupLocation } from '@/booking/PickupLocation';
 import { TripSection, placeName } from '@/booking/TripSection';
 import { WhenPicker, type When } from '@/booking/WhenPicker';
 import { whatsappBookingMessage } from '@/booking/whatsapp';
@@ -148,6 +150,8 @@ function BookingWizard({
     startPackage ? categoryOf(startPackage) : findCategory(initialCategory),
   );
   const [when, setWhen] = useState<When>({ mode: 'asap' });
+  // The exact pickup spot (optional): GPS or the pin on the map.
+  const [pickupGeo, setPickupGeo] = useState<PickupGeo | null>(null);
   const [touched, setTouched] = useState<Partial<Record<BookingField, boolean>>>({});
   // Steps whose errors are shown: the ones the customer tried to leave.
   const [checked, setChecked] = useState<Partial<Record<Step, boolean>>>({});
@@ -251,6 +255,7 @@ function BookingWizard({
       pingUrl: config.alerts.pingUrl,
       trip,
       tripsLive: config.tripsLive,
+      pickupGeo,
     });
     if (result.ok) {
       track('booking_submitted', {
@@ -279,6 +284,7 @@ function BookingWizard({
         onAnother={() => {
           setPhase({ kind: 'editing' });
           setValues((v) => ({ ...EMPTY_BOOKING, name: v.name, phone: v.phone, city: v.city }));
+          setPickupGeo(null);
           setWhen({ mode: 'asap' });
           setChecked({});
           setTouched({});
@@ -319,7 +325,7 @@ function BookingWizard({
                     track('whatsapp_fallback_used');
                     void openWhatsapp(
                       config.contact.whatsapp,
-                      whatsappBookingMessage(t, input, trip, config.destinations),
+                      whatsappBookingMessage(t, input, trip, config.destinations, pickupGeo),
                     );
                   }}
                   testID="failure-whatsapp"
@@ -493,6 +499,7 @@ function BookingWizard({
               maxLength={300}
               testID="field-pickup"
             />
+            <PickupLocation city={values.city} value={pickupGeo} onChange={setPickupGeo} />
           </View>
 
           {plan ? null : (

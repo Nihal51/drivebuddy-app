@@ -12,7 +12,7 @@ app and on the website, English and Hindi.
 | [app-content.md](app-content.md)     | Every _App content_ answer: Data safety, content rating, ads, target audience… |
 | [testers.md](testers.md)             | The 14-day closed test: setup, WhatsApp message, applying for production       |
 | [testers.csv](testers.csv)           | Sheet for your 15 testers' Gmail addresses                                     |
-| [release-notes.md](release-notes.md) | "What's new" text for version 1.0.0, English and Hindi                         |
+| [release-notes.md](release-notes.md) | "What's new" text for version 1.1.0, English and Hindi                         |
 | `images/`                            | Icon 512×512, feature graphic 1024×500, 5 English + 5 Hindi phone screenshots  |
 
 `npm run store:check` (in `apps/customer`) confirms all text and images fit
