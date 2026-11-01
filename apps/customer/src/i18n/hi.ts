@@ -229,11 +229,20 @@ export const hi: Messages = {
     priceOnCall: 'कीमत कॉल पर',
     extraHours: (n: number) => `${n} घंटे अतिरिक्त`,
     ticket: (amount: string) => `${amount} टिकट`,
-    awayMost: (h: number, max: string) =>
-      `${h} घंटे बाहर (घर से निकलने से लौटने तक): हर दिन ज़्यादा से ज़्यादा ${max}`,
-    longTrip: (h: number, after: number) => `लंबी ट्रिप: ${h} घंटे बाहर (${after} घंटे या ज़्यादा)`,
-    limitShort: (amount: string) => `− ${amount} (बाहर रहने की अधिकतम कीमत)`,
-    longShort: (amount: string) => `${amount} लंबी ट्रिप`,
+    routeByKm: (km: string, base: string, perKm: string) =>
+      `रूट की कीमत — ${km}: ${base} + ${perKm} प्रति किमी`,
+    routeByDays: (h: number, days: number, base: string, perDay: string) =>
+      `रूट की कीमत — ${h} घंटे बाहर (${days} दिन): कम से कम ${base} + ${days} × ${perDay}`,
+    routeWayHome: (home: number, away: number) =>
+      `ड्राइवर की घर वापसी और इंतज़ार: ${home} घंटे, कुल लगभग ${away} घंटे बाहर`,
+    included: 'शामिल',
+    routeSmallPrint: (meal: string) =>
+      `यह अनुमान है: ड्राइवर के निकलने से पहले कॉल पर पक्की कीमत बताएँगे। दूरी के हिसाब से रूट की एक कीमत — ड्राइवर की घर वापसी और ट्रेन का इंतज़ार इसी में शामिल। उसका बस या ट्रेन टिकट आप बुक करें। फ़्यूल, टोल और पार्किंग अलग। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
+    routeLate: (after: number, rate: string) =>
+      `थोड़ी देर हो तो कीमत वही; प्लान से ${after} घंटे से ज़्यादा देर से घर पहुँचे तो उसके बाद ${rate}/घंटा`,
+    routeQuote: (amount: string, away: number) =>
+      `${amount} रूट की कीमत (लगभग ${away} घंटे बाहर, घर वापसी शामिल)`,
+    routeLateBill: (amount: string, h: number) => `${amount} — ${h} घंटे की देरी`,
     billExtra: (amount: string, n: number) => `${amount} ${n} घंटे अतिरिक्त ड्राइविंग`,
     clockLeft: (at: string) => `ड्राइवर निकले ${at}`,
     clockDropped: (at: string) => `गाड़ी छोड़ी ${at}`,

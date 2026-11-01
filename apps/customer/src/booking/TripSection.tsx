@@ -22,6 +22,9 @@ import { type Messages, useI18n } from '@/i18n';
 import { errorText, formatDateTime, kmText, tripDays } from '@/i18n/format';
 import { TOUCH, makeStyles, radius, space, useTheme } from '@/theme';
 
+/** ₹4.5 a km: rupees() rounds to whole rupees. */
+const perKm = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n)}`;
+
 /** The destination's name in the customer's language. */
 export const placeName = (t: Messages, d: TripDestination) =>
   t.locale === 'hi-IN' && d.nameHi ? d.nameHi : d.name;
@@ -244,67 +247,88 @@ function Estimate({
         <AppText variant="small" color={colors.textMuted}>
           {t.trip.route(from, placeName(t, plan.dest), kmText(t, plan.km))} · {tripDays(t, plan)}
         </AppText>
-        <View style={styles.lines}>
-          {!oneWay || plan.fullDays > 0 ? (
+        {plan.est.route ? (
+          // A longer drop: one price for the route; his way home and the waiting are in it.
+          <View style={styles.lines}>
             <Line
-              label={t.trip.times(
-                oneWay
-                  ? t.trip.drivingDays(plan.fullDays, config.outstation.hoursPerDay)
-                  : t.trip.days(plan.fullDays),
-                rate,
-              )}
-              amount={rupeeRange({ from: plan.fullDays * day.from, to: plan.fullDays * day.to })}
+              label={
+                plan.est.route.by === 'km'
+                  ? t.trip.routeByKm(
+                      kmText(t, plan.est.route.km),
+                      rupees(config.outstation.routeBase ?? 0),
+                      perKm(config.outstation.routePerKm ?? 0),
+                    )
+                  : t.trip.routeByDays(
+                      plan.est.route.awayHours,
+                      plan.est.route.days,
+                      rupees(config.outstation.routeMinBase ?? 0),
+                      rupees(config.outstation.routeMinPerDay ?? 0),
+                    )
+              }
+              amount={rupees(plan.est.route.price)}
             />
-          ) : null}
-          {oneWay &&
-          plan.extraHours > 0 &&
-          plan.fullDays === 0 &&
-          plan.extraHours * config.outstation.extraHour < (config.outstation.shortDriveMinimum ?? 0) ? (
-            // A short drive: the minimum (₹600) rather than the hours.
             <Line
-              label={t.trip.shortDriveMin(plan.extraHours, rupees(config.outstation.shortDriveMinimum ?? 0))}
-              amount={rupees(plan.est.extraCharge)}
+              label={t.trip.routeWayHome(plan.returnHours, plan.est.route.awayHours)}
+              amount={t.trip.included}
             />
-          ) : oneWay && plan.extraHours > 0 ? (
             <Line
-              label={t.trip.times(
-                t.trip.drivingHours(plan.extraHours, plan.fullDays > 0),
+              label={t.trip.routeLate(
+                config.outstation.lateAfterHours ?? 0,
                 rupees(config.outstation.extraHour),
               )}
-              amount={rupees(plan.est.extraCharge)}
+              amount=""
             />
-          ) : null}
-          {oneWay ? (
-            plan.returnHours > 0 ? (
+          </View>
+        ) : (
+          <View style={styles.lines}>
+            {!oneWay || plan.fullDays > 0 ? (
               <Line
-                label={`${t.trip.wayHomeHours(plan.returnHours)} (${t.trip.returnMax(
-                  rupees(config.outstation.returnHour),
-                  rupees(config.outstation.returnMaxPerDay),
-                  config.outstation.returnFullDayAfter ?? 24,
-                )})`}
-                amount={rupees(plan.est.returnCharge)}
+                label={t.trip.times(
+                  oneWay
+                    ? t.trip.drivingDays(plan.fullDays, config.outstation.hoursPerDay)
+                    : t.trip.days(plan.fullDays),
+                  rate,
+                )}
+                amount={rupeeRange({ from: plan.fullDays * day.from, to: plan.fullDays * day.to })}
               />
-            ) : (
-              <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
-            )
-          ) : null}
-          {/* The most for the hours he is away, and the long-trip charge (as the website). */}
-          {plan.est.limitOff.to > 0 ? (
-            <Line
-              label={t.trip.awayMost(plan.est.awayHours, rupees(config.outstation.awayDayMax ?? 0))}
-              amount={`−${rupeeRange({
-                from: Math.min(plan.est.limitOff.from, plan.est.limitOff.to),
-                to: Math.max(plan.est.limitOff.from, plan.est.limitOff.to),
-              })}`}
-            />
-          ) : null}
-          {plan.est.longFee > 0 ? (
-            <Line
-              label={t.trip.longTrip(plan.est.awayHours, config.outstation.longTripAfterHours ?? 0)}
-              amount={rupees(plan.est.longFee)}
-            />
-          ) : null}
-        </View>
+            ) : null}
+            {oneWay &&
+            plan.extraHours > 0 &&
+            plan.fullDays === 0 &&
+            plan.extraHours * config.outstation.extraHour < (config.outstation.shortDriveMinimum ?? 0) ? (
+              // A short drive: the minimum (₹600) rather than the hours.
+              <Line
+                label={t.trip.shortDriveMin(
+                  plan.extraHours,
+                  rupees(config.outstation.shortDriveMinimum ?? 0),
+                )}
+                amount={rupees(plan.est.extraCharge)}
+              />
+            ) : oneWay && plan.extraHours > 0 ? (
+              <Line
+                label={t.trip.times(
+                  t.trip.drivingHours(plan.extraHours, plan.fullDays > 0),
+                  rupees(config.outstation.extraHour),
+                )}
+                amount={rupees(plan.est.extraCharge)}
+              />
+            ) : null}
+            {oneWay ? (
+              plan.returnHours > 0 ? (
+                <Line
+                  label={`${t.trip.wayHomeHours(plan.returnHours)} (${t.trip.returnMax(
+                    rupees(config.outstation.returnHour),
+                    rupees(config.outstation.returnMaxPerDay),
+                    config.outstation.returnFullDayAfter ?? 24,
+                  )})`}
+                  amount={rupees(plan.est.returnCharge)}
+                />
+              ) : (
+                <Line label={t.trip.homeInTime} amount={t.trip.noCharge} />
+              )
+            ) : null}
+          </View>
+        )}
         {oneWay ? <Timeline plan={plan} startAt={startAt} from={from} to={placeName(t, plan.dest)} /> : null}
         {plan.local ? (
           <View style={styles.tip}>
@@ -326,14 +350,16 @@ function Estimate({
     <View style={styles.estimate} accessibilityLiveRegion="polite">
       {body}
       <AppText variant="tiny" color={colors.textMuted}>
-        {t.trip.smallPrint(
-          config.outstation.hoursPerDay,
-          rupees(config.outstation.extraHour),
-          rupees(config.outstation.mealAllowance),
-          oneWay,
-          config.outstation.extraFullDayAfter,
-          config.outstation.returnFullDayAfter,
-        )}
+        {plan?.est?.route
+          ? t.trip.routeSmallPrint(rupees(config.outstation.mealAllowance))
+          : t.trip.smallPrint(
+              config.outstation.hoursPerDay,
+              rupees(config.outstation.extraHour),
+              rupees(config.outstation.mealAllowance),
+              oneWay,
+              config.outstation.extraFullDayAfter,
+              config.outstation.returnFullDayAfter,
+            )}
       </AppText>
     </View>
   );

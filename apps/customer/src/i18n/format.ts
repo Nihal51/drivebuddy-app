@@ -121,6 +121,15 @@ export function tripSummary(
 
 /** The final bill, itemised: "₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h)". */
 export function billBreakdown(t: Messages, b: BookingBill): string {
+  // A route price: the price, any hours late, the ticket.
+  if (b.awayHours)
+    return [
+      t.trip.routeQuote(rupees(b.dayRate), b.awayHours),
+      b.extraHours > 0 ? t.trip.routeLateBill(rupees(b.extraCharge), b.extraHours) : null,
+      b.ticket > 0 ? t.trip.ticket(rupees(b.ticket)) : null,
+    ]
+      .filter(Boolean)
+      .join(' + ');
   return [
     b.days > 0 ? t.trip.times(rupees(b.dayRate), t.trip.days(b.days)) : null,
     b.extraHours > 0
@@ -129,13 +138,10 @@ export function billBreakdown(t: Messages, b: BookingBill): string {
         : t.trip.billExtra(rupees(b.extraCharge), b.extraHours)
       : null,
     b.returnHours > 0 ? `${rupees(b.returnCharge)} ${t.trip.returnShort(b.returnHours)}` : null,
-    b.limitOff ? t.trip.limitShort(rupees(b.limitOff)) : null,
-    b.longFee ? t.trip.longShort(rupees(b.longFee)) : null,
     b.ticket > 0 ? t.trip.ticket(rupees(b.ticket)) : null,
   ]
     .filter(Boolean)
-    .join(' + ')
-    .replace(' + − ', ' − ');
+    .join(' + ');
 }
 
 /** "Driver left Thu, 29 Oct, 7:45 am · car dropped … · driver home …" (round trip: "back …"). */
@@ -151,6 +157,14 @@ export function clockText(t: Messages, c: BookingClock, kind: BookingTrip['kind'
 
 /** The agreed price, itemised: "₹1,550 × 2 days + ₹2,400 way home (38 h) + ₹120 × 1 extra hour". */
 export function quoteBreakdown(t: Messages, q: BookingQuote): string {
+  // A route price: one price, his way home included.
+  if (q.awayHours)
+    return [
+      t.trip.routeQuote(rupees(q.dayRate), q.awayHours),
+      q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
+    ]
+      .filter(Boolean)
+      .join(' + ');
   return [
     q.days > 0 ? t.trip.times(rupees(q.dayRate), t.trip.days(q.days)) : null,
     q.returnHours > 0 ? `${rupees(q.returnCharge)} ${t.trip.returnShort(q.returnHours)}` : null,
@@ -159,11 +173,8 @@ export function quoteBreakdown(t: Messages, q: BookingQuote): string {
         ? t.trip.shortDriveBill(rupees(q.extraCharge), q.extraHours)
         : t.trip.times(rupees(q.extraHourRate), t.trip.extraHours(q.extraHours))
       : null,
-    q.limitOff ? t.trip.limitShort(rupees(q.limitOff)) : null,
-    q.longFee ? t.trip.longShort(rupees(q.longFee)) : null,
     q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
   ]
     .filter(Boolean)
-    .join(' + ')
-    .replace(' + − ', ' − ');
+    .join(' + ');
 }

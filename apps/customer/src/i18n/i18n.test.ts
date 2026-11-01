@@ -86,10 +86,20 @@ test('the final bill and the trip times, in both languages', () => {
   };
   expect(billBreakdown(en, bill)).toBe('₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h)');
   expect(billBreakdown(hi, bill)).toContain('₹600 5 घंटे अतिरिक्त ड्राइविंग');
-  // Bills from 1 Nov 2026: the most for the time away, and the long-trip charge.
-  expect(billBreakdown(en, { ...bill, limitOff: 1400, longFee: 250, amount: 5050 })).toBe(
-    '₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h) − ₹1,400 (the most for the time away) + ₹250 long trip',
-  );
+  // A route price (1 Nov 2026): the price, then any hours late.
+  expect(
+    billBreakdown(en, {
+      ...bill,
+      days: 1,
+      dayRate: 5800,
+      returnHours: 0,
+      returnCharge: 0,
+      extraHours: 3,
+      extraCharge: 360,
+      awayHours: 60,
+      amount: 6160,
+    }),
+  ).toBe('₹5,800 route price (about 60 h away, way home included) + ₹360 for 3 h late');
   const clock = {
     startAt: new Date('2026-10-29T02:15:00Z'),
     dropAt: new Date('2026-10-30T07:10:00Z'),

@@ -52,15 +52,18 @@ export type TripRules = {
    */
   shortDriveMinimum?: number;
   /**
-   * One-way (website 1 Nov 2026): the driving and his way home together
-   * never cost more than this for each 24 hours he is away (leaves → home);
-   * after the first 24, the hours left over at extraHour, up to one more.
-   * Older website files lack it: no limit.
+   * Longer one-way drops (website 1 Nov 2026, lib/outstation.ts routePrice):
+   * away (leaves → home) routeAfterHours or more → routeBase + routePerKm ×
+   * km, at least routeMinBase + routeMinPerDay for each day away, to ₹50.
+   * lateAfterHours: the final bill adds extraHour an hour only after this
+   * many hours late. Older website files lack them: by the hours.
    */
-  awayDayMax?: number;
-  /** One-way: added once when he is away longTripAfterHours or more (website 1 Nov 2026). */
-  longTripFee?: number;
-  longTripAfterHours?: number;
+  routeAfterHours?: number;
+  routeBase?: number;
+  routePerKm?: number;
+  routeMinBase?: number;
+  routeMinPerDay?: number;
+  lateAfterHours?: number;
   /** Per hour of the driver's way home, from the drop until he is home. */
   returnHour: number;
   /** A full day of the way home (each 24 hours). */
@@ -201,43 +204,55 @@ export type TripEstimate = {
   extraCharge: number;
   /** The way home (one-way). */
   returnCharge: number;
-  /** One-way: whole hours he is away (leaves → home); 0 when unknown or a round trip. */
-  awayHours: number;
-  /** What the most for the time away takes off, at each end of the range. */
-  limitOff: Range;
-  /** The long-trip charge. */
-  longFee: number;
+  /** One-way, away routeAfterHours or more: one price for the route (then from = to = route.price). */
+  route?: RoutePrice;
 };
 
-const wholeHours = (h: number) => Math.max(0, Math.ceil((Number.isFinite(h) ? h : 0) - 1e-9));
+export type RoutePrice = {
+  price: number;
+  /** Days (24 h, started ones count) he is away. */
+  days: number;
+  /** Whole hours he is away. */
+  awayHours: number;
+  km: number;
+  /** What set the price: the km, or the days away. */
+  by: 'km' | 'days';
+};
 
 /**
- * One-way, as the website (lib/outstation.ts awayLimit): the most the driving
- * and the way home together cost when he is away `hours`: up to 24 h,
- * awayDayMax; then awayDayMax for each further 24 h, and the hours left over
- * at extraHour, never more than one more. Undefined without awayDayMax.
- *   16 h → ₹1,600; 26 h → ₹1,840; 54 h → ₹3,920.
+ * The route price, exactly as the website's routePrice: for a drop `km`
+ * away that keeps him away `hours`; undefined without the route rules, for
+ * an unknown place, or when he is away less than routeAfterHours.
+ *   Nagpur 284 km, 12 h → ₹1,700; Delhi 1,214 km, 60 h → ₹5,800.
  */
-export function awayLimit(config: Pick<AppConfig, 'outstation'>, hours: number): number | undefined {
-  const { awayDayMax: max, extraHour } = config.outstation;
-  if (!max) return undefined;
-  const h = wholeHours(hours);
-  if (h <= 24) return max;
-  const more = h - 24;
-  const days = Math.floor(more / 24);
-  return max * (1 + days) + Math.min((more - days * 24) * extraHour, max);
-}
-
-/** One-way: the long-trip charge for `hours` away (website longTripFee), else 0. */
-export function longTripFee(config: Pick<AppConfig, 'outstation'>, hours: number): number {
-  const { longTripFee: fee, longTripAfterHours: after } = config.outstation;
-  return fee && after !== undefined && wholeHours(hours) >= after ? fee : 0;
-}
-
-/** What the limit takes off `charges` for `hours` away (0 when under it). */
-export function limitOff(config: Pick<AppConfig, 'outstation'>, charges: number, hours: number): number {
-  const limit = awayLimit(config, hours);
-  return limit === undefined ? 0 : Math.max(0, Math.round(charges) - limit);
+export function routePrice(
+  config: Pick<AppConfig, 'outstation'>,
+  km: number,
+  hours: number,
+): RoutePrice | undefined {
+  const o = config.outstation;
+  const d = Math.round(Number(km) || 0);
+  const awayHours = Math.max(0, Math.ceil((Number.isFinite(hours) ? hours : 0) - 1e-9));
+  if (
+    o.routeAfterHours === undefined ||
+    o.routeBase === undefined ||
+    o.routePerKm === undefined ||
+    o.routeMinBase === undefined ||
+    o.routeMinPerDay === undefined ||
+    d <= 0 ||
+    awayHours < o.routeAfterHours
+  )
+    return undefined;
+  const days = Math.max(1, Math.ceil(awayHours / 24));
+  const kmPrice = o.routeBase + o.routePerKm * d;
+  const floor = o.routeMinBase + o.routeMinPerDay * days;
+  return {
+    price: Math.round(Math.max(kmPrice, floor) / 50) * 50,
+    days,
+    awayHours,
+    km: d,
+    by: kmPrice >= floor ? 'km' : 'days',
+  };
 }
 
 /**
@@ -366,16 +381,7 @@ export function planTrip(
       days,
       fullDays: days,
       local,
-      est: {
-        from: driving.from,
-        to: driving.to,
-        driving,
-        extraCharge: 0,
-        returnCharge: 0,
-        awayHours: 0,
-        limitOff: { from: 0, to: 0 },
-        longFee: 0,
-      },
+      est: { from: driving.from, to: driving.to, driving, extraCharge: 0, returnCharge: 0 },
     };
   }
 
@@ -418,15 +424,8 @@ export function planTrip(
     rules.returnMaxPerDay,
     rules.returnFullDayAfter,
   );
-  // Never more than the most for the hours he is away, and the long-trip charge (as the website).
-  const awayHours = timing.homeAt !== undefined ? wholeHours(timing.homeAt) : 0;
-  const off = awayHours
-    ? {
-        from: limitOff(config, driving.from + returnCharge, awayHours),
-        to: limitOff(config, driving.to + returnCharge, awayHours),
-      }
-    : { from: 0, to: 0 };
-  const longFee = awayHours ? longTripFee(config, awayHours) : 0;
+  // Away long enough: one price for the route (by distance, at least the days away), as the website.
+  const route = timing.homeAt !== undefined ? routePrice(config, leg.km, timing.homeAt) : undefined;
   return {
     ...base,
     km: leg.km,
@@ -438,16 +437,15 @@ export function planTrip(
     nonstop: straight,
     ...timing,
     local,
-    est: {
-      from: driving.from + returnCharge - off.from + longFee,
-      to: driving.to + returnCharge - off.to + longFee,
-      driving,
-      extraCharge,
-      returnCharge,
-      awayHours,
-      limitOff: off,
-      longFee,
-    },
+    est: route
+      ? { from: route.price, to: route.price, driving, extraCharge, returnCharge, route }
+      : {
+          from: driving.from + returnCharge,
+          to: driving.to + returnCharge,
+          driving,
+          extraCharge,
+          returnCharge,
+        },
   };
 }
 
@@ -494,9 +492,9 @@ export type BookingQuote = {
   extraHourRate: number;
   /** The extra hours' charge (quotes from 29 Oct 2026): a drive shorter than a day at the short-drive price. Missing: extraHours × extraHourRate. */
   extraCharge?: number;
-  /** One-way (quotes from 1 Nov 2026): what the most for the time away took off, and the long-trip charge. */
-  limitOff?: number;
-  longFee?: number;
+  /** A route price (quotes from 1 Nov 2026): the hours away and the km; then one day at dayRate = the price. */
+  awayHours?: number;
+  km?: number;
   ticket: number;
 };
 
@@ -515,9 +513,9 @@ export type BookingBill = {
   returnHours: number;
   returnHourRate: number;
   returnCharge: number;
-  /** One-way (bills from 1 Nov 2026): what the most for the time away took off, and the long-trip charge. */
-  limitOff?: number;
-  longFee?: number;
+  /** A route price (bills from 1 Nov 2026): the planned hours away and the km; one day at the price, extraHours = hours late. */
+  awayHours?: number;
+  km?: number;
   ticket: number;
   /** Driven day and night (every 12 h a day). */
   nonstop: boolean;
@@ -606,10 +604,10 @@ export function toQuote(v: unknown): BookingQuote | undefined {
   }
   const extra = int(v.extraCharge);
   if (extra !== null) out.extraCharge = extra;
-  const off = int(v.limitOff);
-  if (off) out.limitOff = off;
-  const fee = int(v.longFee);
-  if (fee) out.longFee = fee;
+  const away = int(v.awayHours);
+  if (away) out.awayHours = away;
+  const km = int(v.km);
+  if (km) out.km = km;
   return out.amount > 0 ? out : undefined;
 }
 
@@ -653,10 +651,10 @@ export function toBill(v: unknown): BookingBill | undefined {
     if (n === null) return undefined;
     out[k] = n;
   }
-  const off = int(v.limitOff);
-  if (off) out.limitOff = off;
-  const fee = int(v.longFee);
-  if (fee) out.longFee = fee;
+  const away = int(v.awayHours);
+  if (away) out.awayHours = away;
+  const km = int(v.km);
+  if (km) out.km = km;
   return out.amount > 0 ? out : undefined;
 }
 
@@ -682,18 +680,22 @@ export function parseTripRules(v: unknown): TripRules | null {
   const after = v.returnFullDayAfterHours ?? v.returnFullDayAfter;
   const extraAfter = v.extraFullDayAfterHours ?? v.extraFullDayAfter;
   const shortMin = v.shortDriveMinimum;
-  const awayMax = v.awayDayMax;
-  const fee = v.longTripFee;
-  const feeAfter = v.longTripAfterHours;
-  const rupeesOk = (n: unknown, max: number): n is number =>
-    typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= max;
+  // The route price comes as a set; one odd value and the app keeps to the hours.
+  const n = (k: string, min: number, max: number) => {
+    const x = v[k];
+    return typeof x === 'number' && Number.isFinite(x) && x >= min && x <= max ? x : undefined;
+  };
+  const route = {
+    routeAfterHours: n('routeAfterHours', 0, 72),
+    routeBase: n('routeBase', 1, 100000),
+    routePerKm: n('routePerKm', 0.01, 100),
+    routeMinBase: n('routeMinBase', 1, 100000),
+    routeMinPerDay: n('routeMinPerDay', 1, 100000),
+    lateAfterHours: n('lateAfterHours', 0, 24),
+  };
+  const routeOk = Object.values(route).every((x) => x !== undefined);
   return {
-    ...(rupeesOk(awayMax, 100000) && { awayDayMax: awayMax }),
-    ...(rupeesOk(fee, 5000) &&
-      typeof feeAfter === 'number' &&
-      Number.isInteger(feeAfter) &&
-      feeAfter >= 0 &&
-      feeAfter <= 72 && { longTripFee: fee, longTripAfterHours: feeAfter }),
+    ...(routeOk && route),
     ...(typeof shortMin === 'number' &&
       Number.isInteger(shortMin) &&
       shortMin > 0 &&
