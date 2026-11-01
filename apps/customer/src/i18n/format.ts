@@ -64,6 +64,8 @@ export function priceLabel(t: Messages, price: PackagePrice): string {
       return t.price.monthly(price.amount);
     case 'perDay':
       return t.price.perDay(price.amount);
+    case 'byDistance':
+      return t.price.byDistance;
     case 'priority':
       return t.price.priority;
     case 'quote':

@@ -123,6 +123,7 @@ export const en = {
     perDay: (amount: string) => `${amount}/day`,
     monthlyFrom: (amount: string) => `from ${amount}/mo`,
     priority: 'Priority',
+    byDistance: 'By distance',
     quote: 'Quote on call',
   },
 

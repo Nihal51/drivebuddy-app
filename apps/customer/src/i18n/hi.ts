@@ -120,6 +120,7 @@ export const hi: Messages = {
     perDay: (amount: string) => `${amount}/दिन`,
     monthlyFrom: (amount: string) => `${amount}/माह से`,
     priority: 'प्राथमिकता',
+    byDistance: 'दूरी के हिसाब से',
     quote: 'कॉल पर कीमत',
   },
 

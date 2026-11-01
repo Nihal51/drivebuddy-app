@@ -134,6 +134,9 @@ describe('Booking, step by step', () => {
     await openBooking();
     expect(screen.getByTestId('booking-progress')).toHaveTextContent(/Step 1 of 3/);
     expect(screen.getAllByTestId(/^tile-/)).toHaveLength(8);
+    // Drops are priced by distance; outstation by the day, over every distance.
+    expect(screen.getByTestId('tile-drop')).toHaveTextContent(/By distance/);
+    expect(screen.getByTestId('tile-outstation')).toHaveTextContent(/₹1,300–1,650\/day/);
     await fireEvent.press(screen.getByTestId('tile-hourly'));
     expect(screen.getByText('Choose one')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('choice-3-hours-600'));

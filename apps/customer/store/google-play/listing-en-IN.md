@@ -32,7 +32,7 @@ WHAT YOU CAN BOOK
 • Hospital visits and emergencies, weddings and events
 
 CLEAR PRICES
-The app shows our current prices before you book, for example ₹300 for 1 hour, ₹600 for 3 hours and ₹1,000–1,200 for a full day. There is no payment in the app: we call you to confirm the price before the driver leaves.
+The app shows our current prices before you book, for example ₹300 for 1 hour, ₹600 for 3 hours and ₹1,000–1,200 for a full day. A one-way drop to another city shows one price for your route, with the driver's way home included. There is no payment in the app: we call you to confirm the price before the driver leaves.
 
 HOW IT WORKS
 1. Choose a service, your city and your pickup address.
