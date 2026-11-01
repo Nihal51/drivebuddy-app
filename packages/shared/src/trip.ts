@@ -43,16 +43,14 @@ export const isTripPackage = (id: unknown): id is TripPackage =>
 export type TripRules = {
   /** Driving hours in a day; each is a full day at prices.outstation. */
   hoursPerDay: number;
-  /** Per driving hour beyond the full days (and after the first hours of a short drive). */
+  /** Per driving hour beyond the full days (and of a drive shorter than a day). */
   extraHour: number;
   /**
-   * A one-way drive shorter than a day (website 29 Oct 2026): up to this many
-   * hours cost prices.threeHours (₹600), then extraHour each; more than
-   * shortDriveLocalDayAfter a local full day (prices.fullDay). Older website
-   * files lack them: the whole drive at extraHour.
+   * A one-way drive shorter than a day (website 1 Nov 2026): extraHour an
+   * hour, but at least this much (₹600, the 3-hour price). Older website
+   * files lack it: the whole drive at extraHour.
    */
-  shortDriveFirstHours?: number;
-  shortDriveLocalDayAfter?: number;
+  shortDriveMinimum?: number;
   /** Per hour of the driver's way home, from the drop until he is home. */
   returnHour: number;
   /** A full day of the way home (each 24 hours). */
@@ -118,19 +116,13 @@ export function dayRateFor(config: Pick<AppConfig, 'prices'>, km: number | undef
 
 /**
  * The driving charge of a one-way drive shorter than a day (`hours` whole
- * hours), as the website's shortDriveCharge: up to shortDriveFirstHours the
- * 3-hour package, then extraHour an hour, more than shortDriveLocalDayAfter a
- * local full day. 3 h → ₹600; 5 h → ₹840; 6 h → ₹960; 7 h → ₹1,000–1,200.
+ * hours), as the website's shortDriveCharge: extraHour an hour, at least
+ * shortDriveMinimum. 1–5 h → ₹600; 6 h → ₹720; 7 h → ₹840.
  */
-export function shortDriveCharge(config: Pick<AppConfig, 'prices' | 'outstation'>, hours: number): Range {
+export function shortDriveCharge(config: Pick<AppConfig, 'outstation'>, hours: number): Range {
   const h = Math.max(0, Math.round(Number.isFinite(hours) ? hours : 0));
-  const r = config.outstation;
   if (h === 0) return { from: 0, to: 0 };
-  if (r.shortDriveFirstHours === undefined || r.shortDriveLocalDayAfter === undefined)
-    return { from: h * r.extraHour, to: h * r.extraHour };
-  if (h > r.shortDriveLocalDayAfter)
-    return { from: config.prices.fullDay.from, to: config.prices.fullDay.to };
-  const n = config.prices.threeHours + Math.max(0, h - r.shortDriveFirstHours) * r.extraHour;
+  const n = Math.max(h * config.outstation.extraHour, config.outstation.shortDriveMinimum ?? 0);
   return { from: n, to: n };
 }
 
@@ -360,7 +352,7 @@ export function planTrip(
     timing = { returnHours: Math.max(0, Math.ceil(homeAt - dropAt - 1e-9)), dropAt, leaveAt, homeAt };
   }
 
-  // A drive shorter than a day: ₹600 for 3 h, then by the hour, more than 6 h a local day (as the website).
+  // A drive shorter than a day: by the hour, at least ₹600 (as the website).
   const short = fullDays === 0 ? shortDriveCharge(config, extraHours) : undefined;
   const extraCharge = short ? short.from : extraHours * rules.extraHour;
   const driving = short ?? { from: fullDays * rate.from + extraCharge, to: fullDays * rate.to + extraCharge };
@@ -607,19 +599,12 @@ export function parseTripRules(v: unknown): TripRules | null {
   // The website publishes returnFullDayAfterHours; the phone's saved copy keeps returnFullDayAfter.
   const after = v.returnFullDayAfterHours ?? v.returnFullDayAfter;
   const extraAfter = v.extraFullDayAfterHours ?? v.extraFullDayAfter;
-  // The website publishes shortDriveLocalDayAfterHours; the phone's saved copy keeps shortDriveLocalDayAfter.
-  const first = v.shortDriveFirstHours;
-  const localAfter = v.shortDriveLocalDayAfterHours ?? v.shortDriveLocalDayAfter;
-  const shortOk =
-    typeof first === 'number' &&
-    typeof localAfter === 'number' &&
-    Number.isInteger(first) &&
-    Number.isInteger(localAfter) &&
-    first >= 1 &&
-    localAfter >= first &&
-    localAfter <= 12;
+  const shortMin = v.shortDriveMinimum;
   return {
-    ...(shortOk && { shortDriveFirstHours: first, shortDriveLocalDayAfter: localAfter }),
+    ...(typeof shortMin === 'number' &&
+      Number.isInteger(shortMin) &&
+      shortMin > 0 &&
+      shortMin <= 100000 && { shortDriveMinimum: shortMin }),
     ...(typeof extraAfter === 'number' &&
       Number.isInteger(extraAfter) &&
       extraAfter >= 0 &&
