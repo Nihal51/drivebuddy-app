@@ -8,3 +8,5 @@ export * from './prices';
 export * from './time';
 export * from './trip';
 export * from './validate';
+export * from './rail';
+export * from './rail-client';

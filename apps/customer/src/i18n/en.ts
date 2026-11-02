@@ -210,6 +210,22 @@ export const en = {
     returnShort: (n: number) => `way home (${n} h)`,
     nonstop: 'Drive day and night',
     nonstopHint: 'No overnight rest, so he gets there sooner — the same price for the driving.',
+    trainsTitle: 'Driver’s train home',
+    trainsChecking: 'Checking the trains home for that day…',
+    trainsRetrying: 'The train service is busy — trying again in a few seconds…',
+    trainsNone: (change: boolean) =>
+      `No train home found for that day, direct${change ? ' or with one change' : ''}. The price uses the typical time home — we confirm his train on the call.`,
+    trainsError:
+      'We could not check the trains just now. The price uses the typical time home — we confirm his train on the call.',
+    trainRecommended: 'Recommended',
+    trainDirect: 'Direct',
+    trainChange: (station: string, wait: string) => `Change at ${station}, waits ${wait}`,
+    trainWait: (wait: string) => `waits ${wait} after the drop`,
+    trainHome: (when: string) => `home about ${when}`,
+    trainsSource: (live: boolean, checked: string) =>
+      `${live ? 'Includes live running status' : 'Timetable times, not live'} · RailRadar, checked ${checked}. Seats are not checked — you book his ticket. Trains can run late.`,
+    hm: (h: number, m: number) => (h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`),
+    wayHomeTrain: 'Way home by train (you book his ticket)',
     timelineTitle: 'The driver’s trip',
     driving: 'Driving',
     drivingNonstop: (h: number) => `about ${h} h, day and night`,

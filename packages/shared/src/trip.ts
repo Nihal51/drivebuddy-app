@@ -111,6 +111,12 @@ export type TripDestination = {
   name: string;
   nameHi: string;
   region: 'cg' | 'india';
+  /**
+   * Train route home (the website's lib/outstation.ts): the stations where
+   * the driver can board, main one first, and change stations for a route
+   * with one change. Missing: no train lookup (a bus route).
+   */
+  rail?: { stations: string[]; hubs: string[] };
   from: Record<City, CityLeg>;
 };
 
@@ -348,6 +354,8 @@ export function planTrip(
   bookedDays = 0,
   start: TripStart | number = DEFAULT_START_HOUR,
   nonstop = false,
+  /** A real train home from the lookup: hours after the start it leaves and gets him home. */
+  train?: { leaveAt: number; homeAt: number },
 ): TripPlan {
   const kind = TRIP_PACKAGES[pkg];
   const raw = typeof start === 'number' ? { hour: start } : start;
@@ -401,8 +409,8 @@ export function planTrip(
   const fullDays = extraDays > 0 ? booked : full + (roundUp ? 1 : 0);
   const extraHours = extraDays > 0 || roundUp ? 0 : leftover;
 
-  // The way home (the allowance, as on the website): getting to the station, then the typical hours home.
-  // The website looks up the real trains for a date; the app keeps the typical time.
+  // The way home (the allowance, as on the website): getting to the station, then the typical hours home —
+  // or the real train from the lookup (rail.ts), when there is one.
   let timing: Pick<TripPlan, 'returnHours' | 'dropAt' | 'leaveAt' | 'homeAt'> = {
     returnHours: leg.oneWay.returnHours,
   };
@@ -412,6 +420,15 @@ export function planTrip(
     const leaveAt = dropAt + (rules.stationHours ?? 1);
     const homeAt = leaveAt + homeHours;
     timing = { returnHours: Math.max(0, Math.ceil(homeAt - dropAt - 1e-9)), dropAt, leaveAt, homeAt };
+    // The train the customer chose (or the first one found) instead of the typical time.
+    if (train && train.leaveAt >= dropAt && train.homeAt > train.leaveAt) {
+      timing = {
+        returnHours: Math.max(0, Math.ceil(train.homeAt - dropAt - 1e-9)),
+        dropAt,
+        leaveAt: train.leaveAt,
+        homeAt: train.homeAt,
+      };
+    }
   }
 
   // A drive shorter than a day: by the hour, at least ₹600 (as the website).
@@ -448,6 +465,40 @@ export function planTrip(
         },
   };
 }
+
+/* ------------------------------------------------------ the train home */
+
+/** The station the driver comes home to, by pickup city (as the website's pickupStations). */
+export const PICKUP_STATIONS: Record<City, string> = {
+  Raipur: 'R',
+  Bhilai: 'DURG',
+  Durg: 'DURG',
+  Bilaspur: 'BSP',
+};
+
+/**
+ * What the train lookup (rail.ts findReturn) needs for this plan: the
+ * destination's stations and change stations, the home station, and when he
+ * drops the car and can board (drop + stationHours). Undefined when there is
+ * nothing to look up: a round trip, a bus route, no timings.
+ */
+export function railInputOf(plan: TripPlan, city: City | '', startAt: number, stationHours: number) {
+  if (plan.kind !== 'one-way' || !plan.dest?.rail || plan.dropAt === undefined || !city) return undefined;
+  const drop = startAt + Math.round(plan.dropAt * 60) * 60_000;
+  return {
+    stations: [...plan.dest.rail.stations],
+    hubs: [...plan.dest.rail.hubs],
+    home: PICKUP_STATIONS[city],
+    drop,
+    ready: drop + Math.round(stationHours * 60) * 60_000,
+  };
+}
+
+/** A route home from the lookup → planTrip's `train`: hours after the start. */
+export const trainHours = (o: { depart: number; arrive: number }, startAt: number) => ({
+  leaveAt: (o.depart - startAt) / 3_600_000,
+  homeAt: (o.arrive - startAt) / 3_600_000,
+});
 
 /* ------------------------------------------------------ saved on booking */
 
@@ -757,7 +808,19 @@ export function parseDestinations(v: unknown): TripDestination[] | null {
       if (!leg) return null;
       from[city] = leg;
     }
-    out.push({ id, name, nameHi: nameHi || name, region, from });
+    let rail: TripDestination['rail'];
+    if (row.rail !== undefined) {
+      if (!isObj(row.rail)) return null;
+      const codes = (v: unknown, max: number) =>
+        Array.isArray(v) && v.length <= max && v.every((c) => typeof c === 'string' && /^[A-Z]{1,5}$/.test(c))
+          ? (v as string[])
+          : null;
+      const stations = codes(row.rail.stations, 6);
+      const hubs = row.rail.hubs === undefined ? [] : codes(row.rail.hubs, 4);
+      if (!stations?.length || !hubs) return null;
+      rail = { stations: [...stations], hubs: [...hubs] };
+    }
+    out.push({ id, name, nameHi: nameHi || name, region, ...(rail && { rail }), from });
   }
   return out;
 }

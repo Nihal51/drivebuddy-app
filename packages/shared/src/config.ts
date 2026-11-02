@@ -13,6 +13,7 @@
  */
 
 import { DEFAULT_DESTINATIONS } from './destinations';
+import type { RailRules } from './rail';
 import { parseDestinations, parseTripRules, type TripDestination, type TripRules } from './trip';
 
 export type Range = { from: number; to: number };
@@ -61,6 +62,12 @@ export type AppConfig = {
   google: { profile: string; writeReview: string };
   /** The alerts robot's doorbell; '' = alerts still come within a minute. */
   alerts: { pingUrl: string };
+  /**
+   * The real trains home on a one-way drop (rail.ts): the robot's lookup
+   * address ('' = off: the typical time is used) and the planning rules —
+   * the website's `trains` block.
+   */
+  trains: { lookupUrl: string } & RailRules;
   site: { url: string; privacy: string; terms: string };
   /**
    * Installed apps older than minVersion show "Please update" (site-settings.ts
@@ -123,6 +130,15 @@ export const DEFAULT_CONFIG: AppConfig = {
     daysOffPerMonth: 4,
     standInPerDay: 900,
     replacementDays: 1,
+  },
+  trains: {
+    lookupUrl:
+      'https://script.google.com/macros/s/AKfycbyJPR141acpum3KirDFgF8BFt79pE7Jf6wUPwbAzF0oyTjLCYuf3KTVdrKsYlIjHyvK/exec',
+    transferBufferMinutes: 90,
+    maxTransferHours: 12,
+    directWithinHours: 24,
+    maxWaitHours: 48,
+    maxOptions: 5,
   },
   google: {
     profile: 'https://maps.app.goo.gl/5yJuHkFUZXmYgVhJ6',
@@ -190,6 +206,30 @@ export function mustUpdate(installed: string | null | undefined, config: AppConf
   return isVersion(installed) && compareVersions(installed, config.app.minVersion) < 0;
 }
 
+/** The website's `trains` block → checked, or null. The lookup must be the robot (Apps Script) or ''. */
+function parseTrains(v: unknown): AppConfig['trains'] | null {
+  if (!isObj(v)) return null;
+  const url = v.lookupUrl;
+  if (url !== '' && !(isHttps(url) && url.startsWith('https://script.google.com/'))) return null;
+  const n = (x: unknown, max: number) => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= max;
+  if (
+    !n(v.transferBufferMinutes, 600) ||
+    !n(v.maxTransferHours, 48) ||
+    !n(v.directWithinHours, 96) ||
+    !n(v.maxWaitHours, 168) ||
+    !(Number.isInteger(v.maxOptions) && (v.maxOptions as number) >= 1 && (v.maxOptions as number) <= 10)
+  )
+    return null;
+  return {
+    lookupUrl: url as string,
+    transferBufferMinutes: v.transferBufferMinutes as number,
+    maxTransferHours: v.maxTransferHours as number,
+    directWithinHours: v.directWithinHours as number,
+    maxWaitHours: v.maxWaitHours as number,
+    maxOptions: v.maxOptions as number,
+  };
+}
+
 /**
  * The downloaded file → a config the app can trust, or null.
  * Every field is checked: one wrong value rejects the whole file, so the app
@@ -197,7 +237,8 @@ export function mustUpdate(installed: string | null | undefined, config: AppConf
  */
 export function parseAppConfig(raw: unknown): AppConfig | null {
   if (!isObj(raw) || raw.schema !== 1) return null;
-  const { contact, notice, prices, monthly, google, alerts, site, app, outstation, destinations } = raw;
+  const { contact, notice, prices, monthly, google, alerts, site, app, outstation, destinations, trains } =
+    raw;
   if (!isObj(contact) || !isObj(notice) || !isObj(prices) || !isObj(monthly)) return null;
   if (!isObj(google) || !isObj(alerts) || !isObj(site)) return null;
 
@@ -217,6 +258,9 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
       ? []
       : parseNearRates(prices.outstationNear);
   if (!near) return null;
+  // The train lookup (added 30 Oct 2026). Older files: the built-in robot and rules.
+  const rail = trains === undefined ? { ...DEFAULT_CONFIG.trains } : parseTrains(trains);
+  if (!rail) return null;
 
   const ok =
     isMobile(contact.phone) &&
@@ -292,6 +336,7 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
     },
     google: { profile: google.profile as string, writeReview: google.writeReview as string },
     alerts: { pingUrl: alerts.pingUrl as string },
+    trains: rail,
     site: { url: site.url as string, privacy: site.privacy as string, terms: site.terms as string },
     app: isObj(app)
       ? {

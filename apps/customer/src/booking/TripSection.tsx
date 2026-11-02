@@ -12,7 +12,7 @@ import {
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { type ReactNode, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
@@ -21,6 +21,8 @@ import { useConfig } from '@/config/ConfigProvider';
 import { type Messages, useI18n } from '@/i18n';
 import { errorText, formatDateTime, kmText, tripDays } from '@/i18n/format';
 import { TOUCH, makeStyles, radius, space, useTheme } from '@/theme';
+
+import type { ReturnTrains } from './useReturnTrains';
 
 /** ₹4.5 a km: rupees() rounds to whole rupees. */
 const perKm = (n: number) => `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n)}`;
@@ -37,6 +39,7 @@ export const placeName = (t: Messages, d: TripDestination) =>
 export function TripSection({
   values,
   plan,
+  rail,
   startAt,
   nonstop,
   onNonstop,
@@ -47,6 +50,8 @@ export function TripSection({
 }: {
   values: BookingInput;
   plan: TripPlan;
+  /** One-way drops: the real trains home for that day (useReturnTrains). */
+  rail: ReturnTrains;
   /** When the driver leaves (ms): the time picked, or soon for "as soon as possible". */
   startAt: number;
   /** One-way: drive day and night, without the night's rest. */
@@ -188,7 +193,7 @@ export function TripSection({
         </Pressable>
       ) : null}
 
-      <Estimate values={values} plan={plan} startAt={startAt} onUseLocal={onUseLocal} />
+      <Estimate values={values} plan={plan} rail={rail} startAt={startAt} onUseLocal={onUseLocal} />
     </View>
   );
 }
@@ -196,11 +201,13 @@ export function TripSection({
 function Estimate({
   values,
   plan,
+  rail,
   startAt,
   onUseLocal,
 }: {
   values: BookingInput;
   plan: TripPlan;
+  rail: ReturnTrains;
   startAt: number;
   onUseLocal: () => void;
 }) {
@@ -329,7 +336,18 @@ function Estimate({
             ) : null}
           </View>
         )}
-        {oneWay ? <Timeline plan={plan} startAt={startAt} from={from} to={placeName(t, plan.dest)} /> : null}
+        {oneWay ? (
+          <Timeline
+            plan={plan}
+            startAt={startAt}
+            from={from}
+            to={placeName(t, plan.dest)}
+            byTrain={Boolean(rail.selected)}
+          />
+        ) : null}
+        {oneWay && rail.status !== 'off' ? (
+          <TrainsHome rail={rail} hasHubs={Boolean(plan.dest.rail?.hubs.length)} />
+        ) : null}
         {plan.local ? (
           <View style={styles.tip}>
             <AppText variant="small">
@@ -374,11 +392,14 @@ function Timeline({
   startAt,
   from,
   to,
+  byTrain,
 }: {
   plan: TripPlan;
   startAt: number;
   from: string;
   to: string;
+  /** The way home is a real train from the lookup, not the typical time. */
+  byTrain: boolean;
 }) {
   const { t } = useI18n();
   const { config } = useConfig();
@@ -400,7 +421,10 @@ function Timeline({
     },
     { label: t.trip.drops(to), value: t.trip.about(at(plan.dropAt)) },
   ];
-  rows.push({ label: t.trip.wayHome, value: t.trip.onBoard(h(plan.homeAt - leaveAt)) });
+  rows.push({
+    label: byTrain ? t.trip.wayHomeTrain : t.trip.wayHome,
+    value: t.trip.onBoard(h(plan.homeAt - leaveAt)),
+  });
   rows.push({ label: t.trip.homeIn(from), value: t.trip.about(at(plan.homeAt)) });
   return (
     <View style={styles.lines} testID="trip-timeline">
@@ -410,6 +434,100 @@ function Timeline({
       {rows.map((r) => (
         <Line key={r.label} label={r.label} amount={r.value} />
       ))}
+    </View>
+  );
+}
+
+/**
+ * The driver's train home for the drop (as the website): the routes the
+ * lookup found for that day — scheduled or live times, never one passed off
+ * as the other — to choose from, or plainly why none is shown. Nothing here
+ * claims a seat or a ticket.
+ */
+function TrainsHome({ rail, hasHubs }: { rail: ReturnTrains; hasHubs: boolean }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const hm = (min: number) => t.trip.hm(Math.floor(min / 60), min % 60);
+  const clock = (ms: number) => formatDateTime(t, ms);
+  let body: ReactNode;
+  if (rail.status === 'loading') {
+    body = (
+      <View style={styles.toggle}>
+        <ActivityIndicator size="small" color={colors.textMuted} />
+        <AppText variant="small" color={colors.textMuted} style={styles.flex}>
+          {rail.retrying ? t.trip.trainsRetrying : t.trip.trainsChecking}
+        </AppText>
+      </View>
+    );
+  } else if (rail.status === 'none' || rail.status === 'error') {
+    body = (
+      <View style={styles.trainProblem}>
+        <AppText variant="small">
+          {rail.status === 'none' ? t.trip.trainsNone(hasHubs) : t.trip.trainsError}
+        </AppText>
+      </View>
+    );
+  } else {
+    body = (
+      <View style={styles.trainList} accessibilityRole="radiogroup">
+        {rail.options.map((o, i) => {
+          const on = rail.selected?.id === o.id;
+          return (
+            <Pressable
+              key={o.id}
+              onPress={() => rail.select(o.id)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              style={[styles.trainOption, on ? styles.trainOptionOn : null]}
+              testID={`train-${o.id}`}
+            >
+              <Ionicons
+                name={on ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={on ? colors.amberText : colors.textMuted}
+              />
+              <View style={styles.flex}>
+                <AppText variant="small" weight="bold">
+                  {i === 0 ? `${t.trip.trainRecommended}: ` : ''}
+                  {o.legs.map((l) => `${l.train.number} ${l.train.name}`).join(' + ')}
+                </AppText>
+                {o.legs.map((l, j) => (
+                  <AppText key={`${l.train.number}-${j}`} variant="tiny" color={colors.textMuted}>
+                    {l.from.name} {clock(l.depart)} → {l.to.name} {clock(l.arrive)}
+                  </AppText>
+                ))}
+                <AppText variant="tiny" color={colors.textMuted}>
+                  {o.transfer
+                    ? t.trip.trainChange(o.transfer.station.name, hm(o.transfer.minutes))
+                    : t.trip.trainDirect}
+                  {' · '}
+                  {t.trip.trainWait(hm(o.waitMinutes))} · {t.trip.trainHome(clock(o.expectedArrive))}
+                </AppText>
+                {o.warnings.map((w) => (
+                  <AppText key={w} variant="tiny" color={colors.danger}>
+                    {w}
+                  </AppText>
+                ))}
+              </View>
+            </Pressable>
+          );
+        })}
+        <AppText variant="tiny" color={colors.textMuted}>
+          {t.trip.trainsSource(
+            Boolean(rail.lookup?.live),
+            rail.lookup?.checkedAt ? clock(rail.lookup.checkedAt) : '—',
+          )}
+        </AppText>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.lines} testID="trains-home">
+      <AppText variant="tiny" weight="bold" color={colors.textMuted}>
+        {t.trip.trainsTitle.toUpperCase()}
+      </AppText>
+      {body}
     </View>
   );
 }
@@ -509,4 +627,16 @@ const useStyles = makeStyles((c) => ({
   amount: { flexShrink: 1, textAlign: 'right', maxWidth: '58%' },
   toggle: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   tip: { gap: space.xs, backgroundColor: c.cream, borderRadius: radius.sm, padding: space.sm },
+  trainList: { gap: space.sm },
+  trainOption: {
+    flexDirection: 'row',
+    gap: space.sm,
+    padding: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.creamLine,
+    backgroundColor: c.background,
+  },
+  trainOptionOn: { borderColor: c.amber },
+  trainProblem: { backgroundColor: c.dangerSoft, borderRadius: radius.sm, padding: space.sm },
 }));

@@ -1,5 +1,5 @@
 /**
- * The destinations table as the website published it on 2026-10-29 (generated from
+ * The destinations table as the website published it on 2026-11-02 (generated from
  * lib/outstation.ts there — do not edit by hand). Only a fallback: the app uses
  * the live table from /app-config.json whenever it has one.
  */
@@ -92,6 +92,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Rajnandgaon',
     nameHi: 'राजनांदगांव',
     region: 'cg',
+    rail: { stations: ['RJN'], hubs: [] },
     from: {
       Raipur: { km: 74, oneWay: { days: 1, returnHours: 3, driveHours: 1.48, homeHours: 1.5 }, roundDays: 1 },
       Bhilai: { km: 40, oneWay: { days: 1, returnHours: 2, driveHours: 0.8, homeHours: 0.75 }, roundDays: 1 },
@@ -104,6 +105,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Dongargarh',
     nameHi: 'डोंगरगढ़',
     region: 'cg',
+    rail: { stations: ['DGG'], hubs: [] },
     from: {
       Raipur: { km: 108, oneWay: { days: 1, returnHours: 3, driveHours: 2.16, homeHours: 2 }, roundDays: 1 },
       Bhilai: { km: 70, oneWay: { days: 1, returnHours: 3, driveHours: 1.4, homeHours: 1.25 }, roundDays: 1 },
@@ -120,6 +122,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Bilaspur',
     nameHi: 'बिलासपुर',
     region: 'cg',
+    rail: { stations: ['BSP'], hubs: [] },
     from: {
       Raipur: {
         km: 113,
@@ -180,6 +183,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Janjgir',
     nameHi: 'जांजगीर',
     region: 'cg',
+    rail: { stations: ['NIA'], hubs: [] },
     from: {
       Raipur: { km: 160, oneWay: { days: 1, returnHours: 4, driveHours: 3.2, homeHours: 3 }, roundDays: 1 },
       Bhilai: { km: 190, oneWay: { days: 1, returnHours: 5, driveHours: 3.8, homeHours: 3.5 }, roundDays: 1 },
@@ -208,6 +212,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Korba',
     nameHi: 'कोरबा',
     region: 'cg',
+    rail: { stations: ['KRBA'], hubs: [] },
     from: {
       Raipur: { km: 216, oneWay: { days: 1, returnHours: 5, driveHours: 4.32, homeHours: 4 }, roundDays: 1 },
       Bhilai: { km: 250, oneWay: { days: 1, returnHours: 6, driveHours: 5, homeHours: 4.75 }, roundDays: 1 },
@@ -220,6 +225,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Raigarh',
     nameHi: 'रायगढ़',
     region: 'cg',
+    rail: { stations: ['RIG'], hubs: [] },
     from: {
       Raipur: { km: 258, oneWay: { days: 1, returnHours: 5, driveHours: 5.16, homeHours: 4 }, roundDays: 1 },
       Bhilai: { km: 290, oneWay: { days: 1, returnHours: 6, driveHours: 5.8, homeHours: 4.5 }, roundDays: 1 },
@@ -276,6 +282,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Gondia',
     nameHi: 'गोंदिया',
     region: 'india',
+    rail: { stations: ['G'], hubs: [] },
     from: {
       Raipur: { km: 201, oneWay: { days: 1, returnHours: 4, driveHours: 4.02, homeHours: 3 }, roundDays: 1 },
       Bhilai: {
@@ -312,6 +319,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Nagpur',
     nameHi: 'नागपुर',
     region: 'india',
+    rail: { stations: ['NGP'], hubs: [] },
     from: {
       Raipur: { km: 284, oneWay: { days: 1, returnHours: 6, driveHours: 5.68, homeHours: 5 }, roundDays: 1 },
       Bhilai: { km: 250, oneWay: { days: 1, returnHours: 6, driveHours: 5, homeHours: 4.25 }, roundDays: 1 },
@@ -328,6 +336,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Jharsuguda',
     nameHi: 'झारसुगुड़ा',
     region: 'india',
+    rail: { stations: ['JSG'], hubs: [] },
     from: {
       Raipur: { km: 320, oneWay: { days: 1, returnHours: 6, driveHours: 6.4, homeHours: 5 }, roundDays: 1 },
       Bhilai: { km: 350, oneWay: { days: 1, returnHours: 7, driveHours: 7, homeHours: 6 }, roundDays: 1 },
@@ -344,6 +353,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Jabalpur',
     nameHi: 'जबलपुर',
     region: 'india',
+    rail: { stations: ['JBP'], hubs: ['NGP', 'G'] },
     from: {
       Raipur: { km: 383, oneWay: { days: 1, returnHours: 10, driveHours: 7.66, homeHours: 9 }, roundDays: 2 },
       Bhilai: {
@@ -364,6 +374,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Visakhapatnam',
     nameHi: 'विशाखापत्तनम',
     region: 'india',
+    rail: { stations: ['VSKP'], hubs: [] },
     from: {
       Raipur: {
         km: 546,
@@ -440,6 +451,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Prayagraj',
     nameHi: 'प्रयागराज',
     region: 'india',
+    rail: { stations: ['PRYJ', 'PCOI'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 578,
@@ -516,6 +528,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Varanasi',
     nameHi: 'वाराणसी',
     region: 'india',
+    rail: { stations: ['BSB'], hubs: ['NGP', 'G'] },
     from: {
       Raipur: {
         km: 644,
@@ -596,6 +609,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Lucknow',
     nameHi: 'लखनऊ',
     region: 'india',
+    rail: { stations: ['LKO', 'LJN'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 779,
@@ -620,6 +634,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Hyderabad',
     nameHi: 'हैदराबाद',
     region: 'india',
+    rail: { stations: ['SC', 'HYB', 'KCG'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 780,
@@ -640,6 +655,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Kolkata',
     nameHi: 'कोलकाता',
     region: 'india',
+    rail: { stations: ['HWH', 'SHM'], hubs: [] },
     from: {
       Raipur: {
         km: 831,
@@ -668,6 +684,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Pune',
     nameHi: 'पुणे',
     region: 'india',
+    rail: { stations: ['PUNE'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 1007,
@@ -696,6 +713,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Mumbai',
     nameHi: 'मुंबई',
     region: 'india',
+    rail: { stations: ['CSMT', 'LTT'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 1118,
@@ -724,6 +742,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Delhi',
     nameHi: 'दिल्ली',
     region: 'india',
+    rail: { stations: ['NDLS', 'NZM'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 1214,
@@ -748,6 +767,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Bengaluru',
     nameHi: 'बेंगलुरु',
     region: 'india',
+    rail: { stations: ['SMVB', 'SBC', 'YPR'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 1370,
@@ -776,6 +796,7 @@ export const DEFAULT_DESTINATIONS: TripDestination[] = [
     name: 'Chennai',
     nameHi: 'चेन्नई',
     region: 'india',
+    rail: { stations: ['MAS'], hubs: ['NGP'] },
     from: {
       Raipur: {
         km: 1405,

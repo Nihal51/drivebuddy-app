@@ -12,6 +12,7 @@ import {
   istParts,
   packagePrice,
   planTrip,
+  trainHours,
   preferredTimeValue,
   prettyPhone,
   rupeeRange,
@@ -35,6 +36,8 @@ import { useAuth } from '@/auth/AuthProvider';
 import { CATEGORIES, type Category, categoryOf, findCategory } from '@/booking/categories';
 import { PickupLocation } from '@/booking/PickupLocation';
 import { TripSection, placeName } from '@/booking/TripSection';
+import { trainNote } from '@/booking/trainNote';
+import { useReturnTrains } from '@/booking/useReturnTrains';
 import { WhenPicker, type When } from '@/booking/WhenPicker';
 import { whatsappBookingMessage } from '@/booking/whatsapp';
 import { AppText } from '@/components/AppText';
@@ -164,32 +167,43 @@ function BookingWizard({
   }, [initialPackage]);
 
   const oneWayNonstop = nonstop && values.packageId === 'one-way-drop';
-  const input: BookingInput = {
-    ...values,
-    preferredTime: preferredFrom(when),
-    // The team sees the day-and-night request first in the notes.
-    notes: oneWayNonstop ? `${NONSTOP_NOTE} ${values.notes}`.trim().slice(0, 500) : values.notes,
-  };
-  const errors: BookingErrors = validateBooking(input);
+  const preferredTime = preferredFrom(when);
   // Outstation trip / one-way drop: the plan behind the estimate, and the trip saved with the booking.
   // When the driver leaves: the time picked, or "as soon as possible" (about 45 minutes from now).
-  const startAt = (input.preferredTime && tripInstant(input.preferredTime)?.getTime()) || now + START_LEAD_MS;
+  const startAt = (preferredTime && tripInstant(preferredTime)?.getTime()) || now + START_LEAD_MS;
   const startParts = istParts(startAt);
-  const plan = isTripPackage(values.packageId)
-    ? planTrip(
-        config,
-        values.packageId,
-        values.city,
-        values.destId,
-        Number(values.days) || 0,
-        {
-          hour: startParts.hour + startParts.minute / 60,
-          // The weekday only when a day was picked.
-          ...(input.preferredTime && { weekday: startParts.weekday }),
-        },
-        oneWayNonstop,
-      )
-    : null;
+  const planWith = (train?: { leaveAt: number; homeAt: number }) =>
+    isTripPackage(values.packageId)
+      ? planTrip(
+          config,
+          values.packageId,
+          values.city,
+          values.destId,
+          Number(values.days) || 0,
+          {
+            hour: startParts.hour + startParts.minute / 60,
+            // The weekday only when a day was picked.
+            ...(preferredTime && { weekday: startParts.weekday }),
+          },
+          oneWayNonstop,
+          train,
+        )
+      : null;
+  // The real trains home for that day (as on the website); the estimate uses the chosen one.
+  const typical = planWith();
+  const rail = useReturnTrains(typical, values.city, startAt);
+  const plan = rail.selected ? planWith(trainHours(rail.selected, startAt)) : typical;
+  const train = rail.selected ? trainNote(rail.selected) : '';
+  const input: BookingInput = {
+    ...values,
+    preferredTime,
+    // The team sees the day-and-night request and the train in the estimate first in the notes.
+    notes: [oneWayNonstop ? NONSTOP_NOTE : '', train, values.notes.trim()]
+      .filter(Boolean)
+      .join(' ')
+      .slice(0, 500),
+  };
+  const errors: BookingErrors = validateBooking(input);
   const trip = plan && values.destId ? tripRecord(plan, values.destOther) : null;
   const timeMissing = when.mode === 'schedule' && !when.slot;
 
@@ -471,6 +485,7 @@ function BookingWizard({
               <TripSection
                 values={values}
                 plan={plan}
+                rail={rail}
                 startAt={startAt}
                 nonstop={nonstop}
                 onNonstop={setNonstop}
