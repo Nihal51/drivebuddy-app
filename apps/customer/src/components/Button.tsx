@@ -8,7 +8,7 @@ import { AppText } from './AppText';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
-type Variant = 'primary' | 'dark' | 'outline' | 'ghost' | 'whatsapp';
+type Variant = 'primary' | 'dark' | 'light' | 'outline' | 'ghost' | 'whatsapp';
 
 const look = (c: Palette, variant: Variant): { bg: string; pressed: string; fg: string; border?: string } => {
   switch (variant) {
@@ -16,6 +16,9 @@ const look = (c: Palette, variant: Variant): { bg: string; pressed: string; fg: 
       return { bg: c.amber, pressed: c.amberPressed, fg: c.onAmber };
     case 'dark':
       return { bg: c.inverse, pressed: c.inversePressed, fg: c.onInverse };
+    case 'light':
+      // On the always-dark tops (Home, Account): white in both themes.
+      return { bg: c.white, pressed: '#e7e5e4', fg: '#141210' };
     case 'outline':
       return { bg: c.surface, pressed: c.surfacePressed, fg: c.text };
     case 'ghost':

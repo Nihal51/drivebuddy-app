@@ -9,7 +9,7 @@ import { Notice } from './bits';
 import { Button } from './Button';
 
 /** "Continue with Google", with its own error line. Hidden when login is not set up in this build. */
-export function GoogleButton() {
+export function GoogleButton({ onDark = false }: { onDark?: boolean }) {
   const { t } = useI18n();
   const { signIn } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export function GoogleButton() {
       <Button
         title={busy ? t.account.signingIn : t.account.google}
         icon="logo-google"
-        variant="dark"
+        variant={onDark ? 'light' : 'dark'}
         loading={busy}
         onPress={() => void onPress()}
         testID="google-login"

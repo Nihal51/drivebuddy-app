@@ -5,19 +5,30 @@ import { router, useLocalSearchParams } from 'expo-router';
 import AccountScreen from '@/app/(tabs)/account';
 import BookScreen from '@/app/book';
 import BookingDetailScreen from '@/app/booking/[id]';
+import ProfileScreen from '@/app/profile';
 import HomeScreen from '@/app/(tabs)/index';
-import { submitBooking, watchBooking } from '@/data/bookings';
+import { submitBooking, watchBooking, watchMyBookings } from '@/data/bookings';
 
 import { renderScreen, signedOut } from './test-utils';
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
+  router: {
+    push: jest.fn(),
+    replace: jest.fn(),
+    dismissTo: jest.fn(),
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+  },
   useLocalSearchParams: jest.fn(() => ({})),
   useFocusEffect: (effect: () => void) =>
     jest.requireActual<typeof import('react')>('react').useEffect(effect, [effect]),
   Stack: { Screen: () => null },
 }));
-jest.mock('@/data/bookings', () => ({ submitBooking: jest.fn(), watchBooking: jest.fn() }));
+jest.mock('@/data/bookings', () => ({
+  submitBooking: jest.fn(),
+  watchBooking: jest.fn(),
+  watchMyBookings: jest.fn(() => () => {}),
+}));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
 
 const mockedSubmit = submitBooking as jest.Mock;
@@ -367,13 +378,61 @@ describe('Account', () => {
   test('signed out: says plainly when login is not switched on, and help is always there', async () => {
     await renderScreen(<AccountScreen />);
     expect(screen.getByText(/Login is not switched on in this version yet/)).toBeOnTheScreen();
-    expect(screen.getAllByText('+91 91114 73929')).toHaveLength(2); // call and WhatsApp
+    expect(screen.getByText('+91 91114 73929 · 24 hours')).toBeOnTheScreen(); // call
+    expect(screen.getByText('+91 91114 73929')).toBeOnTheScreen(); // WhatsApp
   });
 
-  test('signed in: the saved details are shown for editing', async () => {
+  test('signed out: the login on the dark top, then preferences, help and more', async () => {
+    await renderScreen(<AccountScreen />);
+    expect(screen.getByText('Log in to see your bookings and get trip updates')).toBeOnTheScreen();
+    expect(screen.getByText('Rate DriveBuddy on Google')).toBeOnTheScreen();
+    expect(screen.queryByTestId('sign-out')).toBeNull();
+    expect(screen.queryByTestId('delete-account')).toBeNull();
+  });
+
+  test('signed in: who is logged in, the booking numbers, and the account rows', async () => {
+    (watchMyBookings as jest.Mock).mockImplementation((_uid: string, onData: (b: unknown[]) => void) => {
+      onData([
+        { id: 'a', status: 'assigned' },
+        { id: 'b', status: 'completed' },
+        { id: 'c', status: 'new' },
+      ]);
+      return () => {};
+    });
     await renderScreen(<AccountScreen />, { auth: signedIn() });
+    expect(screen.getByText('Ravi Sharma')).toBeOnTheScreen();
+    expect(screen.getByText('+91 98765 43210')).toBeOnTheScreen();
+    expect(screen.getByText('3')).toBeOnTheScreen(); // bookings
+    expect(screen.getByText('2')).toBeOnTheScreen(); // active
+    expect(screen.getByText('2 active now')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('edit-profile'));
+    expect(router.push).toHaveBeenCalledWith('/profile');
+  });
+
+  test('notifications off: the row turns them on', async () => {
+    const auth = signedIn();
+    await renderScreen(<AccountScreen />, { auth });
+    await fireEvent.press(screen.getByTestId('notifications-row'));
+    expect(auth.enableNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  test('personal details: the saved details are shown for editing, checked, saved, then back', async () => {
+    const auth = signedIn();
+    await renderScreen(<ProfileScreen />, { auth });
     expect(screen.getByDisplayValue('Ravi Sharma')).toBeOnTheScreen();
-    expect(screen.getByDisplayValue('+91 98765 43210')).toBeOnTheScreen();
+    expect(screen.getByDisplayValue('98765 43210')).toBeOnTheScreen(); // after the fixed +91
+    expect(screen.getByTestId('profile-email').props.editable).toBe(false);
+    await fireEvent.changeText(screen.getByTestId('profile-phone'), '12345');
+    await fireEvent.press(screen.getByTestId('save-profile'));
+    expect(auth.saveProfile).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByTestId('profile-phone'), '9876500000');
+    await fireEvent.press(screen.getByTestId('save-profile'));
+    expect(auth.saveProfile).toHaveBeenCalledWith({
+      name: 'Ravi Sharma',
+      phone: '9876500000',
+      email: 'ravi@example.com',
+    });
+    expect(router.back).toHaveBeenCalled();
   });
 
   test('deleting the account asks first, then deletes', async () => {

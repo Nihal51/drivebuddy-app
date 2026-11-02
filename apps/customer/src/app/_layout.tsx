@@ -100,6 +100,7 @@ function AppStack() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="book" options={{ title: t.book.title }} />
         <Stack.Screen name="booking/[id]" options={{ title: t.detail.title }} />
+        <Stack.Screen name="profile" options={{ title: t.account.personalDetails }} />
         <Stack.Screen name="+not-found" options={{ title: t.notFound.title }} />
       </Stack>
     </>
