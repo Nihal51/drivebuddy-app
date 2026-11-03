@@ -267,11 +267,13 @@ export const en = {
     routeByKm: (km: string, base: string, perKm: string) => `Route price — ${km}: ${base} + ${perKm} a km`,
     routeByDays: (h: number, days: number, base: string, perDay: string) =>
       `Route price — ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at least ${base} + ${days} × ${perDay}`,
-    routeWayHome: (home: number, away: number) =>
-      `Driver’s way home and waiting: ${home} h, about ${away} h away in all`,
+    routeWayHome: (home: number, away: number, free?: number): string =>
+      `Driver’s way home and waiting: ${home} h, about ${away} h away in all${free !== undefined ? ` — up to ${free} h of waiting included` : ''}`,
+    routeWait: (extra: number, free: number): string =>
+      `Extra waiting for his train: ${extra} h beyond the ${free} h included`,
     included: 'Included',
-    routeSmallPrint: (meal: string) =>
-      `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, by distance — his way home and the waiting for his train are in it. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    routeSmallPrint: (meal: string, free?: number): string =>
+      `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, by distance — his way home and ${free !== undefined ? `up to ${free} h of waiting for his train are in it (more waiting is charged like his way home)` : 'the waiting for his train are in it'}. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
     routeLate: (after: number, rate: string) =>
       `The same price if he is a little late; home more than ${after} h after the plan: ${rate} an hour after that`,
     routeQuote: (amount: string, away: number) =>

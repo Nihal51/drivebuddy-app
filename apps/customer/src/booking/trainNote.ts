@@ -1,4 +1,4 @@
-import { type ReturnOption, istParts } from '@drivebuddy/shared';
+import { type ReturnOption, istParts, waitNote } from '@drivebuddy/shared';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -12,9 +12,9 @@ function when(ms: number): string {
 
 /**
  * The train the estimate used, for the booking's notes (as the website):
- * "Train home in the estimate: 12105 Vidarbha Exp Fri 31 Oct, 11:40 pm (timetable; not booked)."
+ * "Train home in the estimate: 12105 Vidarbha Exp Fri 31 Oct, 11:40 pm (timetable; not booked; he waits 3 h in all)."
  */
 export function trainNote(o: ReturnOption): string {
   const legs = o.legs.map((l) => `${l.train.number} ${l.train.name} ${when(l.depart)}`).join(', then ');
-  return `Train home in the estimate: ${legs} (${o.scheduled ? 'timetable' : 'live'}; not booked).`;
+  return `Train home in the estimate: ${legs} (${o.scheduled ? 'timetable' : 'live'}; not booked; ${waitNote(o)}).`;
 }

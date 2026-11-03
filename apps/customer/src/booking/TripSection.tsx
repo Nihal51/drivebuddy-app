@@ -219,6 +219,9 @@ function Estimate({
   // This place's day price (nearer places cost less a day); a place not in the list: the whole span.
   const day = dayRateFor(config, plan.km);
   const rate = rupeeRange(day);
+  // A longer drop: the waiting for his train the route price includes, and any charged beyond it.
+  const freeWait = config.outstation.routeFreeWaitHours;
+  const extraWait = plan.est?.route?.by === 'km' && plan.est.route.waitCharge > 0;
 
   let body: ReactNode;
   if (!values.city) {
@@ -272,10 +275,24 @@ function Estimate({
                       rupees(config.outstation.routeMinPerDay ?? 0),
                     )
               }
-              amount={rupees(plan.est.route.price)}
+              amount={rupees(
+                extraWait ? plan.est.route.price - plan.est.route.waitCharge : plan.est.route.price,
+              )}
             />
+            {extraWait ? (
+              // Waiting for his train beyond the hours included: like his way home.
+              <Line
+                label={`${t.trip.routeWait(plan.est.route.extraWaitHours, freeWait ?? 0)} (${t.trip.returnMax(
+                  rupees(config.outstation.returnHour),
+                  rupees(config.outstation.returnMaxPerDay),
+                  config.outstation.returnFullDayAfter ?? 24,
+                )})`}
+                amount={rupees(plan.est.route.waitCharge)}
+                testID="trip-extra-wait"
+              />
+            ) : null}
             <Line
-              label={t.trip.routeWayHome(plan.returnHours, plan.est.route.awayHours)}
+              label={t.trip.routeWayHome(plan.returnHours, plan.est.route.awayHours, freeWait)}
               amount={t.trip.included}
             />
             <Line
@@ -369,7 +386,7 @@ function Estimate({
       {body}
       <AppText variant="tiny" color={colors.textMuted}>
         {plan?.est?.route
-          ? t.trip.routeSmallPrint(rupees(config.outstation.mealAllowance))
+          ? t.trip.routeSmallPrint(rupees(config.outstation.mealAllowance), freeWait)
           : t.trip.smallPrint(
               config.outstation.hoursPerDay,
               rupees(config.outstation.extraHour),
@@ -532,11 +549,11 @@ function TrainsHome({ rail, hasHubs }: { rail: ReturnTrains; hasHubs: boolean })
   );
 }
 
-function Line({ label, amount }: { label: string; amount: string }) {
+function Line({ label, amount, testID }: { label: string; amount: string; testID?: string }) {
   const { colors } = useTheme();
   const styles = useStyles();
   return (
-    <View style={styles.line}>
+    <View style={styles.line} testID={testID}>
       <AppText variant="small" color={colors.textMuted} style={styles.flex}>
         {label}
       </AppText>

@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG, parseAppConfig } from './config';
-import { findReturn, istInstant } from './rail';
+import { findReturn, istInstant, waitFromNotes, waitHoursOf, waitNote } from './rail';
 import { makeFetcher } from './rail-client';
 import { PICKUP_STATIONS, parseDestinations, planTrip, railInputOf, trainHours } from './trip';
 
@@ -58,6 +58,49 @@ test('the chosen train replaces the typical time home: the way home and the pric
     leaveAt: 1,
     homeAt: 5,
   });
+});
+
+test('a long wait for his train costs more on a route price (website, 3 Nov 2026)', () => {
+  const start = istInstant('2026-11-05', '07:00')!;
+  const typical = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 4 });
+  expect(typical.est?.from).toBe(6500);
+  const ride = 26;
+  const withWait = (wait: number, change?: number) => {
+    const depart = start + (typical.dropAt! + wait) * 3_600_000;
+    const option = {
+      depart,
+      arrive: depart + ride * 3_600_000,
+      waitMinutes: wait * 60,
+      ...(change !== undefined && { transfer: { minutes: change * 60 } }),
+    };
+    return planTrip(
+      config,
+      'one-way-drop',
+      'Raipur',
+      'bengaluru',
+      0,
+      { hour: 7, weekday: 4 },
+      false,
+      trainHours(option, start),
+    );
+  };
+  expect(withWait(3).est?.from).toBe(6500);
+  expect(withWait(10).est?.from).toBe(6980);
+  expect(withWait(20).est?.from).toBe(7700);
+  expect(withWait(10).waitHours).toBe(10);
+  // A change of train counts: 3 h at the drop + 5 h at the change = 8 h → 2 h more.
+  expect(withWait(3, 5).est?.from).toBe(6500 + 240);
+  // Without the waiting given: from the drop to boarding.
+  const depart = start + (typical.dropAt! + 10) * 3_600_000;
+  const bare = trainHours({ depart, arrive: depart + ride * 3_600_000 }, start);
+  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, 7, false, bare).est?.from).toBe(6980);
+  // The note on the booking says the hours, for the team's price.
+  const o = { waitMinutes: 240, transfer: { station: { code: 'NGP', name: 'Nagpur' }, minutes: 180 } };
+  expect(waitHoursOf(o)).toBe(7);
+  expect(waitNote({ waitMinutes: 601 })).toBe('he waits 11 h in all');
+  expect(waitFromNotes(`Train home in the estimate: 1 X (timetable; not booked; ${waitNote(o)}).`)).toBe(7);
+  expect(waitFromNotes('he waits 7 h in all')).toBeUndefined();
+  expect(waitFromNotes(undefined)).toBeUndefined();
 });
 
 test('no direct train soon enough: a route with one change through Nagpur, both trains from the lookup', async () => {

@@ -64,6 +64,13 @@ export type TripRules = {
   routeMinBase?: number;
   routeMinPerDay?: number;
   lateAfterHours?: number;
+  /**
+   * Hours of waiting for his train (at the drop and at a change) the route
+   * price includes (website 3 Nov 2026: 6); every hour more is charged like
+   * the way home (returnHour, more than returnFullDayAfter = returnMaxPerDay).
+   * Older website files lack it: no charge for waiting.
+   */
+  routeFreeWaitHours?: number;
   /** Per hour of the driver's way home, from the drop until he is home. */
   returnHour: number;
   /** A full day of the way home (each 24 hours). */
@@ -216,6 +223,11 @@ export type TripEstimate = {
 
 export type RoutePrice = {
   price: number;
+  /** Whole hours of waiting for his train (at the drop and at a change). */
+  waitHours: number;
+  /** The waiting beyond routeFreeWaitHours, and its charge (already in `price` when it is by km). */
+  extraWaitHours: number;
+  waitCharge: number;
   /** Days (24 h, started ones count) he is away. */
   days: number;
   /** Whole hours he is away. */
@@ -227,14 +239,17 @@ export type RoutePrice = {
 
 /**
  * The route price, exactly as the website's routePrice: for a drop `km`
- * away that keeps him away `hours`; undefined without the route rules, for
- * an unknown place, or when he is away less than routeAfterHours.
+ * away that keeps him away `hours`, waiting `waitHours` for his train;
+ * undefined without the route rules, for an unknown place, or when he is
+ * away less than routeAfterHours.
  *   Nagpur 284 km, 12 h → ₹1,700; Delhi 1,214 km, 60 h → ₹5,800.
+ *   Bengaluru 1,370 km: ₹6,500 with up to 6 h of waiting; 10 h → ₹6,980; 20 h → ₹7,700.
  */
 export function routePrice(
   config: Pick<AppConfig, 'outstation'>,
   km: number,
   hours: number,
+  waitHours = 0,
 ): RoutePrice | undefined {
   const o = config.outstation;
   const d = Math.round(Number(km) || 0);
@@ -252,12 +267,25 @@ export function routePrice(
   const days = Math.max(1, Math.ceil(awayHours / 24));
   const kmPrice = o.routeBase + o.routePerKm * d;
   const floor = o.routeMinBase + o.routeMinPerDay * days;
+  // A long wait for his train: the hours beyond the free ones, like the way home.
+  const wait = Math.max(0, Math.ceil((Number.isFinite(waitHours) ? waitHours : 0) - 1e-9));
+  const extraWaitHours = o.routeFreeWaitHours === undefined ? 0 : Math.max(0, wait - o.routeFreeWaitHours);
+  const waitCharge =
+    extraWaitHours > 0
+      ? returnCost(extraWaitHours, o.returnHour, o.returnMaxPerDay, o.returnFullDayAfter ?? 24)
+      : 0;
+  const round50 = (n: number) => Math.round(n / 50) * 50;
+  const byKm = round50(kmPrice) + waitCharge;
+  const byDays = round50(floor);
   return {
-    price: Math.round(Math.max(kmPrice, floor) / 50) * 50,
+    price: Math.max(byKm, byDays),
+    waitHours: wait,
+    extraWaitHours,
+    waitCharge,
     days,
     awayHours,
     km: d,
-    by: kmPrice >= floor ? 'km' : 'days',
+    by: byKm >= byDays ? 'km' : 'days',
   };
 }
 
@@ -302,6 +330,8 @@ export type TripPlan = {
   dropAt?: number;
   leaveAt?: number;
   homeAt?: number;
+  /** One-way with a train from the lookup: hours of waiting for it (at the drop and at a change), for the route price. */
+  waitHours?: number;
   /** Closer than localWithinKm: a local package is usually cheaper. */
   local: boolean;
   /** The pickup city itself was picked. */
@@ -354,8 +384,12 @@ export function planTrip(
   bookedDays = 0,
   start: TripStart | number = DEFAULT_START_HOUR,
   nonstop = false,
-  /** A real train home from the lookup: hours after the start it leaves and gets him home. */
-  train?: { leaveAt: number; homeAt: number },
+  /**
+   * A real train home from the lookup: hours after the start it leaves and
+   * gets him home, and his waiting in all (the drop to boarding, and any
+   * change; without it, the drop to boarding).
+   */
+  train?: { leaveAt: number; homeAt: number; waitHours?: number },
 ): TripPlan {
   const kind = TRIP_PACKAGES[pkg];
   const raw = typeof start === 'number' ? { hour: start } : start;
@@ -411,7 +445,7 @@ export function planTrip(
 
   // The way home (the allowance, as on the website): getting to the station, then the typical hours home —
   // or the real train from the lookup (rail.ts), when there is one.
-  let timing: Pick<TripPlan, 'returnHours' | 'dropAt' | 'leaveAt' | 'homeAt'> = {
+  let timing: Pick<TripPlan, 'returnHours' | 'dropAt' | 'leaveAt' | 'homeAt' | 'waitHours'> = {
     returnHours: leg.oneWay.returnHours,
   };
   const homeHours = leg.oneWay.homeHours;
@@ -427,6 +461,7 @@ export function planTrip(
         dropAt,
         leaveAt: train.leaveAt,
         homeAt: train.homeAt,
+        waitHours: train.waitHours ?? train.leaveAt - dropAt,
       };
     }
   }
@@ -442,7 +477,10 @@ export function planTrip(
     rules.returnFullDayAfter,
   );
   // Away long enough: one price for the route (by distance, at least the days away), as the website.
-  const route = timing.homeAt !== undefined ? routePrice(config, leg.km, timing.homeAt) : undefined;
+  const route =
+    timing.homeAt !== undefined
+      ? routePrice(config, leg.km, timing.homeAt, timing.waitHours ?? 0)
+      : undefined;
   return {
     ...base,
     km: leg.km,
@@ -494,10 +532,17 @@ export function railInputOf(plan: TripPlan, city: City | '', startAt: number, st
   };
 }
 
-/** A route home from the lookup → planTrip's `train`: hours after the start. */
-export const trainHours = (o: { depart: number; arrive: number }, startAt: number) => ({
+/**
+ * A route home from the lookup → planTrip's `train`: hours after the start,
+ * and his waiting in all (rail.ts waitHoursOf: the drop to boarding and any change).
+ */
+export const trainHours = (
+  o: { depart: number; arrive: number; waitMinutes?: number; transfer?: { minutes: number } },
+  startAt: number,
+) => ({
   leaveAt: (o.depart - startAt) / 3_600_000,
   homeAt: (o.arrive - startAt) / 3_600_000,
+  ...(o.waitMinutes !== undefined && { waitHours: (o.waitMinutes + (o.transfer?.minutes ?? 0)) / 60 }),
 });
 
 /* ------------------------------------------------------ saved on booking */
@@ -745,8 +790,11 @@ export function parseTripRules(v: unknown): TripRules | null {
     lateAfterHours: n('lateAfterHours', 0, 24),
   };
   const routeOk = Object.values(route).every((x) => x !== undefined);
+  // Waiting for his train in the route price (website 3 Nov 2026); older files lack it.
+  const freeWait = n('routeFreeWaitHours', 0, 48);
   return {
     ...(routeOk && route),
+    ...(routeOk && freeWait !== undefined && { routeFreeWaitHours: freeWait }),
     ...(typeof shortMin === 'number' &&
       Number.isInteger(shortMin) &&
       shortMin > 0 &&

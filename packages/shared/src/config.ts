@@ -112,6 +112,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     routeMinBase: 400,
     routeMinPerDay: 1300,
     lateAfterHours: 3,
+    routeFreeWaitHours: 6,
     mealAllowance: 300,
     kmPerDay: 600,
     localWithinKm: 60,

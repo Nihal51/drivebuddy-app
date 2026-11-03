@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG } from '@drivebuddy/shared';
+import { type City, DEFAULT_CONFIG, type ReturnOption, type TripPlan } from '@drivebuddy/shared';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -7,6 +7,7 @@ import BookScreen from '@/app/book';
 import BookingDetailScreen from '@/app/booking/[id]';
 import ProfileScreen from '@/app/profile';
 import HomeScreen from '@/app/(tabs)/index';
+import type { ReturnTrains } from '@/booking/useReturnTrains';
 import { submitBooking, watchBooking, watchMyBookings } from '@/data/bookings';
 
 import { renderScreen, signedOut } from './test-utils';
@@ -30,11 +31,22 @@ jest.mock('@/data/bookings', () => ({
   watchMyBookings: jest.fn(() => () => {}),
 }));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
+// The trains home: the real hook (off without a lookup address), or a test's own answer.
+const mockTrains: { answer?: (plan: TripPlan | null, startAt: number) => ReturnTrains } = {};
+jest.mock('@/booking/useReturnTrains', () => {
+  const actual = jest.requireActual<typeof import('@/booking/useReturnTrains')>('@/booking/useReturnTrains');
+  return {
+    ...actual,
+    useReturnTrains: (plan: TripPlan | null, city: City | '', startAt: number) =>
+      mockTrains.answer ? mockTrains.answer(plan, startAt) : actual.useReturnTrains(plan, city, startAt),
+  };
+});
 
 const mockedSubmit = submitBooking as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  delete mockTrains.answer;
 });
 
 describe('Home', () => {
@@ -290,6 +302,53 @@ describe('Booking, step by step', () => {
     expect(screen.queryByTestId('trip-estimate')).toBeNull();
   });
 
+  test('a long wait for the train home costs more: 6 h are in the route price (3 Nov 2026)', async () => {
+    // Bengaluru: his train leaves 10 h after the drop, 26 h home.
+    mockTrains.answer = (plan, startAt) => {
+      const depart = startAt + ((plan?.dropAt ?? 0) + 10) * 3_600_000;
+      const arrive = depart + 26 * 3_600_000;
+      const option: ReturnOption = {
+        id: `12296@${depart}`,
+        legs: [
+          {
+            train: { number: '12296', name: 'Sanghamitra Exp' },
+            from: { code: 'SBC', name: 'KSR Bengaluru' },
+            to: { code: 'R', name: 'Raipur' },
+            depart,
+            arrive,
+            checkedAt: depart - 86_400_000,
+          },
+        ],
+        depart,
+        arrive,
+        expectedArrive: arrive,
+        waitMinutes: 600,
+        totalMinutes: 36 * 60,
+        scheduled: true,
+        warnings: [],
+      };
+      return { status: 'ok', retrying: false, options: [option], selected: option, select: () => {} };
+    };
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b9' });
+    await openBooking({ package: 'one-way-drop', dest: 'bengaluru' });
+    await fireEvent.press(screen.getByTestId('city-Raipur'));
+    // ₹350 + ₹4.5 × 1,370 km → ₹6,500, plus 4 h of waiting beyond the 6 h × ₹120 = ₹480.
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,980');
+    expect(screen.getByText('₹6,500')).toBeOnTheScreen();
+    expect(screen.getByTestId('trip-extra-wait')).toHaveTextContent(
+      /Extra waiting for his train: 4 h beyond the 6 h included.*₹480/,
+    );
+    // The note tells the team the hours, for the same price on the call.
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+    await next();
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    const [input, , opts] = mockedSubmit.mock.calls[0];
+    expect(input.notes).toMatch(/Train home in the estimate: 12296 Sanghamitra Exp .*he waits 10 h in all/);
+    expect(opts.trip).toMatchObject({ destId: 'bengaluru', estFrom: 6980, estTo: 6980 });
+  });
+
   test('a one-way drop shows the estimate and saves the trip with it', async () => {
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b3' });
     await openBooking({ package: 'one-way-drop' });
@@ -300,7 +359,11 @@ describe('Booking, step by step', () => {
     // About 12 h away: one price for the route (1 Nov 2026) — at least ₹400 + ₹1,300; his way home included.
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,700');
     expect(screen.getByText('Route price — 12 h away (1 day): at least ₹400 + 1 × ₹1,300')).toBeOnTheScreen();
-    expect(screen.getByText('Driver’s way home and waiting: 6 h, about 12 h away in all')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Driver’s way home and waiting: 6 h, about 12 h away in all — up to 6 h of waiting included',
+      ),
+    ).toBeOnTheScreen();
     expect(screen.getByText(/home more than 3 h after the plan: ₹120 an hour/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 

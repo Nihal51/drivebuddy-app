@@ -172,7 +172,7 @@ function BookingWizard({
   // When the driver leaves: the time picked, or "as soon as possible" (about 45 minutes from now).
   const startAt = (preferredTime && tripInstant(preferredTime)?.getTime()) || now + START_LEAD_MS;
   const startParts = istParts(startAt);
-  const planWith = (train?: { leaveAt: number; homeAt: number }) =>
+  const planWith = (train?: { leaveAt: number; homeAt: number; waitHours?: number }) =>
     isTripPackage(values.packageId)
       ? planTrip(
           config,

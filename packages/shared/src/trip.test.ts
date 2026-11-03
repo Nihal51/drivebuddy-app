@@ -59,6 +59,33 @@ test('a drive shorter than a day, as on the website: ₹120 an hour, at least �
   expect(parseTripRules({ ...old, shortDriveMinimum: -5 })?.shortDriveMinimum).toBeUndefined();
 });
 
+/* Decided with the owner, 3 Nov 2026 (website lib/outstation.ts routePrice): the route
+   price includes up to 6 h of waiting for his train; every hour more is charged like his
+   way home — ₹120 an hour, more than 6 h in a day = ₹1,200 a day. */
+test('waiting for his train: 6 h in the route price, every hour more like the way home (3 Nov 2026)', () => {
+  const w = (wait: number) => routePrice(config, 1370, 81, wait);
+  expect([w(0)?.price, w(6)?.price, w(7)?.price, w(10)?.price, w(20)?.price]).toEqual([
+    6500, 6500, 6620, 6980, 7700,
+  ]);
+  expect(w(10)).toMatchObject({ waitHours: 10, extraWaitHours: 4, waitCharge: 480, by: 'km' });
+  expect(w(31)?.price).toBe(6500 + 1200 + 120);
+  expect(w(Number.NaN)?.price).toBe(6500);
+  // The days-away floor already pays for the time: no waiting on top.
+  expect(routePrice(config, 284, 30, 14)).toMatchObject({ price: 3000, by: 'days' });
+  // Older website files lack the rule: no charge for waiting.
+  const { routeFreeWaitHours: free, ...old } = config.outstation;
+  expect(free).toBe(6);
+  expect(routePrice({ outstation: old }, 1370, 81, 20)?.price).toBe(6500);
+  // Read from the website file only with the rest of the route price, and only when sensible.
+  expect(parseTripRules({ ...config.outstation })?.routeFreeWaitHours).toBe(6);
+  expect(parseTripRules({ ...old })?.routeFreeWaitHours).toBeUndefined();
+  expect(
+    parseTripRules({ ...config.outstation, routeFreeWaitHours: 99 })?.routeFreeWaitHours,
+  ).toBeUndefined();
+  const { routeBase: _b, ...noRoute } = config.outstation;
+  expect(parseTripRules({ ...noRoute })?.routeFreeWaitHours).toBeUndefined();
+});
+
 test('Raipur → Mumbai one-way: 22.4 h = 1 day + 11 h, more than 7 = 2 full days; 19 h home — ₹4,300–4,500', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'mumbai');
   expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 0, 2, 19]);
@@ -100,7 +127,16 @@ test('Raipur → Delhi: booked days count in full; never more than 60', () => {
 
 test('the route price of a longer drop, exactly as the website (1 Nov 2026)', () => {
   expect(routePrice(config, 284, 11)).toBeUndefined();
-  expect(routePrice(config, 284, 12)).toEqual({ price: 1700, days: 1, awayHours: 12, km: 284, by: 'days' });
+  expect(routePrice(config, 284, 12)).toEqual({
+    price: 1700,
+    waitHours: 0,
+    extraWaitHours: 0,
+    waitCharge: 0,
+    days: 1,
+    awayHours: 12,
+    km: 284,
+    by: 'days',
+  });
   expect([routePrice(config, 334, 16)?.price, routePrice(config, 577, 25.5)?.price]).toEqual([1850, 3000]);
   expect([routePrice(config, 1214, 60)?.price, routePrice(config, 1370, 81)?.price]).toEqual([5800, 6500]);
   expect(routePrice(config, 0, 30)).toBeUndefined();
