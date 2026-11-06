@@ -337,7 +337,7 @@ describe('Booking, step by step', () => {
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,840');
     expect(screen.getByText('₹6,600')).toBeOnTheScreen();
     expect(screen.getByTestId('trip-extra-wait')).toHaveTextContent(
-      /Waiting past the 4 days paid: 2 h × ₹120, at most ₹1,650 for each 24 h.*₹240/,
+      /Waiting past the 4 days paid: 2 h × ₹120, at most ₹1,200 for each 24 h.*₹240/,
     );
     // The note tells the team the hours, for the same price on the call.
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');

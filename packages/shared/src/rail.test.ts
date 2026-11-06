@@ -89,8 +89,8 @@ test('waiting for his train: free inside the days paid, then by the hour (websit
   expect(withWait(10).waitHours).toBe(10);
   // 20 h: home after 98 h, 2 h past the 96 h paid × ₹120.
   expect(withWait(20).est?.route).toMatchObject({ extraHours: 2, extraCharge: 240, price: 6840 });
-  // 40 h: 22 h past — never more than a day's price (₹6,600 ÷ 4 = ₹1,650).
-  expect(withWait(40).est?.route).toMatchObject({ extraHours: 22, extraCharge: 1650 });
+  // 40 h: 22 h past — never more than ₹1,200 for each 24 h.
+  expect(withWait(40).est?.route).toMatchObject({ extraHours: 22, extraCharge: 1200 });
   // A change of train is waiting too: 3 h + 5 h at the change, still inside the 4 days.
   expect(withWait(3, 5).est?.from).toBe(6600);
   // Without the waiting given: from the drop to boarding (20 h → as above).

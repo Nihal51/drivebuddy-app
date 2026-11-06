@@ -58,8 +58,8 @@ export type TripRules = {
    * routeBase + routePerKm × km, at least routeMinBase + routeMinPerDay and
    * (website 7 Nov 2026) at most routeMaxPerDay for each day, to ₹50.
    * Waiting for his train uses the time left in those days at no charge; the
-   * hours past them are returnHour each, at most the price per day for each
-   * 24 h. Older website files lack them: by the hours.
+   * hours past them are returnHour each, at most returnMaxPerDay (₹1,200) for
+   * each 24 h. Older website files lack them: by the hours.
    */
   routeAfterHours?: number;
   routeBase?: number;
@@ -225,8 +225,10 @@ export type RoutePrice = {
   daysPrice: number;
   /** The days paid: the trip as planned (drive + usual wait + way home), each started 24 h. */
   days: number;
-  /** daysPrice ÷ days, to ₹50: the most the hours past the days cost for each 24 h. */
+  /** daysPrice ÷ days, to ₹50. */
   dayPrice: number;
+  /** The most the hours past the days cost for each 24 h: returnMaxPerDay (₹1,200), never above dayPrice. */
+  extraMaxPerDay: number;
   /** Whole hours the trip needs as planned, and whole hours he is away with the waiting. */
   plannedHours: number;
   awayHours: number;
@@ -247,7 +249,7 @@ export type RoutePrice = {
  * rules, for an unknown place, or when he is away less than routeAfterHours.
  *   Nagpur 284 km, 12 h → ₹1,650; Visakhapatnam 546 km, 22 h → at most ₹1,850;
  *   Delhi 1,214 km, 60 h → at most 3 × ₹1,850 = ₹5,550, and 12 h of waiting free;
- *   Visakhapatnam with a train 10 h after the drop: 7 h past the day → + 7 × ₹120.
+ *   Visakhapatnam with a train 10 h after the drop: 7 h past the day → + 7 × ₹120 (at most ₹1,200 a day).
  */
 export function routePrice(
   config: Pick<AppConfig, 'outstation'>,
@@ -281,13 +283,15 @@ export function routePrice(
   const daysPrice = by === 'days' ? byDays : by === 'cap' ? cap : byKm;
   // Waiting first uses the time left in the days paid; the hours past them, returnHour each, at most a day's price per 24 h.
   const dayPrice = round50(daysPrice / days);
+  const extraMaxPerDay = Math.min(dayPrice, o.returnMaxPerDay);
   const extraHours = Math.max(0, awayHours - days * 24);
-  const extraCharge = extraHours > 0 ? returnCost(extraHours, o.returnHour, dayPrice, 24) : 0;
+  const extraCharge = extraHours > 0 ? returnCost(extraHours, o.returnHour, extraMaxPerDay, 24) : 0;
   return {
     price: daysPrice + extraCharge,
     daysPrice,
     days,
     dayPrice,
+    extraMaxPerDay,
     plannedHours: planned,
     awayHours,
     freeHours: days * 24 - planned,

@@ -63,13 +63,19 @@ test('a drive shorter than a day, as on the website: ₹120 an hour, at least �
    price is for the days the trip needs (₹1,650–1,850 each); waiting for his train uses the
    time left in those days at no charge, and only the hours past them cost ₹120 each, at most
    the price per day for each 24 h. */
-test('waiting for his train: free inside the days paid; past them ₹120 an hour, at most a day', () => {
+test('waiting for his train: free inside the days paid; past them ₹120 an hour, at most ₹1,200 a day', () => {
   const w = (planned: number, away: number) => routePrice(config, 1214, away, planned); // Delhi: 60 h → 3 days
   expect(w(60, 60)).toMatchObject({ price: 5550, days: 3, freeHours: 12, extraHours: 0 });
   expect(w(60, 72)?.price).toBe(5550);
   expect(w(60, 76)).toMatchObject({ extraHours: 4, extraCharge: 480, price: 6030, daysPrice: 5550 });
-  expect(w(60, 90)).toMatchObject({ extraHours: 18, extraCharge: 1850, dayPrice: 1850 });
-  expect(w(60, 100)?.extraCharge).toBe(1850 + 4 * 120);
+  expect(w(60, 84)).toMatchObject({ extraHours: 12, extraCharge: 1200 }); // 12 × ₹120 = ₹1,440, at most ₹1,200
+  expect(w(60, 90)).toMatchObject({
+    extraHours: 18,
+    extraCharge: 1200,
+    dayPrice: 1850,
+    extraMaxPerDay: 1200,
+  });
+  expect(w(60, 100)?.extraCharge).toBe(1200 + 4 * 120);
   expect(routePrice(config, 1214, Number.NaN)).toBeUndefined();
   // Read from the website file: the most a day only with the rest of the route price, never below the least.
   expect(parseTripRules({ ...config.outstation })?.routeMaxPerDay).toBe(1850);
@@ -130,6 +136,7 @@ test('the route price of a longer drop, exactly as the website (1 Nov 2026)', ()
     daysPrice: 1650,
     days: 1,
     dayPrice: 1650,
+    extraMaxPerDay: 1200,
     plannedHours: 12,
     awayHours: 12,
     freeHours: 12,

@@ -288,7 +288,7 @@ function Estimate({
                   plan.est.route.extraHours,
                   plan.est.route.days,
                   rupees(config.outstation.returnHour),
-                  rupees(plan.est.route.dayPrice),
+                  rupees(plan.est.route.extraMaxPerDay),
                 )}
                 amount={rupees(plan.est.route.extraCharge)}
                 testID="trip-extra-wait"
@@ -303,7 +303,13 @@ function Estimate({
               )}
               amount={t.trip.included}
             />
-            <Line label={t.trip.routePast(rupees(config.outstation.returnHour))} amount="" />
+            <Line
+              label={t.trip.routePast(
+                rupees(config.outstation.returnHour),
+                rupees(config.outstation.returnMaxPerDay),
+              )}
+              amount=""
+            />
           </View>
         ) : (
           <View style={styles.lines}>

@@ -276,8 +276,8 @@ export const en = {
     included: 'Included',
     routeSmallPrint: (meal: string): string =>
       `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, for the days the driver is away — his way home is in it, and waiting for his train costs nothing while it fits in those days. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
-    routePast: (rate: string): string =>
-      `Home later than the days paid (waiting or delays): ${rate} an hour, never more than one more day’s price for each 24 h`,
+    routePast: (rate: string, max: string): string =>
+      `Home later than the days paid (waiting or delays): ${rate} an hour, never more than ${max} for each 24 h`,
     routeQuote: (amount: string, away: number) =>
       `${amount} route price (about ${away} h away, way home included)`,
     routeLateBill: (amount: string, h: number) => `${amount} for ${h} h past the days paid`,
