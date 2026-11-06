@@ -39,20 +39,28 @@ const byHours = (p: { est?: { driving: { from: number; to: number }; returnCharg
 test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — ₹1,440', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
   expect([p.km, p.fullDays, p.extraHours, p.days, p.returnHours, p.local]).toEqual([284, 0, 6, 1, 6, false]);
-  expect(byHours(p)).toEqual([1440, 1440]);
+  expect(byHours(p)).toEqual([1680, 1680]); // ₹600 for the first 3 h + 3 × ₹120 + 6 h home
   // About 12 h away: the route price (website 1 Nov 2026) — ₹1,628 → ₹1,650, within ₹1,650–1,850 for 1 day.
   expect([p.est?.route?.awayHours, p.est?.from, p.est?.to]).toEqual([12, 1650, 1650]);
 });
 
-test('a drive shorter than a day, as on the website: ₹120 an hour, at least ₹600; his way home on top', () => {
+test('a drive shorter than a day, as on the website: ₹600 for the first 3 h, then ₹120 an hour; his way home on top', () => {
   expect([1, 3, 4, 5, 6, 7].map((h) => shortDriveCharge(config, h).from)).toEqual([
-    600, 600, 600, 600, 720, 840,
+    600, 600, 720, 840, 960, 1080,
   ]);
-  const { shortDriveMinimum: _m, ...old } = config.outstation;
+  // An older website file without the hours: ₹120 an hour, at least ₹600; without the minimum: by the hour.
+  const { shortDriveHours: _h, ...noHours } = config.outstation;
+  expect([3, 5, 6].map((h) => shortDriveCharge({ ...config, outstation: noHours }, h).from)).toEqual([
+    600, 600, 720,
+  ]);
+  const { shortDriveMinimum: _m, ...old } = noHours;
   expect(shortDriveCharge({ ...config, outstation: old }, 3).from).toBe(360);
   const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est?.from;
-  expect([at('bhilai'), at('bilaspur'), at('kawardha'), at('korba')]).toEqual([840, 960, 1080, 1200]);
-  expect(byHours(planTrip(config, 'one-way-drop', 'Raipur', 'jharsuguda'))).toEqual([1560, 1560]);
+  expect([at('bhilai'), at('bilaspur'), at('kawardha'), at('korba')]).toEqual([840, 960, 1080, 1440]);
+  expect(byHours(planTrip(config, 'one-way-drop', 'Raipur', 'jharsuguda'))).toEqual([1800, 1800]);
+  expect(parseTripRules({ ...config.outstation })?.shortDriveHours).toBe(3);
+  expect(parseTripRules({ ...config.outstation, shortDriveHours: 0 })?.shortDriveHours).toBeUndefined();
+  expect(parseTripRules({ ...noHours })?.shortDriveHours).toBeUndefined();
   // Read from the website file (or the phone's saved copy, same name).
   expect(parseTripRules({ ...config.outstation, shortDriveMinimum: 600 })?.shortDriveMinimum).toBe(600);
   expect(parseTripRules({ ...old })?.shortDriveMinimum).toBeUndefined();
@@ -150,7 +158,7 @@ test('the route price of a longer drop, exactly as the website (1 Nov 2026)', ()
   expect([routePrice(config, 1214, 60)?.price, routePrice(config, 1370, 81)?.price]).toEqual([5550, 6600]);
   expect(routePrice(config, 0, 30)).toBeUndefined();
   const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est?.from;
-  expect(['bhilai', 'bilaspur', 'korba', 'raigarh'].map(at)).toEqual([840, 960, 1200, 1320]);
+  expect(['bhilai', 'bilaspur', 'korba', 'raigarh'].map(at)).toEqual([840, 960, 1440, 1560]);
   expect(
     [
       'nagpur',
@@ -176,8 +184,9 @@ test('the route price of a longer drop, exactly as the website (1 Nov 2026)', ()
     routeMinPerDay: _d,
     ...old
   } = config.outstation;
+  // Ambikapur by the hours: 7 h of driving (₹600 for the first 3 h + 4 × ₹120) + his way home (₹1,200).
   expect(planTrip({ ...config, outstation: old }, 'one-way-drop', 'Raipur', 'ambikapur').est?.from).toBe(
-    2040,
+    2280,
   );
   expect(parseTripRules({ ...config.outstation })).toMatchObject({ routePerKm: 4.5, routeMinPerDay: 1650 });
   expect(parseTripRules({ ...config.outstation, routePerKm: -1 })?.routeBase).toBeUndefined();

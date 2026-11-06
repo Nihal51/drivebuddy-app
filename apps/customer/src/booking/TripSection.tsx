@@ -324,10 +324,21 @@ function Estimate({
                 amount={rupeeRange({ from: plan.fullDays * day.from, to: plan.fullDays * day.to })}
               />
             ) : null}
-            {oneWay &&
-            plan.extraHours > 0 &&
-            plan.fullDays === 0 &&
-            plan.extraHours * config.outstation.extraHour < (config.outstation.shortDriveMinimum ?? 0) ? (
+            {oneWay && plan.extraHours > 0 && plan.fullDays === 0 && config.outstation.shortDriveHours ? (
+              // A short drive: ₹600 for the first 3 h, then by the hour.
+              <Line
+                label={t.trip.shortDriveFirst(
+                  plan.extraHours,
+                  rupees(config.outstation.shortDriveMinimum ?? 0),
+                  config.outstation.shortDriveHours,
+                  rupees(config.outstation.extraHour),
+                )}
+                amount={rupees(plan.est.extraCharge)}
+              />
+            ) : oneWay &&
+              plan.extraHours > 0 &&
+              plan.fullDays === 0 &&
+              plan.extraHours * config.outstation.extraHour < (config.outstation.shortDriveMinimum ?? 0) ? (
               // A short drive: the minimum (₹600) rather than the hours.
               <Line
                 label={t.trip.shortDriveMin(

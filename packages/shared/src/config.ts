@@ -106,6 +106,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     returnFullDayAfter: 6,
     extraFullDayAfter: 7,
     shortDriveMinimum: 600,
+    shortDriveHours: 3,
     routeAfterHours: 12,
     routeBase: 350,
     routePerKm: 4.5,

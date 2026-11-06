@@ -52,6 +52,12 @@ export type TripRules = {
    */
   shortDriveMinimum?: number;
   /**
+   * The hours of driving shortDriveMinimum covers (website 7 Nov 2026: 3);
+   * each hour after them is extraHour. Older website files lack it: at least
+   * the minimum, by the hour.
+   */
+  shortDriveHours?: number;
+  /**
    * Longer one-way drops (website 1 Nov 2026, lib/outstation.ts routePrice):
    * away (leaves → home) routeAfterHours or more → one price for the days
    * the trip needs (drive + usual wait + way home; each started 24 h):
@@ -139,13 +145,18 @@ export function dayRateFor(config: Pick<AppConfig, 'prices'>, km: number | undef
 
 /**
  * The driving charge of a one-way drive shorter than a day (`hours` whole
- * hours), as the website's shortDriveCharge: extraHour an hour, at least
- * shortDriveMinimum. 1–5 h → ₹600; 6 h → ₹720; 7 h → ₹840.
+ * hours), as the website's shortDriveCharge: the first shortDriveHours cost
+ * shortDriveMinimum, each hour after them extraHour. 1–3 h → ₹600; 4 h → ₹720;
+ * 5 h → ₹840. Without shortDriveHours: extraHour an hour, at least the minimum.
  */
 export function shortDriveCharge(config: Pick<AppConfig, 'outstation'>, hours: number): Range {
   const h = Math.max(0, Math.round(Number.isFinite(hours) ? hours : 0));
   if (h === 0) return { from: 0, to: 0 };
-  const n = Math.max(h * config.outstation.extraHour, config.outstation.shortDriveMinimum ?? 0);
+  const o = config.outstation;
+  const min = o.shortDriveMinimum ?? 0;
+  const n = o.shortDriveHours
+    ? min + Math.max(0, h - o.shortDriveHours) * o.extraHour
+    : Math.max(h * o.extraHour, min);
   return { from: n, to: n };
 }
 
@@ -815,6 +826,11 @@ export function parseTripRules(v: unknown): TripRules | null {
       Number.isInteger(shortMin) &&
       shortMin > 0 &&
       shortMin <= 100000 && { shortDriveMinimum: shortMin }),
+    ...(typeof shortMin === 'number' &&
+      typeof v.shortDriveHours === 'number' &&
+      Number.isInteger(v.shortDriveHours) &&
+      v.shortDriveHours >= 1 &&
+      v.shortDriveHours <= 11 && { shortDriveHours: v.shortDriveHours }),
     ...(typeof extraAfter === 'number' &&
       Number.isInteger(extraAfter) &&
       extraAfter >= 0 &&

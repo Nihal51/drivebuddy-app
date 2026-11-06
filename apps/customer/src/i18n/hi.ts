@@ -230,6 +230,8 @@ export const hi: Messages = {
     about: (when: string) => `लगभग ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
     shortDriveMin: (h: number, min: string) => `${h} घंटे ड्राइविंग: कम से कम ${min}`,
+    shortDriveFirst: (h: number, min: string, first: number, rate: string) =>
+      `${h} घंटे ड्राइविंग: पहले ${first} घंटे ${min}${h > first ? ` + ${h - first} घंटे × ${rate}` : ''}`,
     shortDriveBill: (amount: string, h: number) => `${amount} — ${h} घंटे ड्राइविंग`,
     chooseCity: 'अनुमान देखने के लिए ऊपर अपना शहर चुनें।',
     chooseDest: 'अनुमान देखने के लिए चुनें कि कहाँ जाना है।',

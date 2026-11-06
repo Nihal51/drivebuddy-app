@@ -238,6 +238,8 @@ export const en = {
     about: (when: string) => `about ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
     shortDriveMin: (h: number, min: string) => `${h} h of driving: the minimum, ${min}`,
+    shortDriveFirst: (h: number, min: string, first: number, rate: string): string =>
+      `${h} h of driving: ${min} for the first ${first} h${h > first ? ` + ${h - first} h × ${rate}` : ''}`,
     shortDriveBill: (amount: string, h: number) => `${amount} for ${h} h of driving`,
     chooseCity: 'Choose your city above to see the estimate.',
     chooseDest: 'Choose where you are going to see the estimate.',
