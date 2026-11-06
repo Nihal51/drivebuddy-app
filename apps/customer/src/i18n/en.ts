@@ -265,20 +265,22 @@ export const en = {
     extraHours: (n: number) => (n === 1 ? '1 extra hour' : `${n} extra hours`),
     ticket: (amount: string) => `${amount} ticket`,
     routeByKm: (km: string, base: string, perKm: string) => `Route price — ${km}: ${base} + ${perKm} a km`,
-    routeByDays: (h: number, days: number, base: string, perDay: string) =>
-      `Route price — ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at least ${base} + ${days} × ${perDay}`,
-    routeWayHome: (home: number, away: number, free?: number): string =>
-      `Driver’s way home and waiting: ${home} h, about ${away} h away in all${free !== undefined ? ` — up to ${free} h of waiting included` : ''}`,
-    routeWait: (extra: number, free: number): string =>
-      `Extra waiting for his train: ${extra} h beyond the ${free} h included`,
+    routeByDays: (h: number, days: number, base: string, perDay: string): string =>
+      `Route price — ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at least ${base ? `${base} + ` : ''}${days} × ${perDay}`,
+    routeCapped: (km: string, h: number, days: number, perDay: string): string =>
+      `Route price — ${km}, ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at most ${days} × ${perDay}`,
+    routeWayHome: (home: number, away: number, days: number, spare: number): string =>
+      `Driver’s way home and waiting: ${home} h, about ${away} h away in all — ${days === 1 ? '1 day' : `${days} days`} paid (${days * 24} h)${spare > 0 ? `; waiting up to ${spare} h more costs nothing` : ''}`,
+    routeWait: (extra: number, days: number, rate: string, dayPrice: string): string =>
+      `Waiting past the ${days === 1 ? '1 day' : `${days} days`} paid: ${extra} h × ${rate}, at most ${dayPrice} for each 24 h`,
     included: 'Included',
-    routeSmallPrint: (meal: string, free?: number): string =>
-      `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, by distance — his way home and ${free !== undefined ? `up to ${free} h of waiting for his train are in it (more waiting is charged like his way home)` : 'the waiting for his train are in it'}. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
-    routeLate: (after: number, rate: string) =>
-      `The same price if he is a little late; home more than ${after} h after the plan: ${rate} an hour after that`,
+    routeSmallPrint: (meal: string): string =>
+      `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, for the days the driver is away — his way home is in it, and waiting for his train costs nothing while it fits in those days. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    routePast: (rate: string): string =>
+      `Home later than the days paid (waiting or delays): ${rate} an hour, never more than one more day’s price for each 24 h`,
     routeQuote: (amount: string, away: number) =>
       `${amount} route price (about ${away} h away, way home included)`,
-    routeLateBill: (amount: string, h: number) => `${amount} for ${h} h late`,
+    routeLateBill: (amount: string, h: number) => `${amount} for ${h} h past the days paid`,
     billExtra: (amount: string, n: number) =>
       `${amount} for ${n === 1 ? '1 extra hour' : `${n} extra hours`}`,
     clockLeft: (at: string) => `Driver left ${at}`,

@@ -61,7 +61,7 @@ describe('Home', () => {
     expect(screen.getByTestId('tab-drop')).toBeSelected();
     expect(screen.getByText('POPULAR FROM RAIPUR')).toBeOnTheScreen();
     expect(screen.getByTestId('home-place-bilaspur')).toHaveTextContent(/Bilaspur.*from ₹960/);
-    expect(screen.getByTestId('home-place-nagpur')).toHaveTextContent(/Nagpur.*from ₹1,700/);
+    expect(screen.getByTestId('home-place-nagpur')).toHaveTextContent(/Nagpur.*from ₹1,650/);
     expect(screen.queryByTestId('home-place-raipur')).toBeNull();
     // By the hour: the two packages and their prices.
     await fireEvent.press(screen.getByTestId('tab-hourly'));
@@ -252,7 +252,7 @@ describe('Booking, step by step', () => {
   test('a place tapped on Home opens with the city and the place chosen, and the estimate', async () => {
     await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'nagpur' });
     expect(screen.getByTestId('city-Raipur')).toBeChecked();
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,700');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,650');
   });
 
   test('the exact pickup spot: GPS or a pin on the map, sent with the booking (optional)', async () => {
@@ -302,10 +302,10 @@ describe('Booking, step by step', () => {
     expect(screen.queryByTestId('trip-estimate')).toBeNull();
   });
 
-  test('a long wait for the train home costs more: 6 h are in the route price (3 Nov 2026)', async () => {
-    // Bengaluru: his train leaves 10 h after the drop, 26 h home.
+  test('waiting for the train home: free inside the days paid, then ₹120 an hour (7 Nov 2026)', async () => {
+    // Bengaluru: his train leaves 20 h after the drop, 26 h home.
     mockTrains.answer = (plan, startAt) => {
-      const depart = startAt + ((plan?.dropAt ?? 0) + 10) * 3_600_000;
+      const depart = startAt + ((plan?.dropAt ?? 0) + 20) * 3_600_000;
       const arrive = depart + 26 * 3_600_000;
       const option: ReturnOption = {
         id: `12296@${depart}`,
@@ -322,8 +322,8 @@ describe('Booking, step by step', () => {
         depart,
         arrive,
         expectedArrive: arrive,
-        waitMinutes: 600,
-        totalMinutes: 36 * 60,
+        waitMinutes: 1200,
+        totalMinutes: 46 * 60,
         scheduled: true,
         warnings: [],
       };
@@ -332,11 +332,12 @@ describe('Booking, step by step', () => {
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b9' });
     await openBooking({ package: 'one-way-drop', dest: 'bengaluru' });
     await fireEvent.press(screen.getByTestId('city-Raipur'));
-    // ₹350 + ₹4.5 × 1,370 km → ₹6,500, plus 4 h of waiting beyond the 6 h × ₹120 = ₹480.
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,980');
-    expect(screen.getByText('₹6,500')).toBeOnTheScreen();
+    // The trip needs 79 h: 4 days paid (96 h), at least 4 × ₹1,650 = ₹6,600. He is home after 98 h:
+    // 2 h past the days × ₹120 = ₹240 (the waiting up to 96 h is free).
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,840');
+    expect(screen.getByText('₹6,600')).toBeOnTheScreen();
     expect(screen.getByTestId('trip-extra-wait')).toHaveTextContent(
-      /Extra waiting for his train: 4 h beyond the 6 h included.*₹480/,
+      /Waiting past the 4 days paid: 2 h × ₹120, at most ₹1,650 for each 24 h.*₹240/,
     );
     // The note tells the team the hours, for the same price on the call.
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
@@ -345,8 +346,8 @@ describe('Booking, step by step', () => {
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
     const [input, , opts] = mockedSubmit.mock.calls[0];
-    expect(input.notes).toMatch(/Train home in the estimate: 12296 Sanghamitra Exp .*he waits 10 h in all/);
-    expect(opts.trip).toMatchObject({ destId: 'bengaluru', estFrom: 6980, estTo: 6980 });
+    expect(input.notes).toMatch(/Train home in the estimate: 12296 Sanghamitra Exp .*he waits 20 h in all/);
+    expect(opts.trip).toMatchObject({ destId: 'bengaluru', estFrom: 6840, estTo: 6840 });
   });
 
   test('a one-way drop shows the estimate and saves the trip with it', async () => {
@@ -356,15 +357,15 @@ describe('Booking, step by step', () => {
     expect(screen.getByText('Choose where you are going to see the estimate.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
-    // About 12 h away: one price for the route (1 Nov 2026) — at least ₹400 + ₹1,300; his way home included.
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,700');
-    expect(screen.getByText('Route price — 12 h away (1 day): at least ₹400 + 1 × ₹1,300')).toBeOnTheScreen();
+    // About 12 h away: one price for the route — ₹1,628 → ₹1,650 (₹1,650–1,850 for 1 day); his way home included.
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,650');
+    expect(screen.getByText('Route price — 284 km: ₹350 + ₹4.5 a km')).toBeOnTheScreen();
     expect(
       screen.getByText(
-        'Driver’s way home and waiting: 6 h, about 12 h away in all — up to 6 h of waiting included',
+        'Driver’s way home and waiting: 6 h, about 12 h away in all — 1 day paid (24 h); waiting up to 12 h more costs nothing',
       ),
     ).toBeOnTheScreen();
-    expect(screen.getByText(/home more than 3 h after the plan: ₹120 an hour/)).toBeOnTheScreen();
+    expect(screen.getByText(/Home later than the days paid .*₹120 an hour/)).toBeOnTheScreen();
     expect(screen.getByTestId('trip-timeline')).toHaveTextContent(/Drops the car in Nagpur/);
 
     // Mumbai: a route price; the typical way home (the website looks up the trains); day and night drops the car sooner.
@@ -380,15 +381,15 @@ describe('Booking, step by step', () => {
     await fireEvent.press(screen.getByTestId('trip-nonstop'));
     await fireEvent.press(screen.getByTestId('dest-nagpur'));
 
-    // A day's stop on the way: he is away 36 h — 2 days, so the route price is at least ₹400 + 2 × ₹1,300.
+    // A day's stop on the way: he is away 36 h — 2 days, so the route price is at least 2 × ₹1,650.
     await fireEvent.press(screen.getByTestId('days-plus'));
     expect(screen.getByTestId('days-value')).toHaveTextContent('2');
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,000');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,300');
 
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     expect(screen.getByTestId('booking-summary')).toHaveTextContent(/Raipur → Nagpur · 2 days/);
-    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,000/);
+    expect(screen.getByTestId('booking-summary')).toHaveTextContent(/₹3,300/);
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
     await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
     await fireEvent.press(screen.getByTestId('submit-booking'));
@@ -401,8 +402,8 @@ describe('Booking, step by step', () => {
       km: 284,
       days: 2,
       returnHours: 6,
-      estFrom: 3000,
-      estTo: 3000,
+      estFrom: 3300,
+      estTo: 3300,
     });
   });
 

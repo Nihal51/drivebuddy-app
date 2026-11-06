@@ -40,8 +40,8 @@ test('Raipur → Nagpur one-way: 6 h of driving + 6 h home, all by the hour — 
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'nagpur');
   expect([p.km, p.fullDays, p.extraHours, p.days, p.returnHours, p.local]).toEqual([284, 0, 6, 1, 6, false]);
   expect(byHours(p)).toEqual([1440, 1440]);
-  // About 12 h away: the route price (website 1 Nov 2026) — at least ₹400 + ₹1,300.
-  expect([p.est?.route?.awayHours, p.est?.from, p.est?.to]).toEqual([12, 1700, 1700]);
+  // About 12 h away: the route price (website 1 Nov 2026) — ₹1,628 → ₹1,650, within ₹1,650–1,850 for 1 day.
+  expect([p.est?.route?.awayHours, p.est?.from, p.est?.to]).toEqual([12, 1650, 1650]);
 });
 
 test('a drive shorter than a day, as on the website: ₹120 an hour, at least ₹600; his way home on top', () => {
@@ -59,31 +59,29 @@ test('a drive shorter than a day, as on the website: ₹120 an hour, at least �
   expect(parseTripRules({ ...old, shortDriveMinimum: -5 })?.shortDriveMinimum).toBeUndefined();
 });
 
-/* Decided with the owner, 3 Nov 2026 (website lib/outstation.ts routePrice): the route
-   price includes up to 6 h of waiting for his train; every hour more is charged like his
-   way home — ₹120 an hour, more than 6 h in a day = ₹1,200 a day. */
-test('waiting for his train: 6 h in the route price, every hour more like the way home (3 Nov 2026)', () => {
-  const w = (wait: number) => routePrice(config, 1370, 81, wait);
-  expect([w(0)?.price, w(6)?.price, w(7)?.price, w(10)?.price, w(20)?.price]).toEqual([
-    6500, 6500, 6620, 6980, 7700,
-  ]);
-  expect(w(10)).toMatchObject({ waitHours: 10, extraWaitHours: 4, waitCharge: 480, by: 'km' });
-  expect(w(31)?.price).toBe(6500 + 1200 + 120);
-  expect(w(Number.NaN)?.price).toBe(6500);
-  // The days-away floor already pays for the time: no waiting on top.
-  expect(routePrice(config, 284, 30, 14)).toMatchObject({ price: 3000, by: 'days' });
-  // Older website files lack the rule: no charge for waiting.
-  const { routeFreeWaitHours: free, ...old } = config.outstation;
-  expect(free).toBe(6);
-  expect(routePrice({ outstation: old }, 1370, 81, 20)?.price).toBe(6500);
-  // Read from the website file only with the rest of the route price, and only when sensible.
-  expect(parseTripRules({ ...config.outstation })?.routeFreeWaitHours).toBe(6);
-  expect(parseTripRules({ ...old })?.routeFreeWaitHours).toBeUndefined();
-  expect(
-    parseTripRules({ ...config.outstation, routeFreeWaitHours: 99 })?.routeFreeWaitHours,
-  ).toBeUndefined();
+/* Decided with the owner, 7 Nov 2026 (website lib/outstation.ts routePrice): the route
+   price is for the days the trip needs (₹1,650–1,850 each); waiting for his train uses the
+   time left in those days at no charge, and only the hours past them cost ₹120 each, at most
+   the price per day for each 24 h. */
+test('waiting for his train: free inside the days paid; past them ₹120 an hour, at most a day', () => {
+  const w = (planned: number, away: number) => routePrice(config, 1214, away, planned); // Delhi: 60 h → 3 days
+  expect(w(60, 60)).toMatchObject({ price: 5550, days: 3, freeHours: 12, extraHours: 0 });
+  expect(w(60, 72)?.price).toBe(5550);
+  expect(w(60, 76)).toMatchObject({ extraHours: 4, extraCharge: 480, price: 6030, daysPrice: 5550 });
+  expect(w(60, 90)).toMatchObject({ extraHours: 18, extraCharge: 1850, dayPrice: 1850 });
+  expect(w(60, 100)?.extraCharge).toBe(1850 + 4 * 120);
+  expect(routePrice(config, 1214, Number.NaN)).toBeUndefined();
+  // Read from the website file: the most a day only with the rest of the route price, never below the least.
+  expect(parseTripRules({ ...config.outstation })?.routeMaxPerDay).toBe(1850);
+  expect(parseTripRules({ ...config.outstation, routeMaxPerDay: 1000 })?.routeMaxPerDay).toBeUndefined();
   const { routeBase: _b, ...noRoute } = config.outstation;
-  expect(parseTripRules({ ...noRoute })?.routeFreeWaitHours).toBeUndefined();
+  expect(parseTripRules({ ...noRoute })?.routeMaxPerDay).toBeUndefined();
+  // Older website files without it: no upper limit (and an older minimum, ₹400 + ₹1,300 a day).
+  const { routeMaxPerDay: _x, ...noCap } = config.outstation;
+  expect(routePrice({ outstation: noCap }, 1214, 60)?.price).toBe(5800);
+  expect(
+    routePrice({ outstation: { ...noCap, routeMinBase: 400, routeMinPerDay: 1300 } }, 577, 26),
+  ).toMatchObject({ price: 3000, by: 'days' });
 });
 
 test('Raipur → Mumbai one-way: 22.4 h = 1 day + 11 h, more than 7 = 2 full days; 19 h home — ₹4,300–4,500', () => {
@@ -99,7 +97,7 @@ test('Raipur → Hyderabad: 15.6 h = 1 day + 4 h by the hour; 16 h home = a full
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'hyderabad', 0, { hour: 9, weekday: 0 });
   expect([p.fullDays, p.extraHours, p.returnHours, p.startHour]).toEqual([1, 4, 16, 9]);
   expect(byHours(p)).toEqual([3230, 3330]);
-  expect(p.est?.from).toBe(3850); // the route price: ₹350 + ₹4.5 × 780 km
+  expect(p.est?.from).toBe(3700); // the route price: ₹350 + ₹4.5 × 780 km = ₹3,860, at most 2 × ₹1,850
   // The typical way home: an hour to the station, then on board; no timetable in the app.
   expect((p.leaveAt ?? 0) - (p.dropAt ?? 0)).toBeCloseTo(1);
 });
@@ -108,17 +106,17 @@ test('Raipur → Bengaluru: 2 days + 4 h; 29 h home = 1 day + 5 h — ₹5,380�
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 1 });
   expect([p.fullDays, p.extraHours, p.days, p.returnHours]).toEqual([2, 4, 3, 29]);
   expect([p.est?.returnCharge, ...byHours(p)]).toEqual([1800, 5380, 5580]);
-  expect([p.est?.from, p.est?.to]).toEqual([6500, 6500]); // the route price: ₹6,515 → ₹6,500
-  // Day and night: the same price, the car there a day sooner.
+  expect([p.est?.from, p.est?.to]).toEqual([6600, 6600]); // ₹6,515 → ₹6,500, at least 4 days × ₹1,650
+  // Day and night: the car there a day sooner, and 3 days away — at most 3 × ₹1,850.
   const nonstop = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7.5, weekday: 4 }, true);
-  expect([nonstop.days, nonstop.est?.from]).toEqual([2, 6500]);
+  expect([nonstop.days, nonstop.est?.from, nonstop.est?.route?.days]).toEqual([2, 5550, 3]);
   expect(nonstop.dropAt).toBeLessThan(p.dropAt ?? 0);
 });
 
 test('Raipur → Delhi: booked days count in full; never more than 60', () => {
   const p = planTrip(config, 'one-way-drop', 'Raipur', 'delhi');
   expect([p.fullDays, p.extraHours, p.returnHours, byHours(p)[0], p.est?.from]).toEqual([
-    2, 1, 24, 4420, 5800,
+    2, 1, 24, 4420, 5550,
   ]);
   const four = planTrip(config, 'one-way-drop', 'Raipur', 'delhi', 4);
   expect([four.days, four.fullDays, four.extraHours]).toEqual([4, 4, 0]);
@@ -128,17 +126,21 @@ test('Raipur → Delhi: booked days count in full; never more than 60', () => {
 test('the route price of a longer drop, exactly as the website (1 Nov 2026)', () => {
   expect(routePrice(config, 284, 11)).toBeUndefined();
   expect(routePrice(config, 284, 12)).toEqual({
-    price: 1700,
-    waitHours: 0,
-    extraWaitHours: 0,
-    waitCharge: 0,
+    price: 1650,
+    daysPrice: 1650,
     days: 1,
+    dayPrice: 1650,
+    plannedHours: 12,
     awayHours: 12,
+    freeHours: 12,
+    extraHours: 0,
+    extraCharge: 0,
     km: 284,
-    by: 'days',
+    by: 'km',
   });
-  expect([routePrice(config, 334, 16)?.price, routePrice(config, 577, 25.5)?.price]).toEqual([1850, 3000]);
-  expect([routePrice(config, 1214, 60)?.price, routePrice(config, 1370, 81)?.price]).toEqual([5800, 6500]);
+  expect([routePrice(config, 334, 16)?.price, routePrice(config, 577, 25.5)?.price]).toEqual([1850, 3300]);
+  expect([routePrice(config, 546, 22)?.by, routePrice(config, 577, 26)?.by]).toEqual(['cap', 'days']);
+  expect([routePrice(config, 1214, 60)?.price, routePrice(config, 1370, 81)?.price]).toEqual([5550, 6600]);
   expect(routePrice(config, 0, 30)).toBeUndefined();
   const at = (id: string) => planTrip(config, 'one-way-drop', 'Raipur', id).est?.from;
   expect(['bhilai', 'bilaspur', 'korba', 'raigarh'].map(at)).toEqual([840, 960, 1200, 1320]);
@@ -155,7 +157,7 @@ test('the route price of a longer drop, exactly as the website (1 Nov 2026)', ()
       'delhi',
       'bengaluru',
     ].map(at),
-  ).toEqual([1700, 1700, 1850, 2050, 2800, 3000, 3850, 5400, 5800, 6500]);
+  ).toEqual([1650, 1650, 1850, 1850, 1850, 3300, 3700, 5400, 5550, 6600]);
   // Round trips: the days only.
   expect(planTrip(config, 'outstation', 'Raipur', 'jabalpur').est).toMatchObject({ from: 3100 });
   // An older website file without it: by the hours; the set is read only whole.
@@ -165,13 +167,12 @@ test('the route price of a longer drop, exactly as the website (1 Nov 2026)', ()
     routePerKm: _k,
     routeMinBase: _m,
     routeMinPerDay: _d,
-    lateAfterHours: _l,
     ...old
   } = config.outstation;
   expect(planTrip({ ...config, outstation: old }, 'one-way-drop', 'Raipur', 'ambikapur').est?.from).toBe(
     2040,
   );
-  expect(parseTripRules({ ...config.outstation })).toMatchObject({ routePerKm: 4.5, routeMinPerDay: 1300 });
+  expect(parseTripRules({ ...config.outstation })).toMatchObject({ routePerKm: 4.5, routeMinPerDay: 1650 });
   expect(parseTripRules({ ...config.outstation, routePerKm: -1 })?.routeBase).toBeUndefined();
 });
 
@@ -343,7 +344,7 @@ test('search: popular places first, then by name in English or Hindi', () => {
 
 test('the trip as a line for the team, and in the notes when the website does not take trips yet', () => {
   const t = tripRecord(planTrip(config, 'one-way-drop', 'Raipur', 'delhi'), '');
-  const line = 'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 24 h getting home · est. ₹5,800';
+  const line = 'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 24 h getting home · est. ₹5,550';
   expect(tripNote(t, 'Raipur')).toBe(line);
   expect(notesWithTrip('  Swift, automatic ', t, 'Raipur')).toBe(`${line}\nSwift, automatic`);
   expect(notesWithTrip('', t, 'Raipur')).toBe(line);

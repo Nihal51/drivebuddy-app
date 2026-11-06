@@ -99,7 +99,7 @@ test('the final bill and the trip times, in both languages', () => {
       awayHours: 60,
       amount: 6160,
     }),
-  ).toBe('₹5,800 route price (about 60 h away, way home included) + ₹360 for 3 h late');
+  ).toBe('₹5,800 route price (about 60 h away, way home included) + ₹360 for 3 h past the days paid');
   const clock = {
     startAt: new Date('2026-10-29T02:15:00Z'),
     dropAt: new Date('2026-10-30T07:10:00Z'),

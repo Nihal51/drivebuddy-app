@@ -60,10 +60,10 @@ test('the chosen train replaces the typical time home: the way home and the pric
   });
 });
 
-test('a long wait for his train costs more on a route price (website, 3 Nov 2026)', () => {
+test('waiting for his train: free inside the days paid, then by the hour (website, 7 Nov 2026)', () => {
   const start = istInstant('2026-11-05', '07:00')!;
   const typical = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 4 });
-  expect(typical.est?.from).toBe(6500);
+  expect([typical.est?.from, typical.est?.route?.days]).toEqual([6600, 4]); // 81 h → 4 days paid (96 h)
   const ride = 26;
   const withWait = (wait: number, change?: number) => {
     const depart = start + (typical.dropAt! + wait) * 3_600_000;
@@ -84,16 +84,19 @@ test('a long wait for his train costs more on a route price (website, 3 Nov 2026
       trainHours(option, start),
     );
   };
-  expect(withWait(3).est?.from).toBe(6500);
-  expect(withWait(10).est?.from).toBe(6980);
-  expect(withWait(20).est?.from).toBe(7700);
+  // Waiting inside the 4 days paid: no charge.
+  expect([withWait(3).est?.from, withWait(10).est?.from]).toEqual([6600, 6600]);
   expect(withWait(10).waitHours).toBe(10);
-  // A change of train counts: 3 h at the drop + 5 h at the change = 8 h → 2 h more.
-  expect(withWait(3, 5).est?.from).toBe(6500 + 240);
-  // Without the waiting given: from the drop to boarding.
-  const depart = start + (typical.dropAt! + 10) * 3_600_000;
+  // 20 h: home after 98 h, 2 h past the 96 h paid × ₹120.
+  expect(withWait(20).est?.route).toMatchObject({ extraHours: 2, extraCharge: 240, price: 6840 });
+  // 40 h: 22 h past — never more than a day's price (₹6,600 ÷ 4 = ₹1,650).
+  expect(withWait(40).est?.route).toMatchObject({ extraHours: 22, extraCharge: 1650 });
+  // A change of train is waiting too: 3 h + 5 h at the change, still inside the 4 days.
+  expect(withWait(3, 5).est?.from).toBe(6600);
+  // Without the waiting given: from the drop to boarding (20 h → as above).
+  const depart = start + (typical.dropAt! + 20) * 3_600_000;
   const bare = trainHours({ depart, arrive: depart + ride * 3_600_000 }, start);
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, 7, false, bare).est?.from).toBe(6980);
+  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, 7, false, bare).est?.from).toBe(6840);
   // The note on the booking says the hours, for the team's price.
   const o = { waitMinutes: 240, transfer: { station: { code: 'NGP', name: 'Nagpur' }, minutes: 180 } };
   expect(waitHoursOf(o)).toBe(7);
