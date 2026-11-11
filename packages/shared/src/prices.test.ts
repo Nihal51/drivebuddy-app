@@ -25,9 +25,9 @@ test('every package has a price shape', () => {
     amount: '₹16,000–17,000',
   });
   expect(packagePrice(DEFAULT_CONFIG, 'wedding-event')).toEqual({ kind: 'quote' });
-  // Outstation: the day price over every distance (₹1,300 up to 150 km … ₹1,650 farthest).
-  expect(packagePrice(DEFAULT_CONFIG, 'outstation')).toEqual({ kind: 'perDay', amount: '₹1,300–1,650' });
-  // One-way drops: by the hour when short, one price by distance when longer — never "a day".
+  // Outstation: the day price over every distance (₹1,050 close by … ₹1,750 at 300 km and farther).
+  expect(packagePrice(DEFAULT_CONFIG, 'outstation')).toEqual({ kind: 'perDay', amount: '₹1,050–1,750' });
+  // One-way drops: priced by the driver's time — never "a day".
   expect(packagePrice(DEFAULT_CONFIG, 'one-way-drop')).toEqual({ kind: 'byDistance' });
 });
 

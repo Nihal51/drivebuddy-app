@@ -27,12 +27,14 @@ export type AppConfig = {
     oneHour: number;
     threeHours: number;
     fullDay: Range;
-    /** Per day of an outstation trip or one-way drop farther than the last nearby tier. */
+    /** Per 24 h of the driver's time farther than the last nearby tier (rising with the distance, trip.ts dayRateFor). */
     outstation: Range;
     /**
      * Cheaper days for places closer by, nearest first: up to `upToKm` (one
      * way, by road, from the pickup city) a day costs from–to (website:
-     * prices.outstationNear). Empty: prices.outstation everywhere.
+     * prices.outstationNear). The first is also the same-day drop: up to its
+     * upToKm (160 km) he is home the same day, one price for the trip. Empty:
+     * prices.outstation everywhere.
      */
     outstationNear: NearRate[];
     nightFrom: number;
@@ -77,7 +79,7 @@ export type AppConfig = {
   app: { minVersion: string; playStoreUrl: string; appStoreUrl: string };
 };
 
-/** Snapshot of site-settings.ts on 28 Oct 2026. Only a fallback — see above. */
+/** Snapshot of site-settings.ts on 8 Nov 2026. Only a fallback — see above. */
 export const DEFAULT_CONFIG: AppConfig = {
   schema: 1,
   contact: {
@@ -91,28 +93,16 @@ export const DEFAULT_CONFIG: AppConfig = {
     oneHour: 300,
     threeHours: 600,
     fullDay: { from: 1000, to: 1200 },
-    outstation: { from: 1550, to: 1650 },
-    outstationNear: [
-      { upToKm: 150, from: 1300, to: 1400 },
-      { upToKm: 300, from: 1450, to: 1550 },
-    ],
+    outstation: { from: 1450, to: 1750 },
+    outstationNear: [{ upToKm: 160, from: 1050, to: 1350 }],
     nightFrom: 500,
   },
   outstation: {
     hoursPerDay: 12,
-    extraHour: 120,
-    returnHour: 120,
-    returnMaxPerDay: 1200,
-    returnFullDayAfter: 6,
+    extraHour: 130,
+    nearFromKm: 60,
+    dayTopFromKm: 300,
     extraFullDayAfter: 7,
-    shortDriveMinimum: 600,
-    shortDriveHours: 3,
-    routeAfterHours: 12,
-    routeBase: 350,
-    routePerKm: 4.5,
-    routeMinBase: 0,
-    routeMinPerDay: 1650,
-    routeMaxPerDay: 1850,
     mealAllowance: 300,
     kmPerDay: 600,
     localWithinKm: 60,

@@ -193,7 +193,7 @@ function BookingWizard({
   const typical = planWith();
   const rail = useReturnTrains(typical, values.city, startAt);
   const plan = rail.selected ? planWith(trainHours(rail.selected, startAt)) : typical;
-  const train = rail.selected ? trainNote(rail.selected) : '';
+  const train = rail.selected ? trainNote(rail.selected, plan?.homeAt) : '';
   const input: BookingInput = {
     ...values,
     preferredTime,

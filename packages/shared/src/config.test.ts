@@ -42,7 +42,7 @@ test('an older website file without trip estimates still works, with the built-i
   // That website's outstation price was per trip; the built-in per-day range is used instead.
   old.prices.outstation = { from: 1200, to: 1500 };
   const parsed = parseAppConfig(old);
-  expect(parsed?.outstation.returnHour).toBe(DEFAULT_CONFIG.outstation.returnHour);
+  expect(parsed?.outstation.extraHour).toBe(DEFAULT_CONFIG.outstation.extraHour);
   expect(parsed?.destinations.length).toBe(DEFAULT_CONFIG.destinations.length);
   expect(parsed?.prices.outstation).toEqual(DEFAULT_CONFIG.prices.outstation);
   expect(parsed?.tripsLive).toBe(false);
@@ -71,8 +71,8 @@ test('the nearby day prices: read when published, none from a website file from 
 test('a broken trip block or destination row rejects the file', () => {
   const raw = clone(DEFAULT_CONFIG) as unknown as Record<string, unknown>;
   const bad = (patch: Record<string, unknown>) => parseAppConfig({ ...raw, ...patch });
-  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnHour: 0 } })).toBeNull();
-  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, returnMaxPerDay: '1200' } })).toBeNull();
+  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, extraHour: 0 } })).toBeNull();
+  expect(bad({ outstation: { ...DEFAULT_CONFIG.outstation, mealAllowance: '300' } })).toBeNull();
   expect(bad({ destinations: [] })).toBeNull();
   const rows = clone(DEFAULT_CONFIG.destinations);
   delete (rows[3] as { from: Record<string, unknown> }).from.Durg;
@@ -80,6 +80,59 @@ test('a broken trip block or destination row rejects the file', () => {
   expect(bad({ destinations: [{ ...clone(DEFAULT_CONFIG.destinations[0]), id: 'Bad Id' }] })).toBeNull();
   // Only one of the two blocks: also rejected (they come together).
   expect(bad({ destinations: undefined })).toBeNull();
+});
+
+test('the website file of 8 Nov 2026 (the driver’s time) and the one before it are both read', () => {
+  const raw = clone(DEFAULT_CONFIG);
+  // As published from 8 Nov 2026: the rising day price, the old way-home keys still alongside.
+  const now = {
+    ...raw,
+    outstation: {
+      ...raw.outstation,
+      extraFullDayAfter: undefined,
+      extraFullDayAfterHours: 7,
+      returnHour: 120,
+      returnMaxPerDay: 1200,
+      returnFullDayAfterHours: 6,
+      sameDayMaxHours: 14,
+    },
+  };
+  expect(parseAppConfig(now)?.outstation).toEqual(DEFAULT_CONFIG.outstation);
+  // The file from before (route price, short drives, two nearby tiers, no rising price): still accepted.
+  const before = {
+    ...raw,
+    prices: {
+      ...raw.prices,
+      outstation: { from: 1550, to: 1650 },
+      outstationNear: [
+        { upToKm: 150, from: 1300, to: 1400 },
+        { upToKm: 300, from: 1450, to: 1550 },
+      ],
+    },
+    outstation: {
+      hoursPerDay: 12,
+      extraHour: 120,
+      returnHour: 120,
+      returnMaxPerDay: 1200,
+      shortDriveMinimum: 600,
+      shortDriveHours: 3,
+      routeAfterHours: 12,
+      routeBase: 350,
+      routePerKm: 4.5,
+      routeMinBase: 0,
+      routeMinPerDay: 1650,
+      routeMaxPerDay: 1850,
+      mealAllowance: 300,
+      kmPerDay: 600,
+      localWithinKm: 60,
+      stationHours: 1,
+      averageKmh: 50,
+    },
+  };
+  const old = parseAppConfig(before);
+  expect(old?.outstation).not.toHaveProperty('nearFromKm');
+  expect(old?.outstation).not.toHaveProperty('routeBase');
+  expect(old?.prices.outstationNear).toHaveLength(2);
 });
 
 test('the minimum app version must look like 1.2.3 and store links must be the real stores', () => {

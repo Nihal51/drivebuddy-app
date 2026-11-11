@@ -1,5 +1,13 @@
 import { DEFAULT_CONFIG, parseAppConfig } from './config';
-import { findReturn, istInstant, waitFromNotes, waitHoursOf, waitNote } from './rail';
+import {
+  awayFromNotes,
+  awayNote,
+  findReturn,
+  istInstant,
+  waitFromNotes,
+  waitHoursOf,
+  waitNote,
+} from './rail';
 import { makeFetcher } from './rail-client';
 import { PICKUP_STATIONS, parseDestinations, planTrip, railInputOf, trainHours } from './trip';
 
@@ -60,10 +68,11 @@ test('the chosen train replaces the typical time home: the way home and the pric
   });
 });
 
-test('waiting for his train: free inside the days paid, then by the hour (website, 7 Nov 2026)', () => {
+test('waiting for his train: his time — free inside the 24-hour blocks, then by the hour (website, 8 Nov 2026)', () => {
   const start = istInstant('2026-11-05', '07:00')!;
   const typical = planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, { hour: 7, weekday: 4 });
-  expect([typical.est?.from, typical.est?.route?.days]).toEqual([6600, 4]); // 81 h → 4 days paid (96 h)
+  // The route's average: about 87 h away → 3 × 24 h + 15 h, more than a day's worth → 4 × ₹1,750.
+  expect([typical.est?.from, typical.est?.time?.days]).toEqual([7000, 4]);
   const ride = 26;
   const withWait = (wait: number, change?: number) => {
     const depart = start + (typical.dropAt! + wait) * 3_600_000;
@@ -84,19 +93,19 @@ test('waiting for his train: free inside the days paid, then by the hour (websit
       trainHours(option, start),
     );
   };
-  // Waiting inside the 4 days paid: no charge.
-  expect([withWait(3).est?.from, withWait(10).est?.from]).toEqual([6600, 6600]);
-  expect(withWait(10).waitHours).toBe(10);
-  // 20 h: home after 98 h, 2 h past the 96 h paid × ₹120.
-  expect(withWait(20).est?.route).toMatchObject({ extraHours: 2, extraCharge: 240, price: 6840 });
-  // 40 h: 22 h past — never more than ₹1,200 for each 24 h.
-  expect(withWait(40).est?.route).toMatchObject({ extraHours: 22, extraCharge: 1200 });
-  // A change of train is waiting too: 3 h + 5 h at the change, still inside the 4 days.
-  expect(withWait(3, 5).est?.from).toBe(6600);
-  // Without the waiting given: from the drop to boarding (20 h → as above).
+  // The drop is 51.4 h after the start: a 3 h wait and 26 h ride → 81 h = 3 × 24 h + 9 h × ₹130.
+  expect(withWait(3).est?.time).toMatchObject({ hours: 81, days: 3, extraHours: 9, price: 5250 + 1170 });
+  expect(withWait(3).waitHours).toBe(3);
+  // A long wait: 20 h → 98 h = 4 × 24 h + 2 h.
+  expect(withWait(20).est?.time).toMatchObject({ days: 4, extraHours: 2, extraCharge: 260, price: 7260 });
+  // A change of train is waiting too (in the train's hours home).
+  expect(withWait(3, 5).waitHours).toBe(8);
+  // Without the waiting given: from the drop to boarding.
   const depart = start + (typical.dropAt! + 20) * 3_600_000;
   const bare = trainHours({ depart, arrive: depart + ride * 3_600_000 }, start);
-  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, 7, false, bare).est?.from).toBe(6840);
+  expect(planTrip(config, 'one-way-drop', 'Raipur', 'bengaluru', 0, 7, false, bare).waitHours).toBeCloseTo(
+    20,
+  );
   // The note on the booking says the hours, for the team's price.
   const o = { waitMinutes: 240, transfer: { station: { code: 'NGP', name: 'Nagpur' }, minutes: 180 } };
   expect(waitHoursOf(o)).toBe(7);
@@ -104,6 +113,16 @@ test('waiting for his train: free inside the days paid, then by the hour (websit
   expect(waitFromNotes(`Train home in the estimate: 1 X (timetable; not booked; ${waitNote(o)}).`)).toBe(7);
   expect(waitFromNotes('he waits 7 h in all')).toBeUndefined();
   expect(waitFromNotes(undefined)).toBeUndefined();
+  // The hours away (start → home) with that train, for the price of his time.
+  expect(awayNote(34.2)).toBe('he is away 35 h in all');
+  expect(awayNote(-1)).toBe('he is away 0 h in all');
+  expect(
+    awayFromNotes(
+      `Train home in the estimate: 1 X (timetable; not booked; ${waitNote(o)}; ${awayNote(56.5)}).`,
+    ),
+  ).toBe(57);
+  expect(awayFromNotes('he is away 57 h in all')).toBeUndefined();
+  expect(awayFromNotes(undefined)).toBeUndefined();
 });
 
 test('no direct train soon enough: a route with one change through Nagpur, both trains from the lookup', async () => {

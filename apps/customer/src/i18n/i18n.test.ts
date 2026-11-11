@@ -3,6 +3,7 @@ import { DEFAULT_CONFIG, PACKAGE_IDS, packagePrice } from '@drivebuddy/shared';
 import { type Messages, en } from './en';
 import {
   billBreakdown,
+  quoteBreakdown,
   clockText,
   errorText,
   formatDateTime,
@@ -100,6 +101,35 @@ test('the final bill and the trip times, in both languages', () => {
       amount: 6160,
     }),
   ).toBe('₹5,800 route price (about 60 h away, way home included) + ₹360 for 3 h past the days paid');
+  // The driver's time (8 Nov 2026): the 24-hour blocks, then the hours past them.
+  const time = {
+    ...bill,
+    amount: 4670,
+    dayRate: 1750,
+    days: 2,
+    extraHours: 9,
+    extraHourRate: 130,
+    extraCharge: 1170,
+    returnHours: 0,
+    returnHourRate: 0,
+    returnCharge: 0,
+    km: 1118,
+  };
+  expect(billBreakdown(en, time)).toBe(
+    '₹1,750 × 2 × 24 h of the driver’s time + ₹1,170 for 9 hours past them',
+  );
+  expect(billBreakdown(en, { ...time, extraHours: 1, extraCharge: 130, ticket: 650 })).toBe(
+    '₹1,750 × 2 × 24 h of the driver’s time + ₹130 for 1 hour past them + ₹650 ticket',
+  );
+  expect(billBreakdown(hi, time)).toBe('₹1,750 × ड्राइवर के समय के 2 × 24 घंटे + ₹1,170 — उसके बाद 9 घंटे');
+  const { nonstop: _n, extraCharge: _e, ...quote } = time;
+  expect(quoteBreakdown(en, quote)).toBe('₹1,750 × 2 × 24 h of the driver’s time + ₹130 × 9 h past them');
+  expect(quoteBreakdown(en, { ...quote, days: 1, extraHours: 0, dayRate: 1200, km: 113, ticket: 150 })).toBe(
+    '₹1,200 for the driver’s time (113 km, up to 24 h, his way home included) + ₹150 ticket',
+  );
+  expect(quoteBreakdown(hi, { ...quote, days: 1, extraHours: 0, dayRate: 1200, km: 113 })).toBe(
+    '₹1,200 ड्राइवर के समय के (113 किमी, 24 घंटे तक, घर वापसी शामिल)',
+  );
   const clock = {
     startAt: new Date('2026-10-29T02:15:00Z'),
     dropAt: new Date('2026-10-30T07:10:00Z'),

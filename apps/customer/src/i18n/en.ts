@@ -112,7 +112,10 @@ export const en = {
       blurb: 'Lower joining fee, free stand-in when your driver is away',
     },
     'wedding-event': { name: 'Wedding / event', blurb: 'Drivers, or cars with drivers, for the whole event' },
-    'one-way-drop': { name: 'One-way car drop', blurb: 'We drive your car to another city, by the day' },
+    'one-way-drop': {
+      name: 'One-way car drop',
+      blurb: 'We drive your car to another city — priced by the driver’s time',
+    },
   } satisfies Record<PackageId, { name: string; blurb: string }>,
   unknownPackage: 'Driver booking',
   popular: 'Most popular',
@@ -123,7 +126,7 @@ export const en = {
     perDay: (amount: string) => `${amount}/day`,
     monthlyFrom: (amount: string) => `from ${amount}/mo`,
     priority: 'Priority',
-    byDistance: 'By distance',
+    byDistance: 'By the driver’s time',
     quote: 'Quote on call',
   },
 
@@ -198,15 +201,23 @@ export const en = {
     km: (n: string) => `${n} km`,
     days: (n: number) => (n === 1 ? '1 day' : `${n} days`),
     returnHours: (n: number) => `${n} h for the driver to get home`,
-    drivingDays: (n: number, perDay: number) =>
-      `${n === 1 ? '1 driving day' : `${n} driving days`} (${perDay} h each)`,
-    drivingHours: (n: number, more: boolean) =>
-      `${n === 1 ? '1 driving hour' : `${n} driving hours`}${more ? ' more' : ''}`,
-    wayHomeHours: (n: number) => `Driver’s way home: ${n} h from the drop until he is home, waiting included`,
-    homeInTime: 'Driver’s way home',
-    noCharge: 'No charge',
-    returnMax: (rate: string, max: string, after: number) =>
-      `${max} a day; hours left over ${rate} each, more than ${after} = a full day`,
+    awayAbout: (hours: number) => `the driver is away about ${hours} h`,
+    timeSameDay: (km: string) => `One price for the trip — ${km}, he is home the same day`,
+    timeDays: (days: number, rate: string) => `${days} × 24 h of the driver’s time × ${rate}`,
+    timePast: (hours: number, block: number, rate: string) =>
+      `${hours === 1 ? '1 hour' : `${hours} hours`} past the ${block} h × ${rate} (never more than one more day)`,
+    timeMadeUp: (
+      total: number,
+      drive: string,
+      wait: string,
+      ride: string,
+      train: boolean,
+      spare?: number,
+      block?: number,
+    ): string =>
+      `His time: about ${total} h, from when he leaves until he is home — driving ${drive}, then waiting ${wait} and ${ride} on the way home (${train ? 'the train you picked' : 'the route’s average'})${spare && spare > 0 ? `. ${spare} h to spare in the ${block} h: a delay costs nothing until then` : ''}`,
+    timeTotal: (total: number) =>
+      `His time: about ${total} h, from when he leaves until he is home — the drive, waiting for his train and the ride home`,
     returnShort: (n: number) => `way home (${n} h)`,
     nonstop: 'Drive day and night',
     nonstopHint: 'No overnight rest, so he gets there sooner — the same price for the driving.',
@@ -214,9 +225,9 @@ export const en = {
     trainsChecking: 'Checking the trains home for that day…',
     trainsRetrying: 'The train service is busy — trying again in a few seconds…',
     trainsNone: (change: boolean) =>
-      `No train home found for that day, direct${change ? ' or with one change' : ''}. The price uses the typical time home — we confirm his train on the call.`,
+      `No train home found for that day, direct${change ? ' or with one change' : ''}. The price uses the route’s average time home — we confirm his train on the call.`,
     trainsError:
-      'We could not check the trains just now. The price uses the typical time home — we confirm his train on the call.',
+      'We could not check the trains just now. The price uses the route’s average time home — we confirm his train on the call.',
     trainRecommended: 'Recommended',
     trainDirect: 'Direct',
     trainChange: (station: string, wait: string) => `Change at ${station}, waits ${wait}`,
@@ -232,57 +243,51 @@ export const en = {
     drivingDaysRest: (h: number, perDay: number) => `about ${h} h: about ${perDay} h a day, resting at night`,
     leaves: (city: string) => `Leaves ${city}`,
     drops: (place: string) => `Drops the car in ${place}`,
-    wayHome: 'Way home, typical time (you book his ticket)',
+    wayHome: 'Way home, the route’s average (you book his ticket)',
     onBoard: (h: number) => `about ${h} h`,
     homeIn: (city: string) => `Home in ${city}`,
     about: (when: string) => `about ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
-    shortDriveMin: (h: number, min: string) => `${h} h of driving: the minimum, ${min}`,
-    shortDriveFirst: (h: number, min: string, first: number, rate: string): string =>
-      `${h} h of driving: ${min} for the first ${first} h${h > first ? ` + ${h - first} h × ${rate}` : ''}`,
     shortDriveBill: (amount: string, h: number) => `${amount} for ${h} h of driving`,
     chooseCity: 'Choose your city above to see the estimate.',
     chooseDest: 'Choose where you are going to see the estimate.',
     elsewhereNote: (rate: string) =>
       `We work out the distance and call you with the price: ${rate} a day, depending on how far it is.`,
-    elsewhereReturn: (rate: string, max: string, after: number) =>
-      `His way home, from the drop until he is home: ${max} for each 24 hours; the hours left over ${rate} each, more than ${after} count as a full day.`,
+    elsewhereOneWay: (km: string, sameDay: string, day: string, hour: string) =>
+      `We work out the distance and call you with the price: up to ${km} ${sameDay} for the trip; farther, each 24 hours of his time ${day} by distance; the hours past them ${hour} each, never more than one more day.`,
     sameCity: 'That is your pickup city — for driving around town, choose a local package.',
-    localTip: (place: string, km: string, price: string) =>
-      `${place} is only about ${km} away — a full day in the city (${price}) usually costs less.`,
+    localTip: (place: string, km: string, threeHours: string, fullDay: string) =>
+      `${place} is only about ${km} away. If the driver stays with you and comes back in your car, a local package can cost less: ${threeHours} for 3 hours, or ${fullDay} for a full day of 8 hours.`,
     useLocal: 'Switch to full day',
-    smallPrint: (
-      hours: number,
-      extra: string,
-      meal: string,
-      oneWay: boolean,
-      extraAfter?: number,
-      homeAfter?: number,
-    ) =>
-      `An estimate: we confirm the exact price on the call, before the driver leaves. ${oneWay ? `Each ${hours} hours of driving is a day; hours left over are ${extra} each${extraAfter !== undefined ? `, and more than ${extraAfter} count as a full day` : ''}. His way home, from the drop until he is home (waiting for his train included): each 24 hours a day, the hours left over by the hour${homeAfter !== undefined ? `, more than ${homeAfter} a full day` : ''}. The final bill uses the real times. You book his bus or train ticket home.` : `Each day is the driver’s 24 hours from the start, with up to ${hours} hours of driving (${extra} an hour beyond).`} Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    smallPrint: (hours: number, extra: string, meal: string) =>
+      `An estimate: we confirm the exact price on the call, before the driver leaves. Each day is the driver’s 24 hours from the start, with up to ${hours} hours of driving (${extra} an hour beyond). Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    smallPrintOneWay: (meal: string) =>
+      `An estimate: we confirm the exact price on the call, before the driver leaves. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
+    explainTitle: 'How the time is counted',
+    explainRule:
+      'One rule: the driver’s time, from when he leaves until he is home — the drive, waiting for his train and the ride home.',
+    explainDays: (km: string, sameDay: string, day: string) =>
+      `Up to ${km} he is home the same day: one price for the trip (${sameDay}, by distance). Farther: ${day} for each 24 hours. If he drops the car in 8 hours, the other 16 cover his waiting and his train home — no extra.`,
+    explainPast: (hour: string) =>
+      `Past the 24-hour blocks, ${hour} an hour — never more than one more day. So 30 hours away = 24 h + 6 h × ${hour}; 44 hours = 2 × 24 h.`,
+    explainAverage:
+      'Until you pick the date, the wait and the ride home are the route’s average from the timetables; with the date and the train, yours. The final bill uses the real times: a late train adds hours, an early one saves them.',
     summaryRound: 'round trip',
     summaryOneWay: 'one-way drop',
     estimate: (range: string) => `estimate ${range}`,
     priceOnCall: 'price on the call',
     extraHours: (n: number) => (n === 1 ? '1 extra hour' : `${n} extra hours`),
     ticket: (amount: string) => `${amount} ticket`,
-    routeByKm: (km: string, base: string, perKm: string) => `Route price — ${km}: ${base} + ${perKm} a km`,
-    routeByDays: (h: number, days: number, base: string, perDay: string): string =>
-      `Route price — ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at least ${base ? `${base} + ` : ''}${days} × ${perDay}`,
-    routeCapped: (km: string, h: number, days: number, perDay: string): string =>
-      `Route price — ${km}, ${h} h away (${days} ${days === 1 ? 'day' : 'days'}): at most ${days} × ${perDay}`,
-    routeWayHome: (home: number, away: number, days: number, spare: number): string =>
-      `Driver’s way home and waiting: ${home} h, about ${away} h away in all — ${days === 1 ? '1 day' : `${days} days`} paid (${days * 24} h)${spare > 0 ? `; waiting up to ${spare} h more costs nothing` : ''}`,
-    routeWait: (extra: number, days: number, rate: string, dayPrice: string): string =>
-      `Waiting past the ${days === 1 ? '1 day' : `${days} days`} paid: ${extra} h × ${rate}, at most ${dayPrice} for each 24 h`,
     included: 'Included',
-    routeSmallPrint: (meal: string): string =>
-      `An estimate: we confirm the exact price on the call, before the driver leaves. One price for the route, for the days the driver is away — his way home is in it, and waiting for his train costs nothing while it fits in those days. You book his bus or train ticket home. Fuel, tolls and parking are extra. Please give the driver his meals, or ${meal} a day.`,
-    routePast: (rate: string, max: string): string =>
-      `Home later than the days paid (waiting or delays): ${rate} an hour, never more than ${max} for each 24 h`,
     routeQuote: (amount: string, away: number) =>
       `${amount} route price (about ${away} h away, way home included)`,
     routeLateBill: (amount: string, h: number) => `${amount} for ${h} h past the days paid`,
+    timeQuoteShort: (amount: string, km: string) =>
+      `${amount} for the driver’s time (${km}, up to 24 h, his way home included)`,
+    timeQuoteDays: (amount: string, days: number) => `${amount} × ${days} × 24 h of the driver’s time`,
+    timeQuotePast: (rate: string, h: number) => `${rate} × ${h} h past them`,
+    timeBillPast: (amount: string, h: number) =>
+      `${amount} for ${h === 1 ? '1 hour' : `${h} hours`} past them`,
     billExtra: (amount: string, n: number) =>
       `${amount} for ${n === 1 ? '1 extra hour' : `${n} extra hours`}`,
     clockLeft: (at: string) => `Driver left ${at}`,

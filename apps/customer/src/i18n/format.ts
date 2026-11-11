@@ -17,6 +17,7 @@ import {
   clock12,
   indianDigits,
   istParts,
+  pricedByTime,
   rupeeRange,
   rupees,
   tripInstant,
@@ -121,8 +122,21 @@ export function tripSummary(
     .join(' · ');
 }
 
-/** The final bill, itemised: "₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h)". */
+/**
+ * The final bill, itemised: the driver's time (bills from 8 Nov 2026) "₹1,750 × 2 × 24 h of the
+ * driver’s time + ₹390 for 3 hours past them"; older bills "₹1,600 × 2 days + ₹600 for 5 extra
+ * hours + ₹2,400 way home (38 h)".
+ */
 export function billBreakdown(t: Messages, b: BookingBill): string {
+  // The driver's time: the 24-hour blocks, the hours past them, the ticket.
+  if (pricedByTime(b))
+    return [
+      t.trip.timeQuoteDays(rupees(b.dayRate), b.days),
+      b.extraHours > 0 ? t.trip.timeBillPast(rupees(b.extraCharge), b.extraHours) : null,
+      b.ticket > 0 ? t.trip.ticket(rupees(b.ticket)) : null,
+    ]
+      .filter(Boolean)
+      .join(' + ');
   // A route price: the price, any hours late, the ticket.
   if (b.awayHours)
     return [
@@ -157,8 +171,22 @@ export function clockText(t: Messages, c: BookingClock, kind: BookingTrip['kind'
     .join(' · ');
 }
 
-/** The agreed price, itemised: "₹1,550 × 2 days + ₹2,400 way home (38 h) + ₹120 × 1 extra hour". */
+/**
+ * The agreed price, itemised: the driver's time (quotes from 8 Nov 2026) "₹1,750 × 2 × 24 h of the
+ * driver’s time + ₹130 × 9 h past them"; older quotes "₹1,550 × 2 days + ₹2,400 way home (38 h)".
+ */
 export function quoteBreakdown(t: Messages, q: BookingQuote): string {
+  // The driver's time: one price for a same-day drop, else the 24-hour blocks and the hours past them.
+  if (pricedByTime(q))
+    return [
+      q.days === 1 && q.extraHours === 0
+        ? t.trip.timeQuoteShort(rupees(q.dayRate), kmText(t, q.km ?? 0))
+        : t.trip.timeQuoteDays(rupees(q.dayRate), q.days),
+      q.extraHours > 0 ? t.trip.timeQuotePast(rupees(q.extraHourRate), q.extraHours) : null,
+      q.ticket > 0 ? t.trip.ticket(rupees(q.ticket)) : null,
+    ]
+      .filter(Boolean)
+      .join(' + ');
   // A route price: one price, his way home included.
   if (q.awayHours)
     return [

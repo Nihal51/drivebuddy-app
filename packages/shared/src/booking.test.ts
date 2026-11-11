@@ -95,9 +95,9 @@ test('a trip is saved only on a trip package, and only with the matching kind', 
     kind: 'one-way',
     km: 1214,
     days: 2,
-    returnHours: 24,
-    estFrom: 5550,
-    estTo: 5550,
+    returnHours: 30, // from the drop: the route's average wait (7.25 h) and ride home (22 h)
+    estFrom: 5250, // his time, about 66 h: 3 × ₹1,750 (website, 8 Nov 2026)
+    estTo: 5250,
   });
   expect(Object.keys(fields.trip ?? {}).sort()).toEqual([...TRIP_KEYS].sort());
   for (const key of Object.keys(fields)) expect(BOOKING_CREATE_KEYS).toContain(key);

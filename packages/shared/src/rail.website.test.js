@@ -8,7 +8,6 @@ import assert from 'node:assert/strict';
 import { test } from '@jest/globals';
 
 import { DEFAULT_CONFIG } from './config';
-import { returnCost } from './trip';
 import {
   addDays,
   directQueries,
@@ -194,8 +193,8 @@ test('no direct train soon enough: a connection whose BOTH trains were confirmed
     'waiting 2 h at NGP stn',
     'train to R stn 4 h 30 m',
   ]);
-  // 26 h 30 m → 27 h charged = 1 day + 3 h = ₹1,200 + 3 × ₹120.
-  assert.equal(returnCost(Math.ceil(o.totalMinutes / 60), 120, 1200, 6), 1560);
+  // 26 h 30 m → 27 whole hours of his time from the drop (the app prices his time: trip.ts timePrice).
+  assert.equal(Math.ceil(o.totalMinutes / 60), 27);
   // 1 h 45 m: allowed (over the 90 min buffer) but flagged as tight.
   const tight = planReturn({
     drop,

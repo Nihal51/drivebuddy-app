@@ -34,7 +34,7 @@ export type PackagePrice =
   | { kind: 'monthly'; amount: string }
   /** Outstation trips, priced by the day — the range over every distance (the form shows the trip estimate). */
   | { kind: 'perDay'; amount: string }
-  /** One-way drops: short ones by the hour, longer ones one price by distance (the form shows the price for the route). */
+  /** One-way drops: priced by the driver’s time until he is home (the form shows the price for the route). */
   | { kind: 'byDistance' }
   | { kind: 'priority' }
   | { kind: 'quote' };

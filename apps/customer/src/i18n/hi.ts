@@ -109,7 +109,7 @@ export const hi: Messages = {
       blurb: 'कम जॉइनिंग फ़ीस, ड्राइवर छुट्टी पर हो तो दूसरा ड्राइवर मुफ़्त',
     },
     'wedding-event': { name: 'शादी / इवेंट', blurb: 'पूरे इवेंट के लिए ड्राइवर, या ड्राइवर के साथ गाड़ियाँ' },
-    'one-way-drop': { name: 'वन-वे कार ड्रॉप', blurb: 'आपकी कार दूसरे शहर तक, प्रति दिन के हिसाब से' },
+    'one-way-drop': { name: 'वन-वे कार ड्रॉप', blurb: 'आपकी कार दूसरे शहर तक — ड्राइवर के समय के हिसाब से' },
   },
   unknownPackage: 'ड्राइवर बुकिंग',
   popular: 'सबसे लोकप्रिय',
@@ -120,7 +120,7 @@ export const hi: Messages = {
     perDay: (amount: string) => `${amount}/दिन`,
     monthlyFrom: (amount: string) => `${amount}/माह से`,
     priority: 'प्राथमिकता',
-    byDistance: 'दूरी के हिसाब से',
+    byDistance: 'ड्राइवर के समय के हिसाब से',
     quote: 'कॉल पर कीमत',
   },
 
@@ -193,13 +193,23 @@ export const hi: Messages = {
     km: (n: string) => `${n} किमी`,
     days: (n: number) => `${n} दिन`,
     returnHours: (n: number) => `ड्राइवर की घर वापसी के ${n} घंटे`,
-    drivingDays: (n: number, perDay: number) => `ड्राइविंग के ${n} दिन (हर दिन ${perDay} घंटे)`,
-    drivingHours: (n: number, more: boolean) => `${more ? 'और ' : ''}${n} घंटे ड्राइविंग`,
-    wayHomeHours: (n: number) => `ड्राइवर की घर वापसी: कार पहुँचाने से घर पहुँचने तक ${n} घंटे, इंतज़ार भी`,
-    homeInTime: 'ड्राइवर की घर वापसी',
-    noCharge: 'कोई चार्ज नहीं',
-    returnMax: (rate: string, max: string, after: number) =>
-      `हर दिन ${max}; बचे घंटे ${rate}/घंटा, ${after} से ज़्यादा तो पूरा दिन`,
+    awayAbout: (hours: number) => `ड्राइवर लगभग ${hours} घंटे बाहर रहेगा`,
+    timeSameDay: (km: string) => `पूरी ट्रिप की एक कीमत — ${km}, ड्राइवर उसी दिन घर पहुँच जाएगा`,
+    timeDays: (days: number, rate: string) => `ड्राइवर के समय के ${days} × 24 घंटे × ${rate}`,
+    timePast: (hours: number, block: number, rate: string) =>
+      `${block} घंटे के बाद ${hours} घंटे × ${rate} (एक दिन से ज़्यादा कभी नहीं)`,
+    timeMadeUp: (
+      total: number,
+      drive: string,
+      wait: string,
+      ride: string,
+      train: boolean,
+      spare?: number,
+      block?: number,
+    ) =>
+      `ड्राइवर का समय: निकलने से घर पहुँचने तक लगभग ${total} घंटे — ड्राइविंग ${drive}, फिर ${wait} इंतज़ार और ${ride} घर वापसी (${train ? 'आपकी चुनी ट्रेन' : 'इस रूट का औसत'})${spare && spare > 0 ? `। ${block} घंटे में ${spare} घंटे बचे हैं: तब तक देर हो तो कोई चार्ज नहीं` : ''}`,
+    timeTotal: (total: number) =>
+      `ड्राइवर का समय: निकलने से घर पहुँचने तक लगभग ${total} घंटे — ड्राइविंग, ट्रेन का इंतज़ार और घर वापसी`,
     returnShort: (n: number) => `घर वापसी (${n} घंटे)`,
     nonstop: 'दिन-रात ड्राइविंग',
     nonstopHint: 'रात में आराम नहीं, तो जल्दी पहुँचेगा — ड्राइविंग की कीमत वही।',
@@ -207,8 +217,8 @@ export const hi: Messages = {
     trainsChecking: 'उस दिन की वापसी की ट्रेनें देख रहे हैं…',
     trainsRetrying: 'ट्रेन सेवा अभी व्यस्त है — कुछ सेकंड में फिर कोशिश कर रहे हैं…',
     trainsNone: (change: boolean) =>
-      `उस दिन घर वापसी की कोई ट्रेन नहीं मिली, सीधी${change ? ' या एक बदलाव वाली' : ''}। कीमत आम तौर पर लगने वाले समय से है — ट्रेन हम कॉल पर तय करेंगे।`,
-    trainsError: 'अभी ट्रेनें नहीं देख पाए। कीमत आम तौर पर लगने वाले समय से है — ट्रेन हम कॉल पर तय करेंगे।',
+      `उस दिन घर वापसी की कोई ट्रेन नहीं मिली, सीधी${change ? ' या एक बदलाव वाली' : ''}। कीमत इस रूट के औसत समय से है — ट्रेन हम कॉल पर तय करेंगे।`,
+    trainsError: 'अभी ट्रेनें नहीं देख पाए। कीमत इस रूट के औसत समय से है — ट्रेन हम कॉल पर तय करेंगे।',
     trainRecommended: 'सुझाई गई',
     trainDirect: 'सीधी ट्रेन',
     trainChange: (station: string, wait: string) => `${station} पर ट्रेन बदलेगा, ${wait} इंतज़ार`,
@@ -224,58 +234,50 @@ export const hi: Messages = {
     drivingDaysRest: (h: number, perDay: number) => `लगभग ${h} घंटे: रोज़ लगभग ${perDay} घंटे, रात में आराम`,
     leaves: (city: string) => `${city} से निकलेगा`,
     drops: (place: string) => `${place} में कार पहुँचाएगा`,
-    wayHome: 'घर वापसी, आम तौर पर लगने वाला समय (टिकट आप बुक करें)',
+    wayHome: 'घर वापसी, इस रूट का औसत समय (टिकट आप बुक करें)',
     onBoard: (h: number) => `लगभग ${h} घंटे`,
     homeIn: (city: string) => `${city} में घर`,
     about: (when: string) => `लगभग ${when}`,
     times: (what: string, rate: string) => `${what} × ${rate}`,
-    shortDriveMin: (h: number, min: string) => `${h} घंटे ड्राइविंग: कम से कम ${min}`,
-    shortDriveFirst: (h: number, min: string, first: number, rate: string) =>
-      `${h} घंटे ड्राइविंग: पहले ${first} घंटे ${min}${h > first ? ` + ${h - first} घंटे × ${rate}` : ''}`,
     shortDriveBill: (amount: string, h: number) => `${amount} — ${h} घंटे ड्राइविंग`,
     chooseCity: 'अनुमान देखने के लिए ऊपर अपना शहर चुनें।',
     chooseDest: 'अनुमान देखने के लिए चुनें कि कहाँ जाना है।',
     elsewhereNote: (rate: string) =>
       `हम दूरी देखकर कॉल पर कीमत बताएँगे: ${rate} प्रति दिन, दूरी के हिसाब से।`,
-    elsewhereReturn: (rate: string, max: string, after: number) =>
-      `ड्राइवर की घर वापसी, कार पहुँचाने से घर पहुँचने तक: हर 24 घंटे ${max}; बचे घंटे ${rate} प्रति घंटा, ${after} घंटे से ज़्यादा तो पूरा दिन।`,
+    elsewhereOneWay: (km: string, sameDay: string, day: string, hour: string) =>
+      `हम दूरी देखकर कॉल पर कीमत बताएँगे: ${km} तक पूरी ट्रिप ${sameDay}; उससे दूर, ड्राइवर के समय के हर 24 घंटे ${day} (दूरी के हिसाब से); उसके बाद के घंटे ${hour} प्रति घंटा, एक दिन से ज़्यादा कभी नहीं।`,
     sameCity: 'यह आपका पिकअप शहर है — शहर के अंदर के लिए लोकल पैकेज चुनें।',
-    localTip: (place: string, km: string, price: string) =>
-      `${place} सिर्फ़ लगभग ${km} दूर है — शहर में पूरा दिन (${price}) आमतौर पर सस्ता पड़ता है।`,
+    localTip: (place: string, km: string, threeHours: string, fullDay: string) =>
+      `${place} सिर्फ़ लगभग ${km} दूर है। अगर ड्राइवर आपके साथ रहे और आपकी ही कार में लौट आए, तो लोकल पैकेज सस्ता पड़ सकता है: 3 घंटे के ${threeHours}, या पूरे दिन (8 घंटे) के ${fullDay}।`,
     useLocal: 'पूरा दिन चुनें',
-    smallPrint: (
-      hours: number,
-      extra: string,
-      meal: string,
-      oneWay: boolean,
-      extraAfter?: number,
-      homeAfter?: number,
-    ) =>
-      `यह अनुमान है: सही कीमत ड्राइवर के निकलने से पहले कॉल पर तय होगी। ${oneWay ? `हर ${hours} घंटे की ड्राइविंग एक दिन; बचे घंटे ${extra} प्रति घंटा${extraAfter !== undefined ? `, ${extraAfter} से ज़्यादा तो पूरा दिन` : ''}। कार पहुँचाने से घर पहुँचने तक ड्राइवर की वापसी (ट्रेन का इंतज़ार भी): हर 24 घंटे एक दिन, बचे घंटे प्रति घंटा${homeAfter !== undefined ? `, ${homeAfter} से ज़्यादा तो पूरा दिन` : ''}। आख़िरी बिल असल समय से बनेगा। उसका बस या ट्रेन का टिकट आप बुक करें।` : `हर दिन ड्राइवर के शुरुआत से 24 घंटे का है — ${hours} घंटे तक ड्राइविंग (उसके बाद ${extra} प्रति घंटा)।`} पेट्रोल/डीज़ल, टोल और पार्किंग अलग से। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
+    smallPrint: (hours: number, extra: string, meal: string) =>
+      `यह अनुमान है: सही कीमत ड्राइवर के निकलने से पहले कॉल पर तय होगी। हर दिन ड्राइवर के शुरुआत से 24 घंटे का है — ${hours} घंटे तक ड्राइविंग (उसके बाद ${extra} प्रति घंटा)। पेट्रोल/डीज़ल, टोल और पार्किंग अलग से। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
+    smallPrintOneWay: (meal: string) =>
+      `यह अनुमान है: सही कीमत ड्राइवर के निकलने से पहले कॉल पर तय होगी। उसका बस या ट्रेन का टिकट आप बुक करें। पेट्रोल/डीज़ल, टोल और पार्किंग अलग से। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
+    explainTitle: 'समय कैसे गिना जाता है',
+    explainRule:
+      'एक ही नियम: ड्राइवर का समय, निकलने से घर पहुँचने तक — ड्राइविंग, ट्रेन का इंतज़ार और घर वापसी।',
+    explainDays: (km: string, sameDay: string, day: string) =>
+      `${km} तक ड्राइवर उसी दिन घर पहुँच जाता है: पूरी ट्रिप की एक कीमत (${sameDay}, दूरी के हिसाब से)। उससे दूर: हर 24 घंटे ${day}। अगर वह 8 घंटे में कार पहुँचा दे, तो बाक़ी 16 घंटों में उसका इंतज़ार और ट्रेन से घर वापसी — कोई अतिरिक्त चार्ज नहीं।`,
+    explainPast: (hour: string) =>
+      `24 घंटे के ब्लॉक के बाद ${hour} प्रति घंटा — एक दिन से ज़्यादा कभी नहीं। यानी 30 घंटे = 24 घंटे + 6 घंटे × ${hour}; 44 घंटे = 2 × 24 घंटे।`,
+    explainAverage:
+      'तारीख़ चुनने तक इंतज़ार और घर वापसी इस रूट के टाइमटेबल के औसत से; तारीख़ और ट्रेन चुनने पर आपकी ट्रेन से। आख़िरी बिल असल समय से बनेगा: ट्रेन लेट हो तो घंटे बढ़ेंगे, जल्दी हो तो बचेंगे।',
     summaryRound: 'आना-जाना',
     summaryOneWay: 'वन-वे ड्रॉप',
     estimate: (range: string) => `अनुमान ${range}`,
     priceOnCall: 'कीमत कॉल पर',
     extraHours: (n: number) => `${n} घंटे अतिरिक्त`,
     ticket: (amount: string) => `${amount} टिकट`,
-    routeByKm: (km: string, base: string, perKm: string) =>
-      `रूट की कीमत — ${km}: ${base} + ${perKm} प्रति किमी`,
-    routeByDays: (h: number, days: number, base: string, perDay: string) =>
-      `रूट की कीमत — ${h} घंटे बाहर (${days} दिन): कम से कम ${base ? `${base} + ` : ''}${days} × ${perDay}`,
-    routeCapped: (km: string, h: number, days: number, perDay: string) =>
-      `रूट की कीमत — ${km}, ${h} घंटे बाहर (${days} दिन): ज़्यादा से ज़्यादा ${days} × ${perDay}`,
-    routeWayHome: (home: number, away: number, days: number, spare: number) =>
-      `ड्राइवर की घर वापसी और इंतज़ार: ${home} घंटे, कुल लगभग ${away} घंटे बाहर — ${days} दिन चुकाए (${days * 24} घंटे)${spare > 0 ? `; ${spare} घंटे और इंतज़ार मुफ़्त` : ''}`,
-    routeWait: (extra: number, days: number, rate: string, dayPrice: string) =>
-      `चुकाए गए ${days} दिन के बाद इंतज़ार: ${extra} घंटे × ${rate}, हर 24 घंटे में ज़्यादा से ज़्यादा ${dayPrice}`,
     included: 'शामिल',
-    routeSmallPrint: (meal: string) =>
-      `यह अनुमान है: ड्राइवर के निकलने से पहले कॉल पर पक्की कीमत बताएँगे। रूट की एक कीमत, ड्राइवर जितने दिन बाहर रहे उनके लिए — उसकी घर वापसी इसी में, और ट्रेन का इंतज़ार इन्हीं दिनों में हो जाए तो मुफ़्त। उसका बस या ट्रेन टिकट आप बुक करें। फ़्यूल, टोल और पार्किंग अलग। ड्राइवर को खाना दें, या ${meal} प्रति दिन।`,
-    routePast: (rate: string, max: string) =>
-      `चुकाए गए दिनों से देर से घर (इंतज़ार या देरी): ${rate}/घंटा, हर 24 घंटे में ${max} से ज़्यादा नहीं`,
     routeQuote: (amount: string, away: number) =>
       `${amount} रूट की कीमत (लगभग ${away} घंटे बाहर, घर वापसी शामिल)`,
     routeLateBill: (amount: string, h: number) => `${amount} — चुकाए गए दिनों के बाद ${h} घंटे`,
+    timeQuoteShort: (amount: string, km: string) =>
+      `${amount} ड्राइवर के समय के (${km}, 24 घंटे तक, घर वापसी शामिल)`,
+    timeQuoteDays: (amount: string, days: number) => `${amount} × ड्राइवर के समय के ${days} × 24 घंटे`,
+    timeQuotePast: (rate: string, h: number) => `${rate} × उसके बाद ${h} घंटे`,
+    timeBillPast: (amount: string, h: number) => `${amount} — उसके बाद ${h} घंटे`,
     billExtra: (amount: string, n: number) => `${amount} ${n} घंटे अतिरिक्त ड्राइविंग`,
     clockLeft: (at: string) => `ड्राइवर निकले ${at}`,
     clockDropped: (at: string) => `गाड़ी छोड़ी ${at}`,
