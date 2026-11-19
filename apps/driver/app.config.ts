@@ -9,6 +9,9 @@
  *   development  "DriveBuddy Driver (Dev)",  in.thedrivebuddy.driver.dev  → your test phone
  */
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 const IS_DEV = process.env.APP_VARIANT === 'development';
@@ -20,6 +23,15 @@ const IS_DEV = process.env.APP_VARIANT === 'development';
 const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || 'e90ab391-66e3-4d1b-8196-13f05163b165';
 const APP_ID = IS_DEV ? 'in.thedrivebuddy.driver.dev' : 'in.thedrivebuddy.driver';
 
+/**
+ * Firebase's Android file (public identifiers, safe to commit): job alerts
+ * (push notifications) need it. Without it the app builds and works, only
+ * without alerts.
+ */
+const googleServicesFile = existsSync(join(__dirname, 'google-services.json'))
+  ? './google-services.json'
+  : undefined;
+
 /** Brand colours, also in src/theme.tsx. The driver app's icon is amber, so the two apps never get mixed up. */
 const AMBER = '#F59E0B';
 const WHITE = '#FFFFFF';
@@ -30,7 +42,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'drivebuddy-driver',
   owner: process.env.EXPO_OWNER || 'thedrivebuddy',
   scheme: 'drivebuddydriver',
-  version: '1.0.0',
+  // 1.1.0: job alerts (expo-notifications) — a new native module, so a new
+  // runtime: the 1.0.0 test build does not get updates that need it.
+  version: '1.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   runtimeVersion: { policy: 'appVersion' },
@@ -56,6 +70,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/adaptive-icon-monochrome.png',
       backgroundColor: AMBER,
     },
+    ...(googleServicesFile ? { googleServicesFile } : {}),
     // Location only while the driver is sharing it on a job: a foreground
     // service started by his tap on Start, with a notification he can see the
     // whole time, until he taps Arrived. No background-location permission,
@@ -92,6 +107,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         isIosBackgroundLocationEnabled: false,
       },
     ],
+    ['expo-notifications', { icon: './assets/notification-icon.png', color: AMBER, defaultChannel: 'jobs' }],
     [
       'expo-splash-screen',
       {

@@ -53,6 +53,23 @@ export const en = {
       'You are still sharing your location on a job that is no longer yours. It has been stopped.',
   },
 
+  online: {
+    offTitle: 'You are offline',
+    offBody: 'Go online to get job alerts. The nearest online drivers hear about new jobs first.',
+    goOnline: 'Go online',
+    onTitle: 'You are online',
+    onBody: 'You get an alert for every new job near you. Your location is sent about every 2 minutes.',
+    goOffline: 'Go offline',
+    noAlerts: 'Job alerts could not be switched on on this phone. Keep the app open to see new offers.',
+    permission:
+      'Location permission is needed to go online. Allow it in Settings → Apps → DriveBuddy Driver.',
+    gpsOff: 'Your GPS is off. Turn on Location and try again.',
+    failed: 'Could not go online. Check your internet and try again.',
+    serviceTitle: 'DriveBuddy Driver — online',
+    serviceBody: 'You get alerts for new jobs near you',
+    channel: 'Job offers',
+  },
+
   offers: {
     title: 'New job offers',
     youEarn: (amount: string) => `You earn ${amount}`,

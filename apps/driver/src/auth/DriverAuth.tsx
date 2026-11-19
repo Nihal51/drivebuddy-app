@@ -10,7 +10,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useM
 
 import { firebaseAuth } from '@/firebase/auth';
 import { readStored, writeStored } from '@/lib/storage';
-import { stopSharing } from '@/tracking/sharing';
+import { goOffline, stopSharing } from '@/tracking/sharing';
 
 export type Driver = { uid: string; phone: string; name: string; driverId: string };
 
@@ -86,6 +86,7 @@ export function DriverAuthProvider({ children }: { children: ReactNode }) {
 
   const logOut = useCallback(async () => {
     await stopSharing().catch(() => {});
+    await goOffline().catch(() => {});
     await signOut(firebaseAuth());
   }, []);
 

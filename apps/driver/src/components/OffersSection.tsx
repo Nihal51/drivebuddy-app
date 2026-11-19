@@ -13,6 +13,7 @@ import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 import { Button } from './Button';
+import { OnlineCard } from './OnlineCard';
 
 export function OffersSection({ driver }: { driver: Driver }) {
   const { t } = useI18n();
@@ -44,7 +45,7 @@ export function OffersSection({ driver }: { driver: Driver }) {
       </AppText>
     );
   }
-  if (!offers.length) return null;
+  const meNow = me as MyRecord;
 
   const accept = (o: Offer) =>
     Alert.alert(t.offers.acceptTitle, t.offers.acceptBody(rupees(o.driverPay)), [
@@ -72,9 +73,12 @@ export function OffersSection({ driver }: { driver: Driver }) {
 
   return (
     <View style={styles.wrap}>
-      <AppText variant="heading" weight="heavy">
-        {t.offers.title} ({offers.length})
-      </AppText>
+      <OnlineCard driver={driver} me={meNow} />
+      {offers.length ? (
+        <AppText variant="heading" weight="heavy">
+          {t.offers.title} ({offers.length})
+        </AppText>
+      ) : null}
       {offers.map((o) => (
         <View key={o.id} style={styles.card} testID={`offer-${o.id}`}>
           <View style={styles.top}>

@@ -201,3 +201,21 @@ describe('job offers and earnings', () => {
     expect(hi.earnings.statusPaid('आज')).toContain('आज');
   });
 });
+
+describe('online for job alerts', () => {
+  test('the words exist in both languages', () => {
+    for (const t of [en, hi]) {
+      expect(t.online.goOnline.length).toBeGreaterThan(2);
+      expect(t.online.channel.length).toBeGreaterThan(2);
+    }
+  });
+
+  test('a push token comes back when the phone allows alerts', async () => {
+    const { jobAlertsToken } = jest.requireActual(
+      '@/notifications/push',
+    ) as typeof import('@/notifications/push');
+    jest.doMock('expo-constants', () => ({ expoConfig: { extra: { eas: { projectId: 'p1' } } } }));
+    const token = await jobAlertsToken('Job offers');
+    expect(typeof token).toBe('string');
+  });
+});

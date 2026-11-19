@@ -18,3 +18,11 @@ jest.mock('expo-location', () => ({
   hasStartedLocationUpdatesAsync: jest.fn(async () => false),
   getCurrentPositionAsync: jest.fn(async () => null),
 }));
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'granted', canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test]' })),
+  AndroidImportance: { MAX: 5 },
+}));

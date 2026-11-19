@@ -14,12 +14,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DriverAuthProvider } from '@/auth/DriverAuth';
 import { I18nProvider, useI18n } from '@/i18n';
+import { configureNotifications } from '@/notifications/push';
 import { ThemeProvider, fonts, useTheme } from '@/theme';
 // Registers the location task before anything else: Android may start the
 // JavaScript only to deliver a location to it.
 import '@/tracking/sharing';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+configureNotifications();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
