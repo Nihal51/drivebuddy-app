@@ -9,6 +9,7 @@
   "scripts": {
     "customer": "npm --workspace @drivebuddy/customer run start",
     "customer:web": "npm --workspace @drivebuddy/customer run web",
+    "driver": "npm --workspace @drivebuddy/driver run start",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

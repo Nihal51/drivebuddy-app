@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { DriverMap } from '@/booking/DriverMap';
 import { AppText } from '@/components/AppText';
 import { EmptyState, InfoRow, Notice } from '@/components/bits';
 import { Button } from '@/components/Button';
@@ -131,6 +132,8 @@ export default function BookingDetailScreen() {
           />
         </Card>
       ) : null}
+
+      {b.assignedDriver && b.status === 'assigned' ? <DriverMap bookingId={b.id} /> : null}
 
       <Card>
         <InfoRow icon="time-outline" label={t.detail.when} value={formatPreferred(t, b.preferredTime)} />
