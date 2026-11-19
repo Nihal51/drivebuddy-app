@@ -11,6 +11,7 @@ import { useDriverAuth } from '@/auth/DriverAuth';
 import { type Failed, requestCode, tenDigits, verifyCode } from '@/auth/robot';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { Screen } from '@/components/Screen';
 import { TextField } from '@/components/TextField';
 import { env } from '@/env';
@@ -19,7 +20,7 @@ import { loginErrorText, spacedPhone } from '@/i18n/format';
 import { makeStyles, space, useTheme } from '@/theme';
 
 export default function LoginScreen() {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
   const { state, logIn } = useDriverAuth();
@@ -96,13 +97,7 @@ export default function LoginScreen() {
       }
     >
       <View style={styles.top}>
-        <Button
-          title={t.language.toggle}
-          variant="outline"
-          compact
-          onPress={() => setLang(lang === 'hi' ? 'en' : 'hi')}
-          style={styles.lang}
-        />
+        <LanguageToggle size="small" />
         <AppText variant="display" weight="heavy">
           {t.login.title}
         </AppText>
@@ -161,7 +156,6 @@ export default function LoginScreen() {
 
 const useStyles = makeStyles(() => ({
   top: { gap: space.sm, paddingTop: space.xl, paddingBottom: space.xl },
-  lang: { alignSelf: 'flex-end' },
   block: { gap: space.md },
   footer: { gap: space.sm },
 }));

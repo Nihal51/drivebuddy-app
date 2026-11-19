@@ -4,7 +4,7 @@ import type { Messages } from './en';
 
 export const hi: Messages = {
   appName: 'DriveBuddy ड्राइवर',
-  language: { toggle: 'English' },
+  languageName: 'हिंदी',
 
   login: {
     title: 'ड्राइवर लॉगिन',

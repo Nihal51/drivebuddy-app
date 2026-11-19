@@ -9,6 +9,7 @@ import { useDriverAuth } from '@/auth/DriverAuth';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { Screen } from '@/components/Screen';
 import { type Job, watchJobs } from '@/data/jobs';
 import { env } from '@/env';
@@ -33,7 +34,7 @@ export default function JobsScreen() {
 }
 
 function Jobs({ phone, name }: { phone: string; name: string }) {
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
   const { logOut } = useDriverAuth();
@@ -74,12 +75,7 @@ function Jobs({ phone, name }: { phone: string; name: string }) {
             {t.jobs.title}
           </AppText>
         </View>
-        <Button
-          title={t.language.toggle}
-          variant="outline"
-          compact
-          onPress={() => setLang(lang === 'hi' ? 'en' : 'hi')}
-        />
+        <LanguageToggle size="small" />
       </View>
 
       {failed ? (

@@ -8,7 +8,7 @@ import type { PackageId } from '@drivebuddy/shared';
 
 export const en = {
   appName: 'DriveBuddy Driver',
-  language: { toggle: 'हिंदी' },
+  languageName: 'English',
 
   login: {
     title: 'Driver login',
