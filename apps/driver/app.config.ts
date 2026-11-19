@@ -14,10 +14,10 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const IS_DEV = process.env.APP_VARIANT === 'development';
 
 /**
- * From `eas init` in this folder (a separate project from the customer app on
- * expo.dev). Empty = over-the-air updates stay off until it is pasted here.
+ * The "DriveBuddy Driver" project on expo.dev (expo.dev/accounts/thedrivebuddy/projects/drivebuddy-driver),
+ * separate from the customer app's.
  */
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || '';
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || 'e90ab391-66e3-4d1b-8196-13f05163b165';
 const APP_ID = IS_DEV ? 'in.thedrivebuddy.driver.dev' : 'in.thedrivebuddy.driver';
 
 /** Brand colours, also in src/theme.tsx. The driver app's icon is amber, so the two apps never get mixed up. */
