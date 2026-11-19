@@ -12,7 +12,7 @@ import { firebaseAuth } from '@/firebase/auth';
 import { readStored, writeStored } from '@/lib/storage';
 import { stopSharing } from '@/tracking/sharing';
 
-export type Driver = { uid: string; phone: string; name: string };
+export type Driver = { uid: string; phone: string; name: string; driverId: string };
 
 type State = { status: 'loading' } | { status: 'out' } | { status: 'in'; driver: Driver };
 
@@ -25,6 +25,7 @@ type DriverAuth = {
 
 const NAME_KEY = 'dbd.driverName';
 const PHONE_KEY = 'dbd.driverPhone';
+const ID_KEY = 'dbd.driverId';
 const Ctx = createContext<DriverAuth | null>(null);
 
 /** A Firebase user → a driver, or null when the login is not a driver login. */
@@ -32,7 +33,8 @@ export async function driverOf(user: User, savedName: string | null): Promise<Dr
   const { claims } = await user.getIdTokenResult();
   const phone = typeof claims.driverPhone === 'string' ? claims.driverPhone : '';
   if (claims.role !== 'driver' || !/^[6-9]\d{9}$/.test(phone)) return null;
-  return { uid: user.uid, phone, name: savedName ?? '' };
+  const driverId = typeof claims.driverId === 'string' ? claims.driverId : '';
+  return { uid: user.uid, phone, name: savedName ?? '', driverId };
 }
 
 export function DriverAuthProvider({ children }: { children: ReactNode }) {
@@ -48,8 +50,10 @@ export function DriverAuthProvider({ children }: { children: ReactNode }) {
       void (async () => {
         try {
           const driver = await driverOf(user, await readStored(NAME_KEY));
-          if (driver) setState({ status: 'in', driver });
-          else {
+          if (driver) {
+            await writeStored(ID_KEY, driver.driverId);
+            setState({ status: 'in', driver });
+          } else {
             await signOut(auth);
             setState({ status: 'out' });
           }
@@ -61,7 +65,12 @@ export function DriverAuthProvider({ children }: { children: ReactNode }) {
           if (phone && /^[6-9]\d{9}$/.test(phone)) {
             setState({
               status: 'in',
-              driver: { uid: user.uid, phone, name: (await readStored(NAME_KEY)) ?? '' },
+              driver: {
+                uid: user.uid,
+                phone,
+                name: (await readStored(NAME_KEY)) ?? '',
+                driverId: (await readStored(ID_KEY)) ?? '',
+              },
             });
           } else setState({ status: 'out' });
         }

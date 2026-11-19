@@ -5,11 +5,12 @@ import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, View } from 'react-native';
 
-import { useDriverAuth } from '@/auth/DriverAuth';
+import { type Driver, useDriverAuth } from '@/auth/DriverAuth';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { OffersSection } from '@/components/OffersSection';
 import { Screen } from '@/components/Screen';
 import { type Job, watchJobs } from '@/data/jobs';
 import { env } from '@/env';
@@ -30,10 +31,11 @@ export default function JobsScreen() {
     );
   }
   if (state.status === 'out') return <Redirect href="/login" />;
-  return <Jobs phone={state.driver.phone} name={state.driver.name} />;
+  return <Jobs driver={state.driver} />;
 }
 
-function Jobs({ phone, name }: { phone: string; name: string }) {
+function Jobs({ driver }: { driver: Driver }) {
+  const { phone, name } = driver;
   const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
@@ -77,6 +79,8 @@ function Jobs({ phone, name }: { phone: string; name: string }) {
         </View>
         <LanguageToggle size="small" />
       </View>
+
+      <OffersSection driver={driver} />
 
       {failed ? (
         <Card tone="cream">
@@ -139,6 +143,12 @@ function Jobs({ phone, name }: { phone: string; name: string }) {
       ))}
 
       <View style={styles.bottom}>
+        <Button
+          title={t.earnings.open}
+          icon="wallet-outline"
+          variant="outline"
+          onPress={() => router.push('/earnings')}
+        />
         <Button
           title={t.jobs.callOffice}
           icon="call"

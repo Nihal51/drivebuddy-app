@@ -73,6 +73,7 @@ function AppStack() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="job/[id]" options={{ title: t.job.title }} />
+        <Stack.Screen name="earnings" options={{ title: t.earnings.title }} />
       </Stack>
     </>
   );

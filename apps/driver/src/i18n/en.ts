@@ -53,6 +53,32 @@ export const en = {
       'You are still sharing your location on a job that is no longer yours. It has been stopped.',
   },
 
+  offers: {
+    title: 'New job offers',
+    youEarn: (amount: string) => `You earn ${amount}`,
+    accept: 'Accept job',
+    acceptTitle: 'Take this job?',
+    acceptBody: (amount: string) =>
+      `You earn ${amount}. The customer's details appear in My jobs once you accept.`,
+    gone: 'Another driver took this job first.',
+    failed: 'Could not accept. Check your internet and try again.',
+    accepted: 'The job is yours. It is now in My jobs.',
+    notActive: 'Job offers appear here once the office marks you Active.',
+  },
+
+  earnings: {
+    open: 'My earnings',
+    title: 'My earnings',
+    owed: 'DriveBuddy owes you',
+    upcoming: 'After the job',
+    paid: 'Paid to you',
+    empty: 'Jobs you accept from offers appear here with what you earn.',
+    statusOwed: 'To be paid',
+    statusUpcoming: 'Job not done yet',
+    statusPaid: (date: string) => `Paid ${date}`,
+    note: 'DriveBuddy pays you your share after each completed job.',
+  },
+
   job: {
     title: 'Job',
     gone: 'This job is no longer assigned to you.',

@@ -151,3 +151,53 @@ describe('live location', () => {
     expect(inIndia(fix({ latitude: 51.5, longitude: -0.12 }) as never)).toBe(false);
   });
 });
+
+describe('job offers and earnings', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { earningsOf, toOffer } = require('@/data/offers') as typeof import('@/data/offers');
+  const o = (id: string, extra: Record<string, unknown> = {}) =>
+    toOffer(id, {
+      ref: 'DB-1',
+      city: 'Raipur',
+      package: '3-hours-600',
+      when: '',
+      area: 'Shankar Nagar',
+      to: '',
+      driverPay: 450,
+      status: 'taken',
+      takenBy: { id: 'd1', name: 'Raju', phone: '9893302783' },
+      takenAt: new Date('2026-11-20T04:00:00Z'),
+      done: false,
+      paid: false,
+      paidAt: null,
+      ...extra,
+    });
+
+  test('a stored offer is read safely', () => {
+    const x = toOffer('b1', { status: 'odd', package: 'nope', driverPay: 'x' });
+    expect(x.status).toBe('withdrawn');
+    expect(x.packageId).toBeNull();
+    expect(x.driverPay).toBe(0);
+    expect(o('b2').takenPhone).toBe('9893302783');
+  });
+
+  test('owed = done and not paid; upcoming = not done; paid; cancelled jobs left out', () => {
+    const e = earningsOf([
+      o('a', { done: true }),
+      o('b', { done: true, driverPay: 900 }),
+      o('c'),
+      o('d', { done: true, paid: true, driverPay: 700 }),
+      o('e', { status: 'withdrawn', done: true }),
+    ]);
+    expect(e.owed).toBe(1350);
+    expect(e.upcoming).toBe(450);
+    expect(e.paid).toBe(700);
+    expect(e.list.map((x) => x.id).sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  test('offer words exist in both languages', () => {
+    expect(en.offers.youEarn('₹450')).toContain('₹450');
+    expect(hi.offers.youEarn('₹450')).toContain('₹450');
+    expect(hi.earnings.statusPaid('आज')).toContain('आज');
+  });
+});
