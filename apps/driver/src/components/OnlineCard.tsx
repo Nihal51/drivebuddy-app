@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import type { Driver } from '@/auth/DriverAuth';
-import type { MyRecord } from '@/data/offers';
+import type { MyRecord } from '@/data/me';
 import { useI18n } from '@/i18n';
 import { jobAlertsToken } from '@/notifications/push';
 import { type Online, goOffline, goOnline, onOnlineChange, tidyOnline } from '@/tracking/sharing';

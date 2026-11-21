@@ -1,4 +1,4 @@
-/** "New job offers" on the home screen: open offers in his city, with what he earns and Accept. */
+/** "New job offers" on the home screen: open offers for his city (and nearby ones nobody took), with what he earns and Accept. */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { rupees } from '@drivebuddy/shared';
@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import type { Driver } from '@/auth/DriverAuth';
-import { type MyRecord, type Offer, acceptOffer, readMyRecord, watchOpenOffers } from '@/data/offers';
+import { type MyRecord, readMyRecord } from '@/data/me';
+import { type Offer, acceptOffer, watchOpenOffers } from '@/data/offers';
 import { useI18n } from '@/i18n';
 import { formatPreferred, packageName } from '@/i18n/format';
 import { makeStyles, radius, space, useTheme } from '@/theme';
@@ -95,7 +96,8 @@ export function OffersSection({ driver }: { driver: Driver }) {
           <View style={styles.row}>
             <Ionicons name="location-outline" size={16} color={colors.textMuted} />
             <AppText color={colors.textMuted} style={{ flex: 1 }}>
-              {o.area}
+              {/* A job from a neighbouring city (nobody there took it): say which. */}
+              {o.city && o.city !== meNow.city ? `${o.area} · ${o.city}` : o.area}
             </AppText>
           </View>
           {o.to ? (

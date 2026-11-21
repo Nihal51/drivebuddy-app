@@ -4,13 +4,14 @@
  * first to accept takes it — the offer and the booking change together in one
  * transaction, which the rules check — and it becomes one of his jobs. His
  * taken offers are also his earnings: what DriveBuddy owes him and has paid.
+ * Until he taps Start he can give a job back ("Can't make it"): the offer
+ * becomes "released" and the alerts robot offers it to the others again.
  */
 
-import { type PackageId, isPackageId, toDate } from '@drivebuddy/shared';
+import { type Booking, type PackageId, isPackageId, toBooking, toDate } from '@drivebuddy/shared';
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   runTransaction,
@@ -21,17 +22,26 @@ import {
 import { env } from '@/env';
 import { firestore } from '@/firebase/app';
 
+import { type WriteFailure, failureOf, within } from './write';
+
+/** 'released' = the driver who took it gave it back; the robot opens it again. */
+export type OfferStatus = 'open' | 'taken' | 'withdrawn' | 'released';
+const STATUSES: readonly string[] = ['open', 'taken', 'withdrawn', 'released'];
+
 export type Offer = {
   id: string;
   ref: string;
   city: string;
+  /** The cities whose drivers see it: its own, plus the neighbours once nobody near has taken it. */
+  cities: string[];
   packageId: PackageId | null;
   when: string;
   area: string;
   to: string;
   driverPay: number;
-  status: 'open' | 'taken' | 'withdrawn';
+  status: OfferStatus;
   takenPhone: string;
+  takenId: string;
   takenAt?: Date;
   done: boolean;
   paid: boolean;
@@ -42,12 +52,15 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
 export function toOffer(id: string, d: Record<string, unknown>): Offer {
-  const status = d.status === 'open' || d.status === 'taken' ? d.status : 'withdrawn';
+  const status = STATUSES.includes(str(d.status)) ? (d.status as OfferStatus) : 'withdrawn';
   const taken = (d.takenBy ?? null) as Record<string, unknown> | null;
+  const city = str(d.city);
+  const cities = Array.isArray(d.cities) ? d.cities.filter((c): c is string => typeof c === 'string') : [];
   return {
     id,
     ref: str(d.ref),
-    city: str(d.city),
+    city,
+    cities: cities.length ? cities : city ? [city] : [],
     packageId: isPackageId(d.package) ? d.package : null,
     when: str(d.when),
     area: str(d.area),
@@ -55,6 +68,7 @@ export function toOffer(id: string, d: Record<string, unknown>): Offer {
     driverPay: num(d.driverPay),
     status,
     takenPhone: taken ? str(taken.phone) : '',
+    takenId: taken ? str(taken.id) : '',
     takenAt: toDate(d.takenAt),
     done: d.done === true,
     paid: d.paid === true,
@@ -69,7 +83,7 @@ export type Earnings = {
   upcoming: number;
   /** Paid to him. */
   paid: number;
-  /** Newest first, without withdrawn (cancelled) ones. */
+  /** Newest first, without withdrawn (cancelled) or released (given back) ones. */
   list: Offer[];
 };
 
@@ -87,32 +101,54 @@ export function earningsOf(offers: Offer[]): Earnings {
   };
 }
 
-export type MyRecord = { name: string; city: string; status: string };
-
-/** His own driver record (name, city, status), or null (the review login has none). */
-export async function readMyRecord(driverId: string): Promise<MyRecord | null> {
-  if (!driverId) return null;
-  try {
-    const snap = await getDoc(doc(firestore(), 'drivers', driverId));
-    if (!snap.exists()) return null;
-    const d = snap.data();
-    return { name: str(d.name), city: str(d.city), status: str(d.status) };
-  } catch {
-    return null;
-  }
+/**
+ * Several live lists of the same offers → one, each offer once, soonest first.
+ * `undefined` = that list has not loaded yet, null = it could not be read; the
+ * result is null only when none could be read.
+ */
+export function mergeOffers(lists: (Offer[] | null | undefined)[]): Offer[] | null {
+  if (lists.length && lists.every((l) => l === null)) return null;
+  const byId = new Map<string, Offer>();
+  for (const list of lists) for (const o of list ?? []) if (!byId.has(o.id)) byId.set(o.id, o);
+  return [...byId.values()].filter((o) => o.status === 'open').sort((a, b) => a.when.localeCompare(b.when));
 }
 
-/** Open offers in his city, live; soonest first. */
+/**
+ * Open offers for his city, live; soonest first. Offers now carry `cities`
+ * (its own city, and the neighbours when nobody near takes it); offers made
+ * before that only have `city`. Both are asked for and merged, each on its
+ * own, so the one the rules or the data do not support yet cannot hide the
+ * other during the switch-over.
+ */
 export function watchOpenOffers(city: string, onChange: (offers: Offer[] | null) => void): () => void {
-  const q = query(
-    collection(firestore(), 'offers'),
-    where('status', '==', 'open'),
-    where('city', '==', city),
+  const offers = collection(firestore(), 'offers');
+  const queries = [
+    query(offers, where('status', '==', 'open'), where('cities', 'array-contains', city)),
+    query(offers, where('status', '==', 'open'), where('city', '==', city)),
+  ];
+  const lists: (Offer[] | null | undefined)[] = queries.map(() => undefined);
+  const emit = () => onChange(mergeOffers(lists));
+  const offs = queries.map((q, i) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        lists[i] = snap.docs.map((d) => toOffer(d.id, d.data()));
+        emit();
+      },
+      () => {
+        lists[i] = null;
+        emit();
+      },
+    ),
   );
+  return () => offs.forEach((off) => off());
+}
+
+/** One offer, live — to know whether this job came from an offer he took. null = none, or not readable. */
+export function watchOffer(id: string, onChange: (offer: Offer | null) => void): () => void {
   return onSnapshot(
-    q,
-    (snap) =>
-      onChange(snap.docs.map((d) => toOffer(d.id, d.data())).sort((a, b) => a.when.localeCompare(b.when))),
+    doc(firestore(), 'offers', id),
+    (snap) => onChange(snap.exists() ? toOffer(snap.id, snap.data()) : null),
     () => onChange(null),
   );
 }
@@ -163,6 +199,82 @@ export async function acceptOffer(
     return { ok: false, reason: gone ? 'gone' : 'failed' };
   }
   // The robot tells the customer "driver assigned" now, not at its next minute.
+  void fetch(env.robotUrl, { method: 'POST' }).catch(() => {});
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------ can't make it */
+
+export type ReleaseCheck = 'ok' | 'not-from-offer' | 'not-his' | 'started';
+
+/**
+ * May he give this job back? Only a job he took from an offer (the office
+ * assigns its own jobs by phone, and takes them back the same way), still
+ * assigned to him, and only before he tapped Start: once he is on his way the
+ * customer is waiting for him, so it goes through the office.
+ */
+export function releaseCheck(
+  offer: Pick<Offer, 'status' | 'takenPhone'> | null,
+  booking: Pick<Booking, 'status' | 'assignedDriver'> | null,
+  started: boolean,
+  myPhone: string,
+): ReleaseCheck {
+  if (!offer || offer.status !== 'taken' || offer.takenPhone !== myPhone) return 'not-from-offer';
+  if (!booking || booking.status !== 'assigned' || booking.assignedDriver?.phone !== myPhone)
+    return 'not-his';
+  if (started) return 'started';
+  return 'ok';
+}
+
+export type ReleaseResult = { ok: true } | { ok: false; reason: Exclude<ReleaseCheck, 'ok'> | WriteFailure };
+
+class NotAllowed extends Error {
+  constructor(readonly check: Exclude<ReleaseCheck, 'ok'>) {
+    super(check);
+  }
+}
+
+/**
+ * "Can't make it": in one transaction, the offer taken → released and the
+ * booking assigned → confirmed with no driver (both or neither; the rules
+ * check them together). Both are read first, inside the transaction, so a
+ * job that changed meanwhile (the office reassigned it) is left alone.
+ * `started` = his Start tap is saved (the rules check that too).
+ */
+export async function releaseJob(
+  bookingId: string,
+  me: { phone: string; uid: string },
+  started: boolean,
+): Promise<ReleaseResult> {
+  const db = firestore();
+  const offerRef = doc(db, 'offers', bookingId);
+  const bookingRef = doc(db, 'bookings', bookingId);
+  try {
+    await within(
+      runTransaction(db, async (tx) => {
+        const offer = await tx.get(offerRef);
+        const booking = await tx.get(bookingRef);
+        const check = releaseCheck(
+          offer.exists() ? toOffer(offer.id, offer.data()) : null,
+          booking.exists() ? toBooking(booking.id, booking.data()) : null,
+          started,
+          me.phone,
+        );
+        if (check !== 'ok') throw new NotAllowed(check);
+        tx.update(offerRef, { status: 'released', updatedAt: serverTimestamp() });
+        tx.update(bookingRef, {
+          status: 'confirmed',
+          assignedDriver: null,
+          updatedAt: serverTimestamp(),
+          updatedBy: me.uid,
+        });
+      }),
+    );
+  } catch (err) {
+    if (err instanceof NotAllowed) return { ok: false, reason: err.check };
+    return { ok: false, reason: failureOf(err) };
+  }
+  // The robot offers it to the other drivers now, not at its next minute.
   void fetch(env.robotUrl, { method: 'POST' }).catch(() => {});
   return { ok: true };
 }
