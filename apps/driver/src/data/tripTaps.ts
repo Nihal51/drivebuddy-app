@@ -56,6 +56,29 @@ export function tapCheck(
   return nextTap(taps, packageId) === step ? 'ok' : 'order';
 }
 
+export type JobButtons = {
+  /** The next tap, or null when every tap is done. */
+  tap: TapStep | null;
+  /** On his way but not sharing (the app or phone was restarted, permission was off): start it again. */
+  shareAgain: boolean;
+  /** Sharing when he should not be (after Arrived, or a Start whose tap was not saved): let him stop it. */
+  stopSharing: boolean;
+};
+
+/** What the job screen offers, from his saved taps and whether this phone is sharing on this job. */
+export function jobButtons(
+  taps: TripTaps | null,
+  packageId: PackageId | null,
+  sharingThis: boolean,
+): JobButtons {
+  const tap = nextTap(taps, packageId);
+  return {
+    tap,
+    shareAgain: tap === 'arrivedAt' && !sharingThis,
+    stopSharing: sharingThis && tap !== 'arrivedAt',
+  };
+}
+
 /** The saved times, in order, for "Trip times" on the job screen. */
 export function tapTimes(taps: TripTaps | null, packageId: PackageId | null): { step: TapStep; at: Date }[] {
   return tapSteps(packageId).flatMap((step) => {

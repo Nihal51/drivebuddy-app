@@ -2,7 +2,7 @@ import { toBooking } from '@drivebuddy/shared';
 
 import { cleanUpi, isUpi, toMyRecord } from '@/data/me';
 import { earningsOf, mergeOffers, releaseCheck, toOffer } from '@/data/offers';
-import { nextTap, tapCheck, tapSteps, tapTimes, toTripTaps } from '@/data/tripTaps';
+import { jobButtons, nextTap, tapCheck, tapSteps, tapTimes, toTripTaps } from '@/data/tripTaps';
 import { failureOf, within } from '@/data/write';
 
 const at = (iso: string) => new Date(iso);
@@ -37,6 +37,30 @@ describe('trip taps', () => {
     expect(tapCheck(null, 'arrivedAt', '3-hours-600')).toBe('order');
     expect(tapCheck(done, 'homeAt', '3-hours-600')).toBe('order'); // only one-way drops
     expect(tapCheck(done, 'homeAt', 'one-way-drop')).toBe('ok');
+  });
+
+  test('the job screen: share again after a restart, stop sharing when it should be off', () => {
+    expect(jobButtons(null, '3-hours-600', false)).toEqual({
+      tap: 'leftAt',
+      shareAgain: false,
+      stopSharing: false,
+    });
+    // On his way and sharing: just Arrived.
+    expect(jobButtons(left, '3-hours-600', true)).toEqual({
+      tap: 'arrivedAt',
+      shareAgain: false,
+      stopSharing: false,
+    });
+    // On his way, but the phone restarted (sharing off): offer to share again.
+    expect(jobButtons(left, '3-hours-600', false).shareAgain).toBe(true);
+    // Sharing without a saved Start (the tap was refused), or after Arrived: he can stop it.
+    expect(jobButtons(null, '3-hours-600', true)).toMatchObject({ tap: 'leftAt', stopSharing: true });
+    expect(jobButtons(arrived, '3-hours-600', true)).toMatchObject({ tap: 'doneAt', stopSharing: true });
+    expect(jobButtons(done, 'outstation', false)).toEqual({
+      tap: null,
+      shareAgain: false,
+      stopSharing: false,
+    });
   });
 
   test('saved times are listed in order; a stored document is read safely', () => {
