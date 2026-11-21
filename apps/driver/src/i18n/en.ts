@@ -94,6 +94,22 @@ export const en = {
     statusUpcoming: 'Job not done yet',
     statusPaid: (date: string) => `Paid ${date}`,
     note: 'DriveBuddy pays you your share after each completed job.',
+    upiLabel: 'UPI ID for your pay',
+    upiPlaceholder: 'name@okaxis',
+    upiHint: 'DriveBuddy sends your pay to this UPI ID.',
+    upiInvalid: 'This does not look like a UPI ID. It should look like name@okaxis.',
+    upiSave: 'Save UPI ID',
+    upiSavedAs: (upi: string) => `Your pay goes to ${upi}`,
+    upiChange: 'Change',
+    upiSaved: 'UPI ID saved.',
+    upiFailed: 'Not saved. Check your internet and try again.',
+    upiRefused: 'The UPI ID could not be saved. Please call the office.',
+    ratingTitle: 'Your rating',
+    rating: (avg: string, count: number) => `${avg} ★ from ${count} ${count === 1 ? 'rating' : 'ratings'}`,
+    noRatings: 'No ratings yet. Customers rate you after each job.',
+    strikes: (n: number) => (n === 1 ? '1 strike' : `${n} strikes`),
+    strikesNote:
+      'Giving back a job you accepted counts as a strike. With 3 or more, new jobs reach you after other drivers.',
   },
 
   job: {

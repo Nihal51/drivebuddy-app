@@ -89,6 +89,22 @@ export const hi: Messages = {
     statusUpcoming: 'काम अभी पूरा नहीं',
     statusPaid: (date) => `दिया गया ${date}`,
     note: 'हर पूरे हुए काम के बाद DriveBuddy आपका हिस्सा देता है।',
+    upiLabel: 'कमाई के लिए UPI ID',
+    upiPlaceholder: 'name@okaxis',
+    upiHint: 'DriveBuddy आपकी कमाई इसी UPI ID पर भेजेगा।',
+    upiInvalid: 'यह UPI ID सही नहीं लगती। ऐसी होनी चाहिए: name@okaxis',
+    upiSave: 'UPI ID सेव करें',
+    upiSavedAs: (upi) => `आपकी कमाई ${upi} पर आएगी`,
+    upiChange: 'बदलें',
+    upiSaved: 'UPI ID सेव हो गई।',
+    upiFailed: 'सेव नहीं हुई। इंटरनेट देखकर फिर कोशिश करें।',
+    upiRefused: 'UPI ID सेव नहीं हो सकी। कृपया ऑफ़िस को कॉल करें।',
+    ratingTitle: 'आपकी रेटिंग',
+    rating: (avg, count) => `${avg} ★ (${count} रेटिंग)`,
+    noRatings: 'अभी कोई रेटिंग नहीं। हर काम के बाद ग्राहक आपको रेटिंग देते हैं।',
+    strikes: (n) => `${n} स्ट्राइक`,
+    strikesNote:
+      'लिया हुआ काम वापस करने पर एक स्ट्राइक लगती है। 3 या ज़्यादा स्ट्राइक होने पर नए काम आपको दूसरे ड्राइवरों के बाद मिलते हैं।',
   },
 
   job: {

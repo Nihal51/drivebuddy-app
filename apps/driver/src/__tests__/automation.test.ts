@@ -217,3 +217,20 @@ describe('writes', () => {
     await expect(within(Promise.resolve(5), 1000)).resolves.toBe(5);
   });
 });
+
+describe('the new words', () => {
+  test('exist in both languages', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { en } = require('@/i18n/en') as typeof import('@/i18n/en');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { hi } = require('@/i18n/hi') as typeof import('@/i18n/hi');
+    for (const t of [en, hi]) {
+      for (const step of tapSteps('one-way-drop')) expect(t.job.taps[step].length).toBeGreaterThan(2);
+      expect(t.job.cantMakeBody.length).toBeGreaterThan(20);
+      expect(t.earnings.upiSavedAs('raju@okaxis')).toContain('raju@okaxis');
+      expect(t.earnings.rating('4.6', 12)).toContain('4.6');
+      expect(t.earnings.strikes(2)).toContain('2');
+    }
+    expect(en.earnings.rating('5.0', 1)).toBe('5.0 ★ from 1 rating');
+  });
+});
