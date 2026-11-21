@@ -416,6 +416,48 @@ export const en = {
     reviewTitle: 'Happy with your driver?',
     reviewBody: 'A Google review helps other families find a driver they can trust.',
     reviewButton: 'Write a review',
+    instant: 'Confirmed instantly — no call needed. We are finding your driver.',
+    finding: {
+      title: 'Finding your driver…',
+      body: 'Your job has gone to verified drivers near you. You get a notification as soon as one accepts.',
+    },
+    accept: {
+      title: 'Happy with this price?',
+      body: 'Accept it and your booking is confirmed straight away — no call needed.',
+      button: (amount: string) => `Accept price ${amount}`,
+      done: 'Price accepted ✓ — we’re finding your driver',
+      error: 'Could not save. Check your internet and try again.',
+      label: 'Price you accepted',
+    },
+    localBill: {
+      label: 'Bill',
+      package: (amount: string, hours: number) => `${amount} package (${hours} h)`,
+      extra: (hours: number, rate: string) =>
+        `${hours === 1 ? '1 extra hour' : `${hours} extra hours`} × ${rate}`,
+      used: (hours: number) => `${hours} h with the driver`,
+    },
+    pay: {
+      title: 'Payment',
+      button: (amount: string) => `Pay ${amount}`,
+      body: 'Secure payment on Razorpay — UPI, card or net banking.',
+      bySms: 'We have sent the payment link to your mobile by SMS.',
+      openFailed: 'Could not open the payment page. Please use the link we sent by SMS.',
+      paid: (amount: string) => `Paid ${amount} ✓`,
+      paidOn: (date: string) => `Paid on ${date}`,
+    },
+    rate: {
+      title: (name: string) => `How was ${name}?`,
+      body: 'Your rating helps us send you the best drivers.',
+      star: (n: number) => (n === 1 ? '1 star' : `${n} stars`),
+      comment: 'Anything to tell us?',
+      commentPlaceholder: 'What went well, or what could be better',
+      commentHint: (max: number) => `Up to ${max} characters`,
+      send: 'Send rating',
+      thanks: 'Thanks for your rating!',
+      already: 'Thanks, already rated',
+      error: 'Could not send. Check your internet and try again.',
+      googleAsk: 'Glad you loved it! Would you say so on Google? It takes 30 seconds.',
+    },
   },
 
   account: {

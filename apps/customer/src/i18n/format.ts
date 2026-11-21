@@ -12,11 +12,13 @@ import {
   type BookingTrip,
   type TripDestination,
   type FieldError,
+  type LocalBill,
   type PackageId,
   type PackagePrice,
   clock12,
   indianDigits,
   istParts,
+  localBillPackage,
   pricedByTime,
   rupeeRange,
   rupees,
@@ -207,4 +209,21 @@ export function quoteBreakdown(t: Messages, q: BookingQuote): string {
   ]
     .filter(Boolean)
     .join(' + ');
+}
+
+/**
+ * A local package's bill from the driver's taps: "₹900 (₹600 package (3 h) +
+ * 2 extra hours × ₹150 · 5 h with the driver)". Numbers that do not add up
+ * show the total alone rather than a sum that looks wrong.
+ */
+export function localBillText(t: Messages, b: LocalBill): string {
+  const pkg = localBillPackage(b);
+  if (pkg === null) return rupees(b.amount);
+  const parts = [
+    t.detail.localBill.package(rupees(pkg), b.baseHours),
+    b.extraHours > 0 ? t.detail.localBill.extra(b.extraHours, rupees(b.extraHourRate)) : null,
+  ]
+    .filter(Boolean)
+    .join(' + ');
+  return `${rupees(b.amount)} (${parts} · ${t.detail.localBill.used(b.usedHours)})`;
 }

@@ -7,8 +7,12 @@ import { makeStyles, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 
-/** Received → Confirmed → Driver assigned → Completed, with the current step highlighted. */
-export function StatusTracker({ status }: { status: BookingStatus }) {
+/**
+ * Received → Confirmed → Driver assigned → Completed, with the current step
+ * highlighted. `detail` replaces the current step's usual line (e.g. a booking
+ * the robot confirmed instantly).
+ */
+export function StatusTracker({ status, detail }: { status: BookingStatus; detail?: string }) {
   const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
@@ -36,7 +40,7 @@ export function StatusTracker({ status }: { status: BookingStatus }) {
               </AppText>
               {active ? (
                 <AppText variant="small" color={colors.textMuted}>
-                  {t.status[step].detail}
+                  {detail ?? t.status[step].detail}
                 </AppText>
               ) : null}
             </View>

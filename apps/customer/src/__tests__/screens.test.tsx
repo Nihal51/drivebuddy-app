@@ -1,6 +1,7 @@
 import { type City, DEFAULT_CONFIG, type ReturnOption, type TripPlan } from '@drivebuddy/shared';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Linking } from 'react-native';
 
 import AccountScreen from '@/app/(tabs)/account';
 import BookScreen from '@/app/book';
@@ -9,6 +10,7 @@ import ProfileScreen from '@/app/profile';
 import HomeScreen from '@/app/(tabs)/index';
 import type { ReturnTrains } from '@/booking/useReturnTrains';
 import { submitBooking, watchBooking, watchMyBookings } from '@/data/bookings';
+import { acceptPrice, ratedOnPhone, ratingState, submitRating } from '@/data/selfserve';
 
 import { renderScreen, signedOut } from './test-utils';
 
@@ -29,6 +31,13 @@ jest.mock('@/data/bookings', () => ({
   submitBooking: jest.fn(),
   watchBooking: jest.fn(),
   watchMyBookings: jest.fn(() => () => {}),
+}));
+jest.mock('@/data/selfserve', () => ({
+  acceptPrice: jest.fn(async () => ({ ok: true })),
+  ratingState: jest.fn(async () => 'unknown'),
+  submitRating: jest.fn(async () => 'ok'),
+  ratedOnPhone: jest.fn(async () => null),
+  rememberRated: jest.fn(async () => {}),
 }));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
 // The trains home: the real hook (off without a lookup address), or a test's own answer.
@@ -589,5 +598,135 @@ describe('Booking detail', () => {
     expect(
       screen.getByText('₹6,200 (₹1,600 × 2 days + ₹600 for 5 extra hours + ₹2,400 way home (38 h))'),
     ).toBeOnTheScreen();
+  });
+
+  describe('without a call', () => {
+    const DRIVER = { id: 'd1', name: 'Suresh', phone: '9876500000' };
+    const BASE = {
+      id: 'b2',
+      name: 'Ravi Sharma',
+      phone: '9876543210',
+      city: 'Raipur',
+      packageId: 'one-way-drop',
+      packageRaw: 'one-way-drop',
+      pickup: 'Shankar Nagar',
+      preferredTime: '2026-11-29T07:30',
+      notes: '',
+      status: 'new',
+      source: 'app',
+      ref: 'DB-1043',
+      customerUid: 'u1',
+      trip: {
+        to: 'Nagpur',
+        destId: 'nagpur',
+        kind: 'one-way',
+        km: 284,
+        days: 1,
+        returnHours: 8,
+        estFrom: 1700,
+        estTo: 1700,
+      },
+    };
+    const auth = { ...signedOut, ready: true, user: { uid: 'u1', email: 'ravi@example.com' } as never };
+    const show = async (booking: Record<string, unknown>) => {
+      (useLocalSearchParams as jest.Mock).mockReturnValue({ id: booking.id });
+      (watchBooking as jest.Mock).mockImplementation((_id: string, onBooking: (b: unknown) => void) => {
+        onBooking(booking);
+        return () => {};
+      });
+      await renderScreen(<BookingDetailScreen />, { auth });
+    };
+
+    test('the customer accepts the trip estimate with one tap', async () => {
+      await show(BASE);
+      await fireEvent.press(screen.getByText('Accept price ₹1,700'));
+      expect(acceptPrice).toHaveBeenCalledWith('b2', 1700);
+    });
+
+    test('someone else’s booking, or one already accepted, has no Accept button', async () => {
+      await show({ ...BASE, customerUid: 'u2' });
+      expect(screen.queryByTestId('accept-price')).toBeNull();
+      await show({ ...BASE, acceptedPrice: { amount: 1700 } });
+      expect(screen.queryByTestId('accept-price')).toBeNull();
+      expect(screen.getByText('Price accepted ✓ — we’re finding your driver')).toBeOnTheScreen();
+      expect(screen.getByText('PRICE YOU ACCEPTED')).toBeOnTheScreen();
+    });
+
+    test('confirmed by the robot: confirmed instantly, finding the driver', async () => {
+      await show({
+        ...BASE,
+        packageId: '3-hours-600',
+        trip: undefined,
+        status: 'confirmed',
+        updatedBy: 'robot',
+      });
+      expect(
+        screen.getByText('Confirmed instantly — no call needed. We are finding your driver.'),
+      ).toBeOnTheScreen();
+      expect(screen.getByText('Finding your driver…')).toBeOnTheScreen();
+    });
+
+    test('a local bill and its Razorpay link: Pay opens only that link', async () => {
+      const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+      await show({
+        ...BASE,
+        packageId: '3-hours-600',
+        trip: undefined,
+        status: 'completed',
+        localBill: { amount: 900, baseHours: 3, usedHours: 5, extraHours: 2, extraHourRate: 150 },
+        payment: { status: 'pending', amount: 900, url: 'https://rzp.io/i/AbC123' },
+      });
+      expect(
+        screen.getByText('₹900 (₹600 package (3 h) + 2 extra hours × ₹150 · 5 h with the driver)'),
+      ).toBeOnTheScreen();
+      await fireEvent.press(screen.getByText('Pay ₹900'));
+      expect(open).toHaveBeenCalledWith('https://rzp.io/i/AbC123');
+      open.mockRestore();
+    });
+
+    test('a link that is not Razorpay is never offered; paid shows Paid ✓', async () => {
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'pending', amount: 900, url: 'https://evil.example/pay' },
+      });
+      expect(screen.queryByTestId('pay')).toBeNull();
+      expect(screen.getByText('We have sent the payment link to your mobile by SMS.')).toBeOnTheScreen();
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'paid', amount: 900, url: 'https://rzp.io/i/x' },
+      });
+      expect(screen.getByText('Paid ₹900 ✓')).toBeOnTheScreen();
+    });
+
+    test('rating the driver: 5 stars, a comment, then the Google review link', async () => {
+      await show({ ...BASE, status: 'completed', assignedDriver: DRIVER });
+      expect(await screen.findByText('How was Suresh?')).toBeOnTheScreen();
+      expect(ratingState).toHaveBeenCalledWith('b2');
+      await fireEvent.press(screen.getByTestId('star-5'));
+      await fireEvent.changeText(screen.getByLabelText('Anything to tell us?'), 'On time, drove well');
+      await fireEvent.press(screen.getByTestId('send-rating'));
+      expect(submitRating).toHaveBeenCalledWith('b2', 5, 'On time, drove well', 'd1', 'u1');
+      expect(await screen.findByText('Thanks for your rating!')).toBeOnTheScreen();
+      expect(screen.getByTestId('google-review')).toBeOnTheScreen();
+    });
+
+    test('a refused rating reads as already rated, with no Google ask', async () => {
+      (submitRating as jest.Mock).mockResolvedValueOnce('already');
+      await show({ ...BASE, status: 'completed', assignedDriver: DRIVER });
+      await fireEvent.press(await screen.findByTestId('star-3'));
+      await fireEvent.press(screen.getByTestId('send-rating'));
+      expect(await screen.findByText('Thanks, already rated')).toBeOnTheScreen();
+      expect(screen.queryByTestId('google-review')).toBeNull();
+    });
+
+    test('rated before on this phone: just thanks', async () => {
+      (ratedOnPhone as jest.Mock).mockResolvedValueOnce(4);
+      await show({ ...BASE, status: 'completed', assignedDriver: DRIVER });
+      expect(await screen.findByText('Thanks for your rating!')).toBeOnTheScreen();
+      expect(ratingState).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('google-review')).toBeNull();
+    });
   });
 });

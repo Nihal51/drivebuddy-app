@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { AcceptPriceCard, WaitingCard } from '@/booking/AcceptPriceCard';
 import { DriverMap } from '@/booking/DriverMap';
+import { PaymentCard } from '@/booking/PaymentCard';
+import { RatingCard } from '@/booking/RatingCard';
+import {
+  canAcceptPrice,
+  canRate,
+  confirmedInstantly,
+  findingDriver,
+  priceAcceptedWaiting,
+} from '@/booking/selfserve';
 import { AppText } from '@/components/AppText';
 import { EmptyState, InfoRow, Notice } from '@/components/bits';
 import { Button } from '@/components/Button';
@@ -23,6 +33,7 @@ import {
   clockText,
   formatDateTime,
   formatPreferred,
+  localBillText,
   quoteBreakdown,
   tripSummary,
 } from '@/i18n/format';
@@ -85,6 +96,8 @@ export default function BookingDetailScreen() {
   const b = state.booking;
   const ref = b.ref ?? t.bookings.numbering;
   const title = bookingTitle(t, b);
+  const accepted = priceAcceptedWaiting(b);
+  const rate = canRate(b, user.uid);
 
   return (
     <Screen edges={['bottom']}>
@@ -111,9 +124,13 @@ export default function BookingDetailScreen() {
         </Card>
       ) : (
         <Card>
-          <StatusTracker status={b.status} />
+          <StatusTracker status={b.status} detail={confirmedInstantly(b) ? t.detail.instant : undefined} />
         </Card>
       )}
+
+      {canAcceptPrice(b, user.uid) ? <AcceptPriceCard booking={b} /> : null}
+      {accepted || findingDriver(b) ? <WaitingCard accepted={accepted} /> : null}
+      {b.payment ? <PaymentCard payment={b.payment} /> : null}
 
       {b.assignedDriver && b.status === 'assigned' ? (
         <Card tone="cream">
@@ -157,6 +174,9 @@ export default function BookingDetailScreen() {
             value={`${rupees(b.quote.amount)} (${quoteBreakdown(t, b.quote)})`}
           />
         ) : null}
+        {b.acceptedPrice && !b.quote ? (
+          <InfoRow icon="cash-outline" label={t.detail.accept.label} value={rupees(b.acceptedPrice.amount)} />
+        ) : null}
         {b.clock && b.trip ? (
           <InfoRow
             icon="timer-outline"
@@ -171,13 +191,23 @@ export default function BookingDetailScreen() {
             value={`${rupees(b.bill.amount)} (${billBreakdown(t, b.bill)})`}
           />
         ) : null}
+        {b.localBill ? (
+          <InfoRow
+            icon="receipt-outline"
+            label={t.detail.localBill.label}
+            value={localBillText(t, b.localBill)}
+          />
+        ) : null}
         {b.notes ? <InfoRow icon="document-text-outline" label={t.detail.notes} value={b.notes} /> : null}
         {b.createdAt ? (
           <InfoRow icon="calendar-outline" label={t.detail.bookedOn} value={formatDateTime(t, b.createdAt)} />
         ) : null}
       </Card>
 
-      {b.status === 'completed' && config.google.writeReview ? (
+      {rate ? <RatingCard booking={b} uid={user.uid} /> : null}
+
+      {/* Bookings that cannot be rated in the app (no driver on record, or made as a guest) keep the Google link. */}
+      {b.status === 'completed' && !rate && config.google.writeReview ? (
         <Card tone="cream">
           <AppText weight="heavy">{t.detail.reviewTitle}</AppText>
           <AppText variant="small" color={colors.textMuted}>

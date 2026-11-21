@@ -9,6 +9,7 @@ import {
   formatDateTime,
   formatPreferred,
   formatSlot,
+  localBillText,
   priceLabel,
 } from './format';
 import { hi } from './hi';
@@ -142,4 +143,22 @@ test('the final bill and the trip times, in both languages', () => {
     'Driver left Thu, 29 Oct, 7:45 am · back Sun, 1 Nov, 2:20 am',
   );
   expect(clockText(hi, clock, 'one-way')).toMatch(/^ड्राइवर निकले .* · गाड़ी छोड़ी .* · ड्राइवर घर पहुँचे /);
+});
+
+test('a local package bill, in both languages', () => {
+  const bill = { amount: 900, baseHours: 3, usedHours: 5, extraHours: 2, extraHourRate: 150 };
+  expect(localBillText(en, bill)).toBe(
+    '₹900 (₹600 package (3 h) + 2 extra hours × ₹150 · 5 h with the driver)',
+  );
+  expect(localBillText(en, { ...bill, amount: 750, usedHours: 4, extraHours: 1 })).toBe(
+    '₹750 (₹600 package (3 h) + 1 extra hour × ₹150 · 4 h with the driver)',
+  );
+  expect(localBillText(en, { ...bill, amount: 600, usedHours: 3, extraHours: 0 })).toBe(
+    '₹600 (₹600 package (3 h) · 3 h with the driver)',
+  );
+  expect(localBillText(hi, bill)).toBe(
+    '₹900 (₹600 पैकेज (3 घंटे) + 2 घंटे अतिरिक्त × ₹150 · ड्राइवर के साथ 5 घंटे)',
+  );
+  // Numbers that do not add up: the total only.
+  expect(localBillText(en, { ...bill, amount: 200 })).toBe('₹200');
 });
