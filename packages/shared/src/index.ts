@@ -5,6 +5,7 @@ export * from './config';
 export * from './format';
 export * from './geo';
 export * from './prices';
+export * from './selfserve';
 export * from './time';
 export * from './trip';
 export * from './validate';

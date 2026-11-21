@@ -17,6 +17,14 @@ import {
   isPackageId,
 } from './catalog';
 import {
+  type AcceptedPrice,
+  type LocalBill,
+  type Payment,
+  toAcceptedPrice,
+  toLocalBill,
+  toPayment,
+} from './selfserve';
+import {
   type BookingBill,
   type BookingClock,
   type BookingQuote,
@@ -230,6 +238,16 @@ export type Booking = {
   clock?: BookingClock;
   /** The final bill from those times, once the team has saved it. */
   bill?: BookingBill;
+  /** The login that made the booking in the app; absent for guest and website bookings. */
+  customerUid?: string;
+  /** Who made the last change: an admin's or driver's uid, or 'robot' for the alerts robot. */
+  updatedBy?: string;
+  /** The trip estimate the customer accepted in the app (no call needed). */
+  acceptedPrice?: AcceptedPrice;
+  /** A local package's bill from the driver's taps, saved by the robot. */
+  localBill?: LocalBill;
+  /** The payment link for the bill, and whether it is paid. */
+  payment?: Payment;
 };
 
 /** Firestore Timestamp | Date | anything → Date | undefined, without importing the Firebase SDK here. */
@@ -275,6 +293,11 @@ export function toBooking(id: string, data: Record<string, unknown>): Booking {
     quote: toQuote(data.quote),
     clock: toClock(data.clock),
     bill: toBill(data.bill),
+    customerUid: str(data.customerUid) || undefined,
+    updatedBy: str(data.updatedBy) || undefined,
+    acceptedPrice: toAcceptedPrice(data.acceptedPrice),
+    localBill: toLocalBill(data.localBill),
+    payment: toPayment(data.payment),
   };
 }
 
