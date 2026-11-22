@@ -1,7 +1,10 @@
 /**
- * The driver's jobs: bookings the office assigned to his number in /admin and
- * that are still "assigned". firestore.rules lets a driver read exactly these
- * (isMyJob), so the query below must ask for exactly that.
+ * The driver's jobs: bookings assigned to his number, still "assigned", and
+ * confirmed by DriveBuddy for him (`driverConfirmed.driverId` = his driver
+ * id, after the office's call). firestore.rules lets a driver read exactly
+ * these, so the query below must ask for exactly that. Until the call, a job
+ * he took shows only as "Waiting for confirmation" from his offer (no
+ * customer details: the booking is not readable to him yet).
  *
  * A driver never sees what the customer pays or DriveBuddy's cut — only his
  * own pay (on the offer). The booking he reads still holds the customer's
@@ -104,12 +107,20 @@ export function navigateUrl(job: Pick<Job, 'pickup' | 'pickupGeo' | 'city'>): st
 
 type Listener = (jobs: Job[] | null, error?: unknown) => void;
 
-/** Live list of this driver's jobs; null + error when it cannot be read. Returns the unsubscribe. */
-export function watchJobs(phone: string, onChange: Listener): () => void {
+/** The My jobs query's filters (field, '==', value): the same conditions the rules check. */
+export function myJobsFilters(phone: string, driverId: string): [string, '==', string][] {
+  return [
+    ['assignedDriver.phone', '==', phone],
+    ['status', '==', 'assigned'],
+    ['driverConfirmed.driverId', '==', driverId],
+  ];
+}
+
+/** Live list of this driver's confirmed jobs; null + error when it cannot be read. Returns the unsubscribe. */
+export function watchJobs(phone: string, driverId: string, onChange: Listener): () => void {
   const q = query(
     collection(firestore(), 'bookings'),
-    where('assignedDriver.phone', '==', phone),
-    where('status', '==', 'assigned'),
+    ...myJobsFilters(phone, driverId).map(([field, op, value]) => where(field, op, value)),
   );
   return onSnapshot(
     q,

@@ -258,14 +258,7 @@ describe('the new words', () => {
     for (const t of [en, hi]) {
       expect(t.job.payInfo).toContain('QR');
       expect(t.job.payInfo).not.toMatch(/₹|\d/);
-      for (const s of [
-        t.job.paidUpi,
-        t.job.paidCash,
-        t.job.recordedUpi,
-        t.job.recordedCash,
-        t.job.confirmed,
-        t.job.toConfirm,
-      ])
+      for (const s of [t.job.paidUpi, t.job.paidCash, t.job.recordedUpi, t.job.recordedCash, t.job.confirmed])
         expect(s.length).toBeGreaterThan(5);
       expect(t.offers.accepted).toContain('DriveBuddy');
       expect(t.earnings.cashKept('₹900')).toContain('₹900');
@@ -278,7 +271,7 @@ describe('the new words', () => {
       "The customer pays DriveBuddy, not you: Pay in the DriveBuddy app, or scan DriveBuddy's QR. If they give you cash, take what their bill says — it comes off your next payout.",
     );
     expect(en.offers.accepted).toBe(
-      'The job is yours. It is now in My jobs. DriveBuddy will call you to confirm.',
+      "The job is yours. DriveBuddy will call you to confirm — then you'll see the customer's details in My jobs.",
     );
     expect(en.earnings.sumPays('₹1,350', '₹900', '₹450')).toBe(
       'Earned ₹1,350 · cash you kept ₹900 · DriveBuddy pays you ₹450',

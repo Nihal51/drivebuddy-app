@@ -1,5 +1,3 @@
-import { toBooking } from '@drivebuddy/shared';
-
 import { cleanUpi, isUpi, toMyRecord } from '@/data/me';
 import { earningsOf, mergeOffers, releaseCheck, toOffer } from '@/data/offers';
 import { jobButtons, nextTap, tapCheck, tapSteps, tapTimes, toTripTaps } from '@/data/tripTaps';
@@ -92,36 +90,15 @@ describe("can't make it", () => {
       city: 'Raipur',
       ...extra,
     });
-  const booking = (extra: Record<string, unknown> = {}) =>
-    toBooking('b1', {
-      status: 'assigned',
-      assignedDriver: { id: 'd1', name: 'Raju', phone: me },
-      ...extra,
-    });
-
-  test('only a job he took from an offer, still his, before Start', () => {
-    expect(releaseCheck(offer(), booking(), false, me)).toBe('ok');
-    expect(releaseCheck(offer(), booking(), true, me)).toBe('started');
-    expect(releaseCheck(null, booking(), false, me)).toBe('not-from-offer'); // the office assigned it
+  test('only a job he took from an offer, before Start — decided from the offer alone', () => {
+    expect(releaseCheck(offer(), false, me)).toBe('ok');
+    expect(releaseCheck(offer(), true, me)).toBe('started');
+    expect(releaseCheck(null, false, me)).toBe('not-from-offer'); // the office assigned it
     expect(
-      releaseCheck(
-        offer({ takenBy: { id: 'd2', name: 'Shyam', phone: '9111473929' } }),
-        booking(),
-        false,
-        me,
-      ),
+      releaseCheck(offer({ takenBy: { id: 'd2', name: 'Shyam', phone: '9111473929' } }), false, me),
     ).toBe('not-from-offer');
-    expect(releaseCheck(offer({ status: 'released' }), booking(), false, me)).toBe('not-from-offer');
-    expect(releaseCheck(offer(), booking({ status: 'completed' }), false, me)).toBe('not-his');
-    expect(
-      releaseCheck(
-        offer(),
-        booking({ assignedDriver: { id: 'd2', name: 'Shyam', phone: '9111473929' } }),
-        false,
-        me,
-      ),
-    ).toBe('not-his');
-    expect(releaseCheck(offer(), null, false, me)).toBe('not-his');
+    expect(releaseCheck(offer({ status: 'released' }), false, me)).toBe('not-from-offer');
+    expect(releaseCheck(offer({ status: 'withdrawn' }), false, me)).toBe('not-from-offer');
   });
 
   test('a released offer is read as released and left out of his earnings', () => {

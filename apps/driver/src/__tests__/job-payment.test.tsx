@@ -159,18 +159,15 @@ test('no customer price anywhere on the job screen, before or after Job done', a
   for (const f of FIGURES) expect(allText()).not.toContain(f);
 });
 
-test('call to confirm: until DriveBuddy has confirmed, then "Confirmed by DriveBuddy ✓"', async () => {
+test('"Confirmed by DriveBuddy ✓" on his confirmed job (only his own confirmation)', async () => {
   await show();
-  await emit(JOB, null);
-  expect(screen.getByText('DriveBuddy will call you to confirm this job')).toBeOnTheScreen();
   await emit(
     { ...JOB, driverConfirmed: { by: 'robot', driverId: 'd1', at: at('2026-11-21T03:00:00Z') } },
     null,
   );
   expect(screen.getByText('Confirmed by DriveBuddy ✓')).toBeOnTheScreen();
-  // A confirmation for the driver it was given to before does not count for him.
   await emit({ ...JOB, driverConfirmed: { by: 'robot', driverId: 'd9' } }, null);
-  expect(screen.getByTestId('driver-to-confirm')).toBeOnTheScreen();
+  expect(screen.queryByTestId('driver-confirmed')).toBeNull();
 });
 
 test('after Job done: how the customer pays, no amount; the robot completing the job keeps the screen', async () => {
@@ -181,7 +178,7 @@ test('after Job done: how the customer pays, no amount; the robot completing the
       "The customer pays DriveBuddy, not you: Pay in the DriveBuddy app, or scan DriveBuddy's QR. If they give you cash, take what their bill says — it comes off your next payout.",
     ),
   ).toBeOnTheScreen();
-  expect(screen.queryByTestId('driver-to-confirm')).toBeNull();
+  expect(screen.queryByTestId('driver-confirmed')).toBeNull();
   // The robot completes the booking: he can no longer read it (null).
   await emit(null, DONE);
   expect(screen.queryByText('This job is no longer assigned to you.')).toBeNull();

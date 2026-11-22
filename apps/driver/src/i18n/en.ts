@@ -51,6 +51,9 @@ export const en = {
     loadFailed: 'Could not load your jobs. Pull down to try again.',
     stillSharing:
       'You are still sharing your location on a job that is no longer yours. It has been stopped.',
+    waitingTitle: 'Waiting for confirmation',
+    waitingBody:
+      "DriveBuddy will call you to confirm. The customer's name, number and address appear here after that.",
   },
 
   online: {
@@ -79,7 +82,8 @@ export const en = {
       `You earn ${amount}. The customer's details appear in My jobs once you accept.`,
     gone: 'Another driver took this job first.',
     failed: 'Could not accept. Check your internet and try again.',
-    accepted: 'The job is yours. It is now in My jobs. DriveBuddy will call you to confirm.',
+    accepted:
+      "The job is yours. DriveBuddy will call you to confirm — then you'll see the customer's details in My jobs.",
     notActive: 'Job offers appear here once the office marks you Active.',
     popupNew: 'New job',
     popupRaised: 'Pay raised',
@@ -199,7 +203,6 @@ export const en = {
     recordedUpi: 'Payment recorded ✓ · UPI',
     recordedCash: 'Payment recorded ✓ · cash',
     confirmed: 'Confirmed by DriveBuddy ✓',
-    toConfirm: 'DriveBuddy will call you to confirm this job',
   },
 
   packages: {

@@ -1,4 +1,8 @@
-/** My jobs: the bookings the office assigned to this driver, live. */
+/**
+ * My jobs: the jobs DriveBuddy has confirmed for this driver, live — and, on
+ * top, the ones he took that are waiting for the office's call (from his
+ * offers, without customer details).
+ */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router } from 'expo-router';
@@ -12,7 +16,10 @@ import { Card } from '@/components/Card';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { OffersSection } from '@/components/OffersSection';
 import { Screen } from '@/components/Screen';
+import { WaitingCard } from '@/components/WaitingCard';
 import { type Job, watchJobs } from '@/data/jobs';
+import { readMyRecord } from '@/data/me';
+import { type Offer, waitingOffers, watchMyOffers } from '@/data/offers';
 import { env } from '@/env';
 import { useI18n } from '@/i18n';
 import { formatPreferred, packageName } from '@/i18n/format';
@@ -35,7 +42,7 @@ export default function JobsScreen() {
 }
 
 function Jobs({ driver }: { driver: Driver }) {
-  const { phone, name } = driver;
+  const { phone, name, driverId, uid } = driver;
   const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
@@ -44,13 +51,34 @@ function Jobs({ driver }: { driver: Driver }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [round, setRound] = useState(0);
+  const [myOffers, setMyOffers] = useState<Offer[]>([]);
+  const [myCity, setMyCity] = useState('');
 
   useEffect(() => {
-    return watchJobs(phone, (list) => {
+    return watchJobs(phone, driverId, (list) => {
       setFailed(!list);
       if (list) setJobs(list);
     });
-  }, [phone, round]);
+  }, [phone, driverId, round]);
+
+  useEffect(() => watchMyOffers(phone, (list) => setMyOffers(list ?? [])), [phone, round]);
+  useEffect(() => {
+    let alive = true;
+    void readMyRecord(driverId).then((r) => alive && setMyCity(r?.city ?? ''));
+    return () => {
+      alive = false;
+    };
+  }, [driverId]);
+
+  // Until his confirmed jobs have loaded, a confirmed one would show as waiting for a moment.
+  const knownJobs = jobs ?? (failed ? [] : null);
+  const waiting = knownJobs
+    ? waitingOffers(
+        myOffers,
+        knownJobs.map((j) => j.id),
+        phone,
+      )
+    : [];
 
   // Sharing on a job that has left the list (completed or reassigned): stop it.
   useEffect(() => {
@@ -82,6 +110,10 @@ function Jobs({ driver }: { driver: Driver }) {
 
       <OffersSection driver={driver} />
 
+      {waiting.map((o) => (
+        <WaitingCard key={o.id} offer={o} myCity={myCity} me={{ phone, uid }} />
+      ))}
+
       {failed ? (
         <Card tone="cream">
           <AppText>{t.jobs.loadFailed}</AppText>
@@ -92,7 +124,7 @@ function Jobs({ driver }: { driver: Driver }) {
         <ActivityIndicator color={colors.amber} style={{ marginTop: space.xl }} />
       ) : null}
 
-      {jobs && jobs.length === 0 ? (
+      {jobs && jobs.length === 0 && waiting.length === 0 ? (
         <Card>
           <Ionicons name="car-outline" size={32} color={colors.textFaint} />
           <AppText weight="bold" variant="heading">

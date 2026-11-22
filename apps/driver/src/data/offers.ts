@@ -10,7 +10,7 @@
  * (`cashCollected`): that cash is DriveBuddy's, so it comes off his weekly pay.
  */
 
-import { type Booking, type PackageId, isPackageId, toBooking, toDate } from '@drivebuddy/shared';
+import { type PackageId, isPackageId, toDate } from '@drivebuddy/shared';
 import {
   collection,
   doc,
@@ -243,25 +243,39 @@ export async function acceptOffer(
   return { ok: true };
 }
 
+/* ------------------------------------------------- waiting for confirmation */
+
+/**
+ * Jobs he took that DriveBuddy has not confirmed yet: his taken, not-done
+ * offers with no confirmed job in My jobs. Shown from the offer only (no
+ * customer details) until the office's call; then the job replaces it.
+ * Soonest first, like the offers.
+ */
+export function waitingOffers(myOffers: Offer[], confirmedJobIds: string[], myPhone: string): Offer[] {
+  const confirmed = new Set(confirmedJobIds);
+  return myOffers
+    .filter((o) => o.status === 'taken' && o.takenPhone === myPhone && !o.done && !confirmed.has(o.id))
+    .sort((a, b) => a.when.localeCompare(b.when));
+}
+
 /* ------------------------------------------------------------ can't make it */
 
-export type ReleaseCheck = 'ok' | 'not-from-offer' | 'not-his' | 'started';
+export type ReleaseCheck = 'ok' | 'not-from-offer' | 'started';
 
 /**
  * May he give this job back? Only a job he took from an offer (the office
- * assigns its own jobs by phone, and takes them back the same way), still
- * assigned to him, and only before he tapped Start: once he is on his way the
- * customer is waiting for him, so it goes through the office.
+ * assigns its own jobs by phone, and takes them back the same way), and only
+ * before he tapped Start: once he is on his way the customer is waiting for
+ * him, so it goes through the office. Decided from the offer alone: before
+ * DriveBuddy's call he cannot read the booking yet (firestore.rules checks
+ * the booking is still his when the change is written).
  */
 export function releaseCheck(
   offer: Pick<Offer, 'status' | 'takenPhone'> | null,
-  booking: Pick<Booking, 'status' | 'assignedDriver'> | null,
   started: boolean,
   myPhone: string,
 ): ReleaseCheck {
   if (!offer || offer.status !== 'taken' || offer.takenPhone !== myPhone) return 'not-from-offer';
-  if (!booking || booking.status !== 'assigned' || booking.assignedDriver?.phone !== myPhone)
-    return 'not-his';
   if (started) return 'started';
   return 'ok';
 }
@@ -277,9 +291,11 @@ class NotAllowed extends Error {
 /**
  * "Can't make it": in one transaction, the offer taken → released and the
  * booking assigned → confirmed with no driver (both or neither; the rules
- * check them together). Both are read first, inside the transaction, so a
- * job that changed meanwhile (the office reassigned it) is left alone.
- * `started` = his Start tap is saved (the rules check that too).
+ * check them together). Only the offer is read first — the booking may not
+ * be readable to him yet (before DriveBuddy's call), so it is written without
+ * reading it; the rules refuse the write if it is no longer his, and a job
+ * the office changed meanwhile is left alone. `started` = his Start tap is
+ * saved (the rules check that too).
  */
 export async function releaseJob(
   bookingId: string,
@@ -293,10 +309,8 @@ export async function releaseJob(
     await within(
       runTransaction(db, async (tx) => {
         const offer = await tx.get(offerRef);
-        const booking = await tx.get(bookingRef);
         const check = releaseCheck(
           offer.exists() ? toOffer(offer.id, offer.data()) : null,
-          booking.exists() ? toBooking(booking.id, booking.data()) : null,
           started,
           me.phone,
         );

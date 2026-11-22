@@ -124,7 +124,7 @@ export default function JobScreen() {
   const sharingThis = sharing?.bookingId === job.id;
   const buttons = jobButtons(taps ?? null, job.packageId, sharingThis);
   const times = tapTimes(taps ?? null, job.packageId);
-  const canRelease = !sharingThis && releaseCheck(offer, job, Boolean(taps?.leftAt), driver.phone) === 'ok';
+  const canRelease = !sharingThis && releaseCheck(offer, Boolean(taps?.leftAt), driver.phone) === 'ok';
 
   const tapProblem = (res: TapResult) =>
     res.ok ? null : res.reason === 'network' || res.reason === 'failed' ? t.job.tapFailed : t.job.tapRefused;
@@ -209,7 +209,7 @@ export default function JobScreen() {
     setProblem(
       res.reason === 'started'
         ? t.job.releaseStarted
-        : res.reason === 'not-his' || res.reason === 'not-from-offer'
+        : res.reason === 'not-from-offer'
           ? t.job.gone
           : t.job.releaseFailed,
     );
@@ -290,19 +290,12 @@ export default function JobScreen() {
             {job.ref}
           </AppText>
         ) : null}
-        {/* The office calls him after he takes a job; once it has, the robot marks it confirmed. */}
-        {taps?.doneAt ? null : confirmedForMe(job, driver.driverId) ? (
+        {/* A job shows here only once DriveBuddy has called him and confirmed it. */}
+        {taps?.doneAt || !confirmedForMe(job, driver.driverId) ? null : (
           <View style={styles.row}>
             <Ionicons name="checkmark-circle" size={18} color={colors.success} />
             <AppText weight="bold" color={colors.success} testID="driver-confirmed">
               {t.job.confirmed}
-            </AppText>
-          </View>
-        ) : (
-          <View style={styles.row}>
-            <Ionicons name="call-outline" size={18} color={colors.amberText} />
-            <AppText weight="bold" color={colors.amberText} style={{ flex: 1 }} testID="driver-to-confirm">
-              {t.job.toConfirm}
             </AppText>
           </View>
         )}

@@ -60,9 +60,21 @@ test('an offer shows "You earn ₹X" and nothing of the customer’s price or th
         cutPercent: 37,
         quote: { amount: 6111 },
       }),
+      // The whole zone gets it: from Bhilai, so the card says which city.
+      toOffer('b2', {
+        status: 'open',
+        city: 'Bhilai',
+        cities: ['Bhilai', 'Durg', 'Raipur'],
+        package: '1-hour-300',
+        when: '',
+        area: 'Supela',
+        driverPay: 210,
+      }),
     ]);
   });
   expect(screen.getByText('You earn ₹1,350')).toBeOnTheScreen();
+  expect(screen.getByText('Shankar Nagar')).toBeOnTheScreen(); // his own city: no city
+  expect(screen.getByText('Supela · Bhilai')).toBeOnTheScreen();
   const text = JSON.stringify(screen.toJSON());
   for (const f of ['6111', '6,111', '37%', 'cut']) expect(text).not.toContain(f);
 });
