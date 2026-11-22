@@ -74,7 +74,7 @@ export const hi: Messages = {
     acceptBody: (amount) => `आपकी कमाई ${amount}। काम लेते ही ग्राहक की जानकारी "मेरे काम" में दिखेगी।`,
     gone: 'यह काम किसी दूसरे ड्राइवर ने पहले ले लिया।',
     failed: 'काम नहीं लिया जा सका। इंटरनेट देखकर फिर कोशिश करें।',
-    accepted: 'काम आपका हो गया। अब यह "मेरे काम" में है।',
+    accepted: 'काम आपका हो गया। अब यह "मेरे काम" में है। DriveBuddy आपको कॉल करके काम पक्का करेगा।',
     notActive: 'ऑफ़िस आपको Active करेगा, तब काम के ऑफ़र यहाँ दिखेंगे।',
   },
 
@@ -175,19 +175,20 @@ export const hi: Messages = {
     notificationTitle: 'DriveBuddy ड्राइवर',
     notificationBody: 'आपकी लोकेशन ग्राहक के साथ शेयर हो रही है',
     payTitle: 'भुगतान',
-    collect: (amount) => `ग्राहक से ${amount} लें`,
-    collectSoon: 'ग्राहक से भुगतान लें — रकम एक मिनट में यहाँ दिखेगी',
+    payInfo:
+      'ग्राहक भुगतान DriveBuddy को करता है, आपको नहीं: DriveBuddy ऐप में Pay दबाकर, या DriveBuddy का QR स्कैन करके। अगर ग्राहक नकद दे, तो उसके बिल में जितना लिखा है उतना ही लें — यह आपकी अगली कमाई में से कटेगा।',
     paidUpi: 'UPI से मिला',
     paidCash: 'नकद मिला',
-    payHint: 'UPI: ग्राहक DriveBuddy का QR स्कैन करे या DriveBuddy ऐप में Pay दबाए।',
     upiTitle: 'UPI से भुगतान हो गया?',
     upiBody: 'ग्राहक DriveBuddy को भुगतान करके "भुगतान हो गया" वाली स्क्रीन दिखा दे, तभी दबाएँ।',
     upiConfirm: 'हाँ, UPI से मिला',
     cashTitle: 'नकद मिल गया?',
-    cashBody: 'नकद हाथ में आने पर ही दबाएँ। यह DriveBuddy का पैसा है: यह आपकी हफ़्ते की कमाई में से कटेगा।',
+    cashBody: 'नकद हाथ में आने पर ही दबाएँ। यह DriveBuddy का पैसा है: यह आपकी अगली कमाई में से कटेगा।',
     cashConfirm: 'हाँ, नकद मिला',
     recordedUpi: 'भुगतान दर्ज हो गया ✓ · UPI',
     recordedCash: 'भुगतान दर्ज हो गया ✓ · नकद',
+    confirmed: 'DriveBuddy ने काम पक्का कर दिया ✓',
+    toConfirm: 'DriveBuddy आपको कॉल करके यह काम पक्का करेगा',
   },
 
   packages: {

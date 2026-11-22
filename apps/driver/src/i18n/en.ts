@@ -79,7 +79,7 @@ export const en = {
       `You earn ${amount}. The customer's details appear in My jobs once you accept.`,
     gone: 'Another driver took this job first.',
     failed: 'Could not accept. Check your internet and try again.',
-    accepted: 'The job is yours. It is now in My jobs.',
+    accepted: 'The job is yours. It is now in My jobs. DriveBuddy will call you to confirm.',
     notActive: 'Job offers appear here once the office marks you Active.',
   },
 
@@ -181,20 +181,21 @@ export const en = {
     notificationTitle: 'DriveBuddy Driver',
     notificationBody: 'Sharing your location with the customer',
     payTitle: 'Payment',
-    collect: (amount: string) => `Collect ${amount} from the customer`,
-    collectSoon: 'Collect the payment — the amount shows here in a minute',
+    payInfo:
+      "The customer pays DriveBuddy, not you: Pay in the DriveBuddy app, or scan DriveBuddy's QR. If they give you cash, take what their bill says — it comes off your next payout.",
     paidUpi: 'Paid by UPI',
     paidCash: 'Paid in cash',
-    payHint: "UPI: the customer scans DriveBuddy's QR or taps Pay in the DriveBuddy app.",
     upiTitle: 'Paid by UPI?',
     upiBody: 'Tap only after the customer has paid DriveBuddy and shown you the payment done screen.',
     upiConfirm: 'Yes, paid by UPI',
     cashTitle: 'Paid in cash?',
     cashBody:
-      "Tap only when you have the cash in hand. It is DriveBuddy's money: it comes off your weekly pay.",
+      "Tap only when you have the cash in hand. It is DriveBuddy's money: it comes off your next payout.",
     cashConfirm: 'Yes, paid in cash',
     recordedUpi: 'Payment recorded ✓ · UPI',
     recordedCash: 'Payment recorded ✓ · cash',
+    confirmed: 'Confirmed by DriveBuddy ✓',
+    toConfirm: 'DriveBuddy will call you to confirm this job',
   },
 
   packages: {

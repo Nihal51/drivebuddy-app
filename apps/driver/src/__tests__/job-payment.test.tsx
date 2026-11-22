@@ -1,15 +1,15 @@
 /**
- * The job screen after Job done (SPEC-upi item 4): the payment card, and the
- * job staying on screen once the robot completes it and the booking can no
- * longer be read. Firebase, the login and location sharing are stand-ins.
+ * The job screen: never the customer's price (only his own pay is his to
+ * see), the call-to-confirm line, and after Job done the payment card — also
+ * once the robot completes the job and the booking can no longer be read.
+ * Firebase, the login and location sharing are stand-ins.
  */
 
-import { toBooking } from '@drivebuddy/shared';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 
 import JobScreen from '@/app/job/[id]';
-import type { Job } from '@/data/jobs';
+import { type Job, toJob } from '@/data/jobs';
 import type { TripTaps } from '@/data/tripTaps';
 import { I18nProvider } from '@/i18n';
 import { ThemeProvider } from '@/theme';
@@ -50,19 +50,76 @@ jest.mock('@/data/tripTaps', () => ({
   recordPayment: (...args: unknown[]) => (mockRecordPayment as (...a: unknown[]) => unknown)(...args),
 }));
 
-const JOB: Job = {
-  ...toBooking('b1', {
-    ref: 'DB-1042',
-    name: 'Anita Verma',
-    phone: '9876500000',
-    package: '3-hours-600',
-    city: 'Raipur',
-    pickup: 'Shankar Nagar',
-    status: 'assigned',
-    assignedDriver: { id: 'd1', name: 'Raju', phone: PHONE },
-  }),
-  pickupGeo: null,
+/* Everything the customer pays, with odd figures that cannot be mistaken for anything else on screen. */
+const MONEY = {
+  quote: {
+    amount: 6111,
+    dayRate: 1777,
+    days: 3,
+    returnHours: 0,
+    returnHourRate: 0,
+    returnCharge: 0,
+    extraHours: 0,
+    extraHourRate: 0,
+    ticket: 0,
+  },
+  trip: {
+    to: 'Nagpur',
+    destId: 'nagpur',
+    kind: 'one-way',
+    km: 284,
+    days: 1,
+    returnHours: 8,
+    estFrom: 5623,
+    estTo: 5821,
+  },
+  acceptedPrice: { amount: 5821 },
+  localBill: { amount: 4333, baseHours: 3, usedHours: 5, extraHours: 2, extraHourRate: 151 },
+  bill: {
+    amount: 7444,
+    dayRate: 1777,
+    days: 3,
+    extraHours: 0,
+    extraHourRate: 0,
+    extraCharge: 0,
+    returnHours: 0,
+    returnHourRate: 0,
+    returnCharge: 0,
+    ticket: 0,
+  },
+  payment: { status: 'pending', method: 'upi', amount: 4333, url: 'upi://pay?pa=drivebuddy@ybl&am=4333.00' },
+  notes:
+    'Trip: Raipur → Nagpur · one-way drop · ~284 km · 1 day + 8 h getting home · est. ₹5,623–5,821\nAgreed Rs 6111 on the call, gate 2',
 };
+const FIGURES = [
+  '6111',
+  '6,111',
+  '5623',
+  '5,623',
+  '5821',
+  '5,821',
+  '4333',
+  '4,333',
+  '7444',
+  '7,444',
+  '1777',
+  '1,777',
+  '151',
+];
+
+const JOB: Job = toJob('b1', {
+  ref: 'DB-1042',
+  name: 'Anita Verma',
+  phone: '9876500000',
+  package: '3-hours-600',
+  city: 'Raipur',
+  pickup: 'Shankar Nagar',
+  status: 'assigned',
+  assignedDriver: { id: 'd1', name: 'Raju', phone: PHONE },
+  ...MONEY,
+});
+/** Every piece of text on screen, as one string. */
+const allText = () => JSON.stringify(screen.toJSON());
 const at = (iso: string) => new Date(iso);
 const DONE: TripTaps = {
   driverPhone: PHONE,
@@ -89,17 +146,46 @@ const emit = async (job: Job | null, taps: TripTaps | null | undefined) =>
 
 beforeEach(() => mockRecordPayment.mockClear());
 
-test('after Job done: collect, then the bill; the robot completing the job keeps the screen', async () => {
+test('no customer price anywhere on the job screen, before or after Job done', async () => {
+  await show();
+  await emit(JOB, null);
+  expect(screen.getByText('Anita Verma')).toBeOnTheScreen();
+  expect(screen.getByText('Trip to Nagpur')).toBeOnTheScreen();
+  expect(screen.getByText(/gate 2/)).toBeOnTheScreen(); // the notes, with the prices taken out
+  for (const f of FIGURES) expect(allText()).not.toContain(f);
+  await emit(JOB, DONE);
+  for (const f of FIGURES) expect(allText()).not.toContain(f);
+  await emit(null, DONE);
+  for (const f of FIGURES) expect(allText()).not.toContain(f);
+});
+
+test('call to confirm: until DriveBuddy has confirmed, then "Confirmed by DriveBuddy ✓"', async () => {
+  await show();
+  await emit(JOB, null);
+  expect(screen.getByText('DriveBuddy will call you to confirm this job')).toBeOnTheScreen();
+  await emit(
+    { ...JOB, driverConfirmed: { by: 'robot', driverId: 'd1', at: at('2026-11-21T03:00:00Z') } },
+    null,
+  );
+  expect(screen.getByText('Confirmed by DriveBuddy ✓')).toBeOnTheScreen();
+  // A confirmation for the driver it was given to before does not count for him.
+  await emit({ ...JOB, driverConfirmed: { by: 'robot', driverId: 'd9' } }, null);
+  expect(screen.getByTestId('driver-to-confirm')).toBeOnTheScreen();
+});
+
+test('after Job done: how the customer pays, no amount; the robot completing the job keeps the screen', async () => {
   await show();
   await emit(JOB, DONE);
-  expect(screen.getByText('Collect the payment — the amount shows here in a minute')).toBeOnTheScreen();
   expect(
-    screen.getByText("UPI: the customer scans DriveBuddy's QR or taps Pay in the DriveBuddy app."),
+    screen.getByText(
+      "The customer pays DriveBuddy, not you: Pay in the DriveBuddy app, or scan DriveBuddy's QR. If they give you cash, take what their bill says — it comes off your next payout.",
+    ),
   ).toBeOnTheScreen();
-  // The robot bills it and completes the booking: he can no longer read it (null).
-  await emit(null, { ...DONE, amount: 750 });
+  expect(screen.queryByTestId('driver-to-confirm')).toBeNull();
+  // The robot completes the booking: he can no longer read it (null).
+  await emit(null, DONE);
   expect(screen.queryByText('This job is no longer assigned to you.')).toBeNull();
-  expect(screen.getByText('Collect ₹750 from the customer')).toBeOnTheScreen();
+  expect(screen.getByTestId('paid-upi')).toBeOnTheScreen();
   expect(screen.getByText('Anita Verma')).toBeOnTheScreen(); // the details he had loaded
 });
 
@@ -108,11 +194,11 @@ test('Paid in cash asks first, then writes once; the recorded payment shows with
     void buttons?.[1]?.onPress?.();
   });
   await show();
-  await emit(null, { ...DONE, amount: 750 });
+  await emit(null, DONE);
   await fireEvent.press(screen.getByTestId('paid-cash'));
   expect(alert).toHaveBeenCalledWith('Paid in cash?', expect.any(String), expect.any(Array));
   expect(mockRecordPayment).toHaveBeenCalledWith('b1', 'cash');
-  await emit(null, { ...DONE, amount: 750, paidBy: 'cash' });
+  await emit(null, { ...DONE, paidBy: 'cash' });
   expect(screen.getByText('Payment recorded ✓ · cash')).toBeOnTheScreen();
   expect(screen.getByTestId('payment-back')).toBeOnTheScreen();
   expect(screen.queryByTestId('paid-upi')).toBeNull();

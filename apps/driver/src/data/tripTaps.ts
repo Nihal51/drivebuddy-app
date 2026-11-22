@@ -8,8 +8,8 @@
  * be changed from the app, only by the office.
  *
  * After Job done he also records how the customer paid (SPEC-upi item 4):
- * `paidBy` 'upi' | 'cash' and `paidAt`, once. `amount` is the bill, which only
- * the robot writes, so "Collect ₹A" is always the customer's real bill.
+ * `paidBy` 'upi' | 'cash' and `paidAt`, once. The customer's bill is never
+ * shown to him (drivers see only their own pay), so no amount is read here.
  */
 
 import { type PackageId, toDate } from '@drivebuddy/shared';
@@ -31,8 +31,6 @@ export type TripTaps = {
   arrivedAt?: Date;
   doneAt?: Date;
   homeAt?: Date;
-  /** The customer's bill in rupees (robot only), once it is known. */
-  amount?: number;
   /** How the customer paid, as he recorded it after Job done. */
   paidBy?: PaidBy;
   paidAt?: Date;
@@ -101,14 +99,12 @@ export function tapTimes(taps: TripTaps | null, packageId: PackageId | null): { 
 }
 
 export function toTripTaps(d: Record<string, unknown>): TripTaps {
-  const amount = d.amount;
   return {
     driverPhone: typeof d.driverPhone === 'string' ? d.driverPhone : '',
     leftAt: toDate(d.leftAt),
     arrivedAt: toDate(d.arrivedAt),
     doneAt: toDate(d.doneAt),
     homeAt: toDate(d.homeAt),
-    ...(typeof amount === 'number' && Number.isInteger(amount) && amount > 0 ? { amount } : {}),
     ...(PAID_BY.includes(d.paidBy as PaidBy) ? { paidBy: d.paidBy as PaidBy } : {}),
     paidAt: toDate(d.paidAt),
   };
@@ -169,19 +165,15 @@ export async function tapTrip(
 /* ------------------------------------------------------ payment received */
 
 /**
- * The "Payment received" card: nothing before Job done; then "Collect ₹A"
- * with Paid by UPI / Paid in cash (amount null until the robot has worked out
- * the bill, a minute or so after Job done); then what he recorded.
+ * The "Payment received" card: nothing before Job done; then how the customer
+ * pays DriveBuddy, with Paid by UPI / Paid in cash; then what he recorded.
+ * Never an amount: the customer's bill is not the driver's to see.
  */
-export type PaymentCardState =
-  | { kind: 'none' }
-  | { kind: 'collect'; amount: number | null }
-  | { kind: 'recorded'; paidBy: PaidBy; amount: number | null };
+export type PaymentCardState = { kind: 'none' } | { kind: 'collect' } | { kind: 'recorded'; paidBy: PaidBy };
 
 export function paymentCard(taps: TripTaps | null | undefined): PaymentCardState {
   if (!taps?.doneAt) return { kind: 'none' };
-  const amount = taps.amount ?? null;
-  return taps.paidBy ? { kind: 'recorded', paidBy: taps.paidBy, amount } : { kind: 'collect', amount };
+  return taps.paidBy ? { kind: 'recorded', paidBy: taps.paidBy } : { kind: 'collect' };
 }
 
 /**

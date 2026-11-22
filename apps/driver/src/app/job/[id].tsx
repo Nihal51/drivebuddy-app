@@ -8,7 +8,7 @@
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { prettyPhone, rupees, telUrl } from '@drivebuddy/shared';
+import { prettyPhone, telUrl } from '@drivebuddy/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, View } from 'react-native';
@@ -18,7 +18,7 @@ import { AppText } from '@/components/AppText';
 import { Button, type IconName } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
-import { type Job, navigateUrl, watchJob } from '@/data/jobs';
+import { type Job, confirmedForMe, navigateUrl, watchJob } from '@/data/jobs';
 import { type Offer, releaseCheck, releaseJob, watchOffer } from '@/data/offers';
 import {
   type PaidBy,
@@ -290,6 +290,22 @@ export default function JobScreen() {
             {job.ref}
           </AppText>
         ) : null}
+        {/* The office calls him after he takes a job; once it has, the robot marks it confirmed. */}
+        {taps?.doneAt ? null : confirmedForMe(job, driver.driverId) ? (
+          <View style={styles.row}>
+            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+            <AppText weight="bold" color={colors.success} testID="driver-confirmed">
+              {t.job.confirmed}
+            </AppText>
+          </View>
+        ) : (
+          <View style={styles.row}>
+            <Ionicons name="call-outline" size={18} color={colors.amberText} />
+            <AppText weight="bold" color={colors.amberText} style={{ flex: 1 }} testID="driver-to-confirm">
+              {t.job.toConfirm}
+            </AppText>
+          </View>
+        )}
       </View>
 
       {sharingThis ? (
@@ -492,7 +508,6 @@ function PaymentReceived({ id, taps }: { id: string; taps: TripTaps | null }) {
           <AppText weight="heavy" color={colors.success} style={{ flex: 1 }}>
             {card.paidBy === 'upi' ? t.job.recordedUpi : t.job.recordedCash}
           </AppText>
-          {card.amount !== null ? <AppText weight="heavy">{rupees(card.amount)}</AppText> : null}
         </View>
         <Button
           title={t.job.back}
@@ -532,8 +547,8 @@ function PaymentReceived({ id, taps }: { id: string; taps: TripTaps | null }) {
       <AppText variant="small" color={colors.textFaint}>
         {t.job.payTitle}
       </AppText>
-      <AppText variant="heading" weight="heavy" testID="collect">
-        {card.amount !== null ? t.job.collect(rupees(card.amount)) : t.job.collectSoon}
+      <AppText weight="bold" testID="pay-info">
+        {t.job.payInfo}
       </AppText>
       <Button
         title={t.job.paidUpi}
@@ -552,9 +567,6 @@ function PaymentReceived({ id, taps }: { id: string; taps: TripTaps | null }) {
         disabled={busy !== null}
         testID="paid-cash"
       />
-      <AppText variant="small" color={colors.textMuted}>
-        {t.job.payHint}
-      </AppText>
       {problem ? <AppText color={colors.danger}>{problem}</AppText> : null}
     </Card>
   );

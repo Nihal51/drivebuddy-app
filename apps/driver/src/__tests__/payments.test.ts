@@ -7,6 +7,7 @@
 import { DEFAULT_CASH_LIMIT } from '@drivebuddy/shared';
 
 import { fetchCashLimit, loadCashLimit } from '@/data/cashLimit';
+import { confirmedForMe, notesForDriver, toJob } from '@/data/jobs';
 import { cashOwed, earningsOf, overCashLimit, toOffer } from '@/data/offers';
 import { paymentCard, recordPayment, stayAfterDone, toTripTaps } from '@/data/tripTaps';
 import { en } from '@/i18n/en';
@@ -41,25 +42,16 @@ const DONE = {
 };
 
 describe('payment received', () => {
-  test('nothing before Job done; then collect, with the bill once the robot has it; then what he recorded', () => {
+  test('nothing before Job done; then collect; then what he recorded — never an amount', () => {
     expect(paymentCard(null)).toEqual({ kind: 'none' });
     expect(paymentCard(undefined)).toEqual({ kind: 'none' });
     expect(paymentCard({ driverPhone: '9893302783', leftAt: DONE.leftAt })).toEqual({ kind: 'none' });
-    expect(paymentCard(DONE)).toEqual({ kind: 'collect', amount: null });
-    expect(paymentCard({ ...DONE, amount: 750 })).toEqual({ kind: 'collect', amount: 750 });
-    expect(paymentCard({ ...DONE, amount: 750, paidBy: 'cash' })).toEqual({
-      kind: 'recorded',
-      paidBy: 'cash',
-      amount: 750,
-    });
-    expect(paymentCard({ ...DONE, paidBy: 'upi' })).toEqual({
-      kind: 'recorded',
-      paidBy: 'upi',
-      amount: null,
-    });
+    expect(paymentCard(DONE)).toEqual({ kind: 'collect' });
+    expect(paymentCard({ ...DONE, paidBy: 'cash' })).toEqual({ kind: 'recorded', paidBy: 'cash' });
+    expect(paymentCard({ ...DONE, paidBy: 'upi' })).toEqual({ kind: 'recorded', paidBy: 'upi' });
   });
 
-  test('the taps document is read safely: amount, paidBy, paidAt', () => {
+  test('the taps document is read safely: paidBy, paidAt — and the customer’s bill is not read at all', () => {
     const ts = (iso: string) => ({ toDate: () => new Date(iso) });
     const t = toTripTaps({
       driverPhone: '9893302783',
@@ -68,12 +60,10 @@ describe('payment received', () => {
       paidBy: 'upi',
       paidAt: ts('2026-11-21T07:45:00Z'),
     });
-    expect(t).toMatchObject({ amount: 750, paidBy: 'upi', paidAt: at('2026-11-21T07:45:00Z') });
-    const odd = toTripTaps({ driverPhone: 'x', amount: '750', paidBy: 'cheque' });
-    expect(odd.amount).toBeUndefined();
-    expect(odd.paidBy).toBeUndefined();
-    expect(toTripTaps({ amount: 0 }).amount).toBeUndefined();
-    expect(toTripTaps({ amount: 750.5 }).amount).toBeUndefined();
+    expect(t).toMatchObject({ paidBy: 'upi', paidAt: at('2026-11-21T07:45:00Z') });
+    expect(t).not.toHaveProperty('amount');
+    expect(paymentCard(t)).toEqual({ kind: 'recorded', paidBy: 'upi' });
+    expect(toTripTaps({ driverPhone: 'x', paidBy: 'cheque' }).paidBy).toBeUndefined();
   });
 
   test('after the robot completes the job, the screen stays for the payment — only on his own Job done', () => {
@@ -94,7 +84,7 @@ describe('payment received', () => {
     });
 
     test('exactly { paidBy, paidAt: serverTimestamp() } on tripTaps/{id}, then the robot is pinged', async () => {
-      store.doc = { ...DONE, amount: 750 };
+      store.doc = { ...DONE };
       await expect(recordPayment('b1', 'cash')).resolves.toEqual({ ok: true, already: false });
       expect(store.writes).toEqual([['update tripTaps/b1', { paidBy: 'cash', paidAt: SERVER_TIME }]]);
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -198,26 +188,98 @@ describe('the cash limit from the website', () => {
   });
 });
 
+describe('only his own pay: the customer’s money never reaches a Job', () => {
+  test('quote, bill, accepted price, local bill, payment and the trip estimate are left out', () => {
+    const job = toJob('b1', {
+      name: 'Anita',
+      package: 'one-way-drop',
+      status: 'assigned',
+      trip: {
+        to: 'Nagpur',
+        destId: 'nagpur',
+        kind: 'one-way',
+        km: 284,
+        days: 1,
+        returnHours: 8,
+        estFrom: 5600,
+        estTo: 5800,
+      },
+      acceptedPrice: { amount: 5800 },
+      localBill: { amount: 900, baseHours: 3, usedHours: 5, extraHours: 2, extraHourRate: 150 },
+      payment: { status: 'paid', method: 'cash', amount: 900 },
+    });
+    for (const k of ['quote', 'bill', 'acceptedPrice', 'localBill', 'payment'])
+      expect(job).not.toHaveProperty(k);
+    expect(job.trip).toEqual({
+      to: 'Nagpur',
+      destId: 'nagpur',
+      kind: 'one-way',
+      km: 284,
+      days: 1,
+      returnHours: 8,
+    });
+    expect(JSON.stringify(job)).not.toMatch(/5600|5800|900/);
+  });
+
+  test('notes: the trip line loses its estimate, any other rupee figure is masked', () => {
+    expect(
+      notesForDriver(
+        'Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 38 h getting home · est. ₹5,620–5,820\nGate 2',
+      ),
+    ).toBe('Trip: Raipur → Delhi · one-way drop · ~1214 km · 2 days + 38 h getting home\nGate 2');
+    expect(
+      notesForDriver('Trip: Raipur → X (not in our list) · one-way drop · 1 day · quote on the call'),
+    ).toBe('Trip: Raipur → X (not in our list) · one-way drop · 1 day');
+    expect(notesForDriver('Agreed ₹1500, or Rs. 1,600 / INR 1700 / rs 900–1,000')).toBe(
+      'Agreed ₹…, or ₹… / ₹… / ₹…',
+    );
+    // Not money: left alone.
+    expect(notesForDriver('Flat 12, 3 hours, 2 bags, hours 4')).toBe('Flat 12, 3 hours, 2 bags, hours 4');
+  });
+
+  test('driverConfirmed: read when present, his own only', () => {
+    const ts = { toDate: () => new Date('2026-11-21T03:00:00Z') };
+    const job = toJob('b1', { driverConfirmed: { at: ts, by: 'robot', driverId: 'd1' } });
+    expect(job.driverConfirmed).toEqual({
+      at: new Date('2026-11-21T03:00:00Z'),
+      by: 'robot',
+      driverId: 'd1',
+    });
+    expect(confirmedForMe(job, 'd1')).toBe(true);
+    expect(confirmedForMe(job, 'd2')).toBe(false);
+    expect(confirmedForMe(toJob('b1', {}), 'd1')).toBe(false);
+    expect(toJob('b1', { driverConfirmed: 'yes' }).driverConfirmed).toBeUndefined();
+    expect(confirmedForMe(toJob('b1', { driverConfirmed: { by: 'robot' } }), 'd1')).toBe(true);
+  });
+});
+
 describe('the new words', () => {
   test('exist in both languages, with the amounts in them', () => {
     for (const t of [en, hi]) {
-      expect(t.job.collect('₹750')).toContain('₹750');
-      expect(t.job.payHint).toContain('QR');
+      expect(t.job.payInfo).toContain('QR');
+      expect(t.job.payInfo).not.toMatch(/₹|\d/);
       for (const s of [
         t.job.paidUpi,
         t.job.paidCash,
         t.job.recordedUpi,
         t.job.recordedCash,
-        t.job.collectSoon,
+        t.job.confirmed,
+        t.job.toConfirm,
       ])
         expect(s.length).toBeGreaterThan(5);
+      expect(t.offers.accepted).toContain('DriveBuddy');
       expect(t.earnings.cashKept('₹900')).toContain('₹900');
       expect(t.earnings.sumPays('₹1,350', '₹900', '₹450')).toContain('₹450');
       expect(t.earnings.sumOwe('₹900', '₹1,200', '₹300')).toContain('₹300');
       expect(t.earnings.overLimit('₹2,300')).toContain('₹2,300');
       expect(t.earnings.overLimitNote('₹2,000')).toContain('₹2,000');
     }
-    expect(en.job.collect('₹750')).toBe('Collect ₹750 from the customer');
+    expect(en.job.payInfo).toBe(
+      "The customer pays DriveBuddy, not you: Pay in the DriveBuddy app, or scan DriveBuddy's QR. If they give you cash, take what their bill says — it comes off your next payout.",
+    );
+    expect(en.offers.accepted).toBe(
+      'The job is yours. It is now in My jobs. DriveBuddy will call you to confirm.',
+    );
     expect(en.earnings.sumPays('₹1,350', '₹900', '₹450')).toBe(
       'Earned ₹1,350 · cash you kept ₹900 · DriveBuddy pays you ₹450',
     );
