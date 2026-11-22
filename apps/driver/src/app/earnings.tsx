@@ -1,10 +1,12 @@
 /**
  * My earnings: the jobs he took from offers — what DriveBuddy owes him and has
- * paid — the UPI ID his weekly pay goes to, and his rating and strikes.
+ * paid, less the cash customers paid him (DriveBuddy's money) — the UPI ID his
+ * weekly pay goes to, and his rating and strikes. Holding more cash than the
+ * website's cash limit stops new offers: the warning says how much to settle.
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { rupees } from '@drivebuddy/shared';
+import { DEFAULT_CASH_LIMIT, rupees } from '@drivebuddy/shared';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -14,8 +16,9 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { TextField } from '@/components/TextField';
+import { loadCashLimit } from '@/data/cashLimit';
 import { type MyRecord, cleanUpi, isUpi, saveUpi, watchMyRecord } from '@/data/me';
-import { type Offer, earningsOf, watchMyOffers } from '@/data/offers';
+import { type Offer, cashOwed, earningsOf, overCashLimit, watchMyOffers } from '@/data/offers';
 import { useI18n } from '@/i18n';
 import { formatDateTime, formatPreferred, packageName } from '@/i18n/format';
 import { makeStyles, space, useTheme } from '@/theme';
@@ -30,9 +33,11 @@ export default function EarningsScreen() {
   const [offers, setOffers] = useState<Offer[] | null>(null);
   // null: no record (the review login) or not readable — then there is nothing to save a UPI ID to.
   const [me, setMe] = useState<MyRecord | null>(null);
+  const [cashLimit, setCashLimit] = useState(DEFAULT_CASH_LIMIT);
 
   useEffect(() => (phone ? watchMyOffers(phone, (list) => setOffers(list ?? [])) : undefined), [phone]);
   useEffect(() => (driverId ? watchMyRecord(driverId, setMe) : undefined), [driverId]);
+  useEffect(() => loadCashLimit(setCashLimit), []);
 
   if (offers === null) {
     return (
@@ -42,16 +47,36 @@ export default function EarningsScreen() {
     );
   }
   const e = earningsOf(offers);
+  const owe = cashOwed(e);
 
   return (
     <Screen edges={['bottom']}>
+      {overCashLimit(e, cashLimit) ? (
+        <Card tone="cream" style={{ borderWidth: 2, borderColor: colors.danger }}>
+          <View style={styles.row}>
+            <Ionicons name="warning" size={22} color={colors.danger} />
+            <AppText weight="heavy" color={colors.danger} style={{ flex: 1 }} testID="cash-limit">
+              {t.earnings.overLimit(rupees(owe))}
+            </AppText>
+          </View>
+          <AppText variant="small">{t.earnings.overLimitNote(rupees(cashLimit))}</AppText>
+        </Card>
+      ) : null}
+
       <Card tone="cream">
         <AppText variant="small" color={colors.textMuted}>
-          {t.earnings.owed}
+          {owe > 0 ? t.earnings.youOwe : t.earnings.owed}
         </AppText>
-        <AppText variant="display" weight="heavy">
-          {rupees(e.owed)}
+        <AppText variant="display" weight="heavy" color={owe > 0 ? colors.danger : undefined}>
+          {rupees(owe > 0 ? owe : e.net)}
         </AppText>
+        {e.cashKept > 0 ? (
+          <AppText variant="small" weight="bold" testID="earnings-sum">
+            {owe > 0
+              ? t.earnings.sumOwe(rupees(e.owed), rupees(e.cashKept), rupees(owe))
+              : t.earnings.sumPays(rupees(e.owed), rupees(e.cashKept), rupees(e.net))}
+          </AppText>
+        ) : null}
         <View style={styles.row}>
           <AppText variant="small" color={colors.textMuted}>
             {t.earnings.upcoming}: {rupees(e.upcoming)}
@@ -82,6 +107,11 @@ export default function EarningsScreen() {
           <AppText variant="small" color={colors.textMuted}>
             {formatPreferred(t, o.when)} · {o.area}
           </AppText>
+          {o.cashCollected > 0 ? (
+            <AppText variant="small" weight="bold" color={colors.amberText}>
+              {t.earnings.cashKept(rupees(o.cashCollected))}
+            </AppText>
+          ) : null}
           <AppText
             variant="small"
             weight="bold"

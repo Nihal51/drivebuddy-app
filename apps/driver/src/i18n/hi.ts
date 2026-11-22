@@ -105,6 +105,14 @@ export const hi: Messages = {
     strikes: (n) => `${n} स्ट्राइक`,
     strikesNote:
       'लिया हुआ काम वापस करने पर एक स्ट्राइक लगती है। 3 या ज़्यादा स्ट्राइक होने पर नए काम आपको दूसरे ड्राइवरों के बाद मिलते हैं।',
+    youOwe: 'आपको DriveBuddy को देना है',
+    cashKept: (amount) => `आपके पास रखा नकद ${amount}`,
+    sumPays: (earned, cash, net) => `कमाई ${earned} · आपके पास रखा नकद ${cash} · DriveBuddy आपको देगा ${net}`,
+    sumOwe: (earned, cash, owe) =>
+      `कमाई ${earned} · आपके पास रखा नकद ${cash} · आपको DriveBuddy को ${owe} देने हैं`,
+    overLimit: (amount) => `नए काम के लिए DriveBuddy को ${amount} जमा करें`,
+    overLimitNote: (limit) =>
+      `आपके पास DriveBuddy का ${limit} से ज़्यादा नकद है, इसलिए नए काम के ऑफ़र रुक गए हैं। DriveBuddy को UPI से जमा करें, या ऑफ़िस को कॉल करें।`,
   },
 
   job: {
@@ -166,6 +174,20 @@ export const hi: Messages = {
     otherJobSharing: 'आप पहले से किसी दूसरे काम पर शेयर कर रहे हैं। पहले वहाँ "पहुँच गया" दबाएँ।',
     notificationTitle: 'DriveBuddy ड्राइवर',
     notificationBody: 'आपकी लोकेशन ग्राहक के साथ शेयर हो रही है',
+    payTitle: 'भुगतान',
+    collect: (amount) => `ग्राहक से ${amount} लें`,
+    collectSoon: 'ग्राहक से भुगतान लें — रकम एक मिनट में यहाँ दिखेगी',
+    paidUpi: 'UPI से मिला',
+    paidCash: 'नकद मिला',
+    payHint: 'UPI: ग्राहक DriveBuddy का QR स्कैन करे या DriveBuddy ऐप में Pay दबाए।',
+    upiTitle: 'UPI से भुगतान हो गया?',
+    upiBody: 'ग्राहक DriveBuddy को भुगतान करके "भुगतान हो गया" वाली स्क्रीन दिखा दे, तभी दबाएँ।',
+    upiConfirm: 'हाँ, UPI से मिला',
+    cashTitle: 'नकद मिल गया?',
+    cashBody: 'नकद हाथ में आने पर ही दबाएँ। यह DriveBuddy का पैसा है: यह आपकी हफ़्ते की कमाई में से कटेगा।',
+    cashConfirm: 'हाँ, नकद मिला',
+    recordedUpi: 'भुगतान दर्ज हो गया ✓ · UPI',
+    recordedCash: 'भुगतान दर्ज हो गया ✓ · नकद',
   },
 
   packages: {

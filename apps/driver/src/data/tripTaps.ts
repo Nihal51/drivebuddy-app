@@ -6,16 +6,24 @@
  * copies them to the booking: the trip clock for outstation / one-way, or the
  * bill for a local job (which then completes by itself) — so a time can never
  * be changed from the app, only by the office.
+ *
+ * After Job done he also records how the customer paid (SPEC-upi item 4):
+ * `paidBy` 'upi' | 'cash' and `paidAt`, once. `amount` is the bill, which only
+ * the robot writes, so "Collect ₹A" is always the customer's real bill.
  */
 
 import { type PackageId, toDate } from '@drivebuddy/shared';
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 
+import { env } from '@/env';
 import { firestore } from '@/firebase/app';
 
 import { type WriteFailure, failureOf, within } from './write';
 
 export type TapStep = 'leftAt' | 'arrivedAt' | 'doneAt' | 'homeAt';
+
+export type PaidBy = 'upi' | 'cash';
+export const PAID_BY: readonly PaidBy[] = ['upi', 'cash'];
 
 export type TripTaps = {
   driverPhone: string;
@@ -23,6 +31,11 @@ export type TripTaps = {
   arrivedAt?: Date;
   doneAt?: Date;
   homeAt?: Date;
+  /** The customer's bill in rupees (robot only), once it is known. */
+  amount?: number;
+  /** How the customer paid, as he recorded it after Job done. */
+  paidBy?: PaidBy;
+  paidAt?: Date;
 };
 
 /** The taps a job has, in order: "Reached home" only after a one-way drop (he comes back by bus or train). */
@@ -88,12 +101,16 @@ export function tapTimes(taps: TripTaps | null, packageId: PackageId | null): { 
 }
 
 export function toTripTaps(d: Record<string, unknown>): TripTaps {
+  const amount = d.amount;
   return {
     driverPhone: typeof d.driverPhone === 'string' ? d.driverPhone : '',
     leftAt: toDate(d.leftAt),
     arrivedAt: toDate(d.arrivedAt),
     doneAt: toDate(d.doneAt),
     homeAt: toDate(d.homeAt),
+    ...(typeof amount === 'number' && Number.isInteger(amount) && amount > 0 ? { amount } : {}),
+    ...(PAID_BY.includes(d.paidBy as PaidBy) ? { paidBy: d.paidBy as PaidBy } : {}),
+    paidAt: toDate(d.paidAt),
   };
 }
 
@@ -142,6 +159,64 @@ export async function tapTrip(
         return 'saved' as const;
       }),
     );
+    return { ok: true, already: outcome === 'already' };
+  } catch (err) {
+    if (err instanceof TapRefused) return { ok: false, reason: 'order' };
+    return { ok: false, reason: failureOf(err) };
+  }
+}
+
+/* ------------------------------------------------------ payment received */
+
+/**
+ * The "Payment received" card: nothing before Job done; then "Collect ₹A"
+ * with Paid by UPI / Paid in cash (amount null until the robot has worked out
+ * the bill, a minute or so after Job done); then what he recorded.
+ */
+export type PaymentCardState =
+  | { kind: 'none' }
+  | { kind: 'collect'; amount: number | null }
+  | { kind: 'recorded'; paidBy: PaidBy; amount: number | null };
+
+export function paymentCard(taps: TripTaps | null | undefined): PaymentCardState {
+  if (!taps?.doneAt) return { kind: 'none' };
+  const amount = taps.amount ?? null;
+  return taps.paidBy ? { kind: 'recorded', paidBy: taps.paidBy, amount } : { kind: 'collect', amount };
+}
+
+/**
+ * Once the robot has completed a local job he can no longer read the booking,
+ * but his taps he can: while they show his Job done, the screen stays on the
+ * job (with the details he had loaded) for the payment, instead of saying the
+ * job is no longer his.
+ */
+export const stayAfterDone = (taps: TripTaps | null | undefined, myPhone: string): boolean =>
+  Boolean(taps?.doneAt) && taps?.driverPhone === myPhone;
+
+export type PaymentResult = { ok: true; already: boolean } | { ok: false; reason: WriteFailure | 'order' };
+
+/**
+ * Record how the customer paid: exactly `{ paidBy, paidAt }` on his taps, once
+ * and only after Job done (the rules check the same). In a transaction, like
+ * the taps, so a second phone or a double tap cannot change his answer.
+ */
+export async function recordPayment(bookingId: string, paidBy: PaidBy): Promise<PaymentResult> {
+  const db = firestore();
+  const ref = doc(db, 'tripTaps', bookingId);
+  try {
+    const outcome = await within(
+      runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const taps = snap.exists() ? toTripTaps(snap.data()) : null;
+        const card = paymentCard(taps);
+        if (card.kind === 'recorded') return 'already' as const;
+        if (card.kind === 'none') throw new TapRefused('order');
+        tx.update(ref, { paidBy, paidAt: serverTimestamp() });
+        return 'saved' as const;
+      }),
+    );
+    // The robot marks the booking paid (and tells the customer) now, not at its next minute.
+    if (outcome === 'saved') void fetch(env.robotUrl, { method: 'POST' }).catch(() => {});
     return { ok: true, already: outcome === 'already' };
   } catch (err) {
     if (err instanceof TapRefused) return { ok: false, reason: 'order' };

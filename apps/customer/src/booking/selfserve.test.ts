@@ -1,10 +1,11 @@
-import { type Booking, toBooking } from '@drivebuddy/shared';
+import { type Booking, toBooking, toPayment } from '@drivebuddy/shared';
 
 import {
   canAcceptPrice,
   canRate,
   confirmedInstantly,
   findingDriver,
+  paymentView,
   priceAcceptedWaiting,
 } from './selfserve';
 
@@ -96,5 +97,38 @@ describe('rating', () => {
     expect(canRate(booking({ ...done, assignedDriver: undefined }), 'u1')).toBe(false);
     expect(canRate(booking({ ...done, assignedDriver: { ...DRIVER, id: '' } }), 'u1')).toBe(false);
     expect(canRate(booking({ ...done, customerUid: undefined }), 'u1')).toBe(false);
+  });
+});
+
+describe('payment card', () => {
+  const UPI = 'upi://pay?pa=drivebuddy%40ybl&pn=DriveBuddy&am=750.00&cu=INR&tn=DB-1042';
+  const view = (p: Record<string, unknown>) => paymentView(toPayment({ amount: 750, ...p })!);
+
+  test('a pending UPI link opens the UPI app; a Razorpay link the page', () => {
+    expect(view({ status: 'pending', method: 'upi', url: UPI })).toEqual({
+      kind: 'pay',
+      url: UPI,
+      upi: true,
+    });
+    expect(view({ status: 'pending', url: 'https://rzp.io/i/x' })).toEqual({
+      kind: 'pay',
+      url: 'https://rzp.io/i/x',
+      upi: false,
+    });
+  });
+
+  test('no link that may open: a UPI payment goes to the driver, a Razorpay one to the SMS', () => {
+    expect(view({ status: 'pending', method: 'upi', url: 'upi://payx?pa=thief@ybl' })).toEqual({
+      kind: 'pay-driver',
+    });
+    expect(view({ status: 'pending', url: 'upi://pay?pa=thief' })).toEqual({ kind: 'pay-driver' });
+    expect(view({ status: 'pending', url: UPI.replace('750.00', '75.00') })).toEqual({ kind: 'pay-driver' });
+    expect(view({ status: 'pending', url: 'https://evil.example/pay' })).toEqual({ kind: 'by-sms' });
+  });
+
+  test('paid says how', () => {
+    expect(view({ status: 'paid', method: 'cash' })).toEqual({ kind: 'paid', method: 'cash' });
+    expect(view({ status: 'paid', method: 'upi', url: UPI })).toEqual({ kind: 'paid', method: 'upi' });
+    expect(view({ status: 'paid', url: 'https://rzp.io/i/x' })).toEqual({ kind: 'paid', method: undefined });
   });
 });

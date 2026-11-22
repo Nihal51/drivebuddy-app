@@ -444,6 +444,12 @@ export const en = {
       openFailed: 'Could not open the payment page. Please use the link we sent by SMS.',
       paid: (amount: string) => `Paid ${amount} ✓`,
       paidOn: (date: string) => `Paid on ${date}`,
+      buttonUpi: (amount: string) => `Pay ${amount} by UPI`,
+      bodyUpi: 'Opens your UPI app (Google Pay, PhonePe, Paytm…) to pay DriveBuddy.',
+      noUpiApp: "No UPI app found — pay the driver or scan DriveBuddy's QR",
+      payDriver: "Pay the driver in cash, or scan DriveBuddy's QR he shows you.",
+      paidUpi: (amount: string) => `Paid ${amount} ✓ · UPI`,
+      paidCash: (amount: string) => `Paid ${amount} in cash ✓`,
     },
     rate: {
       title: (name: string) => `How was ${name}?`,

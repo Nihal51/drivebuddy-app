@@ -110,6 +110,15 @@ export const en = {
     strikes: (n: number) => (n === 1 ? '1 strike' : `${n} strikes`),
     strikesNote:
       'Giving back a job you accepted counts as a strike. With 3 or more, new jobs reach you after other drivers.',
+    youOwe: 'You owe DriveBuddy',
+    cashKept: (amount: string) => `Cash you kept ${amount}`,
+    sumPays: (earned: string, cash: string, net: string) =>
+      `Earned ${earned} · cash you kept ${cash} · DriveBuddy pays you ${net}`,
+    sumOwe: (earned: string, cash: string, owe: string) =>
+      `Earned ${earned} · cash you kept ${cash} · you owe DriveBuddy ${owe}`,
+    overLimit: (amount: string) => `Settle ${amount} with DriveBuddy to get new jobs`,
+    overLimitNote: (limit: string) =>
+      `You are holding more than ${limit} of DriveBuddy's cash, so new job offers have stopped. Pay it to DriveBuddy by UPI, or call the office.`,
   },
 
   job: {
@@ -171,6 +180,21 @@ export const en = {
     otherJobSharing: 'You are already sharing on another job. Tap Arrived there first.',
     notificationTitle: 'DriveBuddy Driver',
     notificationBody: 'Sharing your location with the customer',
+    payTitle: 'Payment',
+    collect: (amount: string) => `Collect ${amount} from the customer`,
+    collectSoon: 'Collect the payment — the amount shows here in a minute',
+    paidUpi: 'Paid by UPI',
+    paidCash: 'Paid in cash',
+    payHint: "UPI: the customer scans DriveBuddy's QR or taps Pay in the DriveBuddy app.",
+    upiTitle: 'Paid by UPI?',
+    upiBody: 'Tap only after the customer has paid DriveBuddy and shown you the payment done screen.',
+    upiConfirm: 'Yes, paid by UPI',
+    cashTitle: 'Paid in cash?',
+    cashBody:
+      "Tap only when you have the cash in hand. It is DriveBuddy's money: it comes off your weekly pay.",
+    cashConfirm: 'Yes, paid in cash',
+    recordedUpi: 'Payment recorded ✓ · UPI',
+    recordedCash: 'Payment recorded ✓ · cash',
   },
 
   packages: {

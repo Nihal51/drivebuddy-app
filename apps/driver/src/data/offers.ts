@@ -6,6 +6,8 @@
  * taken offers are also his earnings: what DriveBuddy owes him and has paid.
  * Until he taps Start he can give a job back ("Can't make it"): the offer
  * becomes "released" and the alerts robot offers it to the others again.
+ * When a customer pays him in cash, the robot writes it on the offer
+ * (`cashCollected`): that cash is DriveBuddy's, so it comes off his weekly pay.
  */
 
 import { type Booking, type PackageId, isPackageId, toBooking, toDate } from '@drivebuddy/shared';
@@ -46,6 +48,8 @@ export type Offer = {
   done: boolean;
   paid: boolean;
   paidAt?: Date;
+  /** Rupees the customer paid him in cash for this job (robot only); 0 = none. */
+  cashCollected: number;
 };
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -73,12 +77,20 @@ export function toOffer(id: string, d: Record<string, unknown>): Offer {
     done: d.done === true,
     paid: d.paid === true,
     paidAt: toDate(d.paidAt),
+    cashCollected:
+      typeof d.cashCollected === 'number' && Number.isInteger(d.cashCollected) && d.cashCollected > 0
+        ? d.cashCollected
+        : 0,
   };
 }
 
 export type Earnings = {
-  /** Done and not paid yet: DriveBuddy owes him this. */
+  /** Done and not paid yet: what he earned on them (before the cash he kept). */
   owed: number;
+  /** Cash customers paid him on those same jobs: DriveBuddy's money, kept by him. */
+  cashKept: number;
+  /** owed − cashKept: DriveBuddy pays him this at the weekly payout; below 0, he owes DriveBuddy. */
+  net: number;
   /** Taken, not done yet. */
   upcoming: number;
   /** Paid to him. */
@@ -87,19 +99,39 @@ export type Earnings = {
   list: Offer[];
 };
 
-/** His taken offers → what DriveBuddy owes him, what is coming, what it has paid. */
+/**
+ * His taken offers → what DriveBuddy owes him, what is coming, what it has
+ * paid. The weekly payout is worked out the same way by the robot (SPEC-upi
+ * item 6): over his done, unpaid jobs, what he earned less the cash he kept.
+ */
 export function earningsOf(offers: Offer[]): Earnings {
   const list = offers
     .filter((o) => o.status === 'taken')
     .sort((a, b) => (b.takenAt?.getTime() ?? 0) - (a.takenAt?.getTime() ?? 0));
-  const sum = (f: (o: Offer) => boolean) => list.filter(f).reduce((t, o) => t + o.driverPay, 0);
+  const sum = (f: (o: Offer) => boolean, v: (o: Offer) => number = (o) => o.driverPay) =>
+    list.filter(f).reduce((t, o) => t + v(o), 0);
+  const due = (o: Offer) => o.done && !o.paid;
+  const owed = sum(due);
+  const cashKept = sum(due, (o) => o.cashCollected);
   return {
-    owed: sum((o) => o.done && !o.paid),
+    owed,
+    cashKept,
+    net: owed - cashKept,
     upcoming: sum((o) => !o.done && !o.paid),
     paid: sum((o) => o.paid),
     list,
   };
 }
+
+/** Rupees he owes DriveBuddy (the cash he kept beyond what he earned), 0 when DriveBuddy owes him. */
+export const cashOwed = (e: Pick<Earnings, 'net'>): number => Math.max(0, -e.net);
+
+/**
+ * Over the cash limit (SPEC-upi item 11): he holds more of DriveBuddy's cash
+ * than allowed, so the robot stops sending him new offers until he settles.
+ * The same sum the robot makes, so the warning shows when the offers stop.
+ */
+export const overCashLimit = (e: Pick<Earnings, 'net'>, limit: number): boolean => cashOwed(e) > limit;
 
 /**
  * Several live lists of the same offers → one, each offer once, soonest first.

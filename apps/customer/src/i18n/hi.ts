@@ -430,6 +430,12 @@ export const hi: Messages = {
       openFailed: 'भुगतान का पेज नहीं खुल सका। कृपया SMS में भेजा गया लिंक इस्तेमाल करें।',
       paid: (amount: string) => `${amount} का भुगतान हो गया ✓`,
       paidOn: (date: string) => `भुगतान: ${date}`,
+      buttonUpi: (amount: string) => `UPI से ${amount} भुगतान करें`,
+      bodyUpi: 'आपका UPI ऐप (Google Pay, PhonePe, Paytm…) खुलेगा, उसमें DriveBuddy को भुगतान करें।',
+      noUpiApp: 'कोई UPI ऐप नहीं मिला — ड्राइवर को भुगतान करें या DriveBuddy का QR स्कैन करें',
+      payDriver: 'ड्राइवर को नकद दें, या ड्राइवर के पास DriveBuddy का QR स्कैन करें।',
+      paidUpi: (amount: string) => `${amount} का भुगतान हो गया ✓ · UPI`,
+      paidCash: (amount: string) => `${amount} नकद में भुगतान हो गया ✓`,
     },
     rate: {
       title: (name: string) => `${name} कैसे रहे?`,

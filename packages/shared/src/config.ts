@@ -338,3 +338,22 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
       : { ...DEFAULT_CONFIG.app },
   };
 }
+
+/* ------------------------------------------------------------ cash limit */
+
+/**
+ * Cash a driver may keep for DriveBuddy (customers who paid him in cash, less
+ * what DriveBuddy owes him) before new job offers stop reaching him. The
+ * website publishes it as `payments.cashLimit` in app-config.json (from
+ * site-settings.ts, the same number the alerts robot goes by). It is read on
+ * its own, not as part of AppConfig: only the Driver app needs it, and an odd
+ * value there must never make the customer app refuse its prices.
+ */
+export const DEFAULT_CASH_LIMIT = 2000;
+
+/** The downloaded app-config.json → its cash limit (whole rupees), or null when absent or odd. */
+export function parseCashLimit(raw: unknown): number | null {
+  if (!isObj(raw) || !isObj(raw.payments)) return null;
+  const v = raw.payments.cashLimit;
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 1_000_000 ? v : null;
+}

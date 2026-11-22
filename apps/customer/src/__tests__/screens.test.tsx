@@ -700,6 +700,49 @@ describe('Booking detail', () => {
       expect(screen.getByText('Paid ₹900 ✓')).toBeOnTheScreen();
     });
 
+    test('a UPI link: Pay ₹X by UPI opens it; no UPI app → pay the driver or scan the QR', async () => {
+      const upi = 'upi://pay?pa=drivebuddy%40ybl&pn=DriveBuddy&am=750.00&cu=INR&tn=DB-1042';
+      const open = jest.spyOn(Linking, 'openURL').mockResolvedValueOnce(true);
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'pending', method: 'upi', amount: 750, url: upi },
+      });
+      await fireEvent.press(screen.getByText('Pay ₹750 by UPI'));
+      expect(open).toHaveBeenCalledWith(upi);
+      expect(screen.queryByText("No UPI app found — pay the driver or scan DriveBuddy's QR")).toBeNull();
+      open.mockRejectedValueOnce(new Error('No Activity found to handle Intent'));
+      await fireEvent.press(screen.getByText('Pay ₹750 by UPI'));
+      expect(
+        await screen.findByText("No UPI app found — pay the driver or scan DriveBuddy's QR"),
+      ).toBeOnTheScreen();
+      open.mockRestore();
+    });
+
+    test('a lookalike UPI link never opens; paid by the driver says how', async () => {
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'pending', method: 'upi', amount: 750, url: 'upi://payx?pa=thief@ybl' },
+      });
+      expect(screen.queryByTestId('pay')).toBeNull();
+      expect(
+        screen.getByText("Pay the driver in cash, or scan DriveBuddy's QR he shows you."),
+      ).toBeOnTheScreen();
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'paid', method: 'cash', amount: 750, by: 'driver' },
+      });
+      expect(screen.getByText('Paid ₹750 in cash ✓')).toBeOnTheScreen();
+      await show({
+        ...BASE,
+        status: 'completed',
+        payment: { status: 'paid', method: 'upi', amount: 750, by: 'driver' },
+      });
+      expect(screen.getByText('Paid ₹750 ✓ · UPI')).toBeOnTheScreen();
+    });
+
     test('rating the driver: 5 stars, a comment, then the Google review link', async () => {
       await show({ ...BASE, status: 'completed', assignedDriver: DRIVER });
       expect(await screen.findByText('How was Suresh?')).toBeOnTheScreen();

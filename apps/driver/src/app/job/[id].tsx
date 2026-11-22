@@ -2,11 +2,13 @@
  * One job: the customer, the pickup with Navigate, and his trip taps — Start
  * (on my way, live location on), Arrived (location off), Job done and, after
  * a one-way drop, Reached home. Before Start, a job he took from an offer can
- * be given back ("Can't make it").
+ * be given back ("Can't make it"). After Job done: how the customer paid
+ * (Paid by UPI / Paid in cash) — also once the robot has completed the job
+ * and the booking can no longer be read, from the details already loaded.
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { prettyPhone, telUrl } from '@drivebuddy/shared';
+import { prettyPhone, rupees, telUrl } from '@drivebuddy/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, View } from 'react-native';
@@ -19,10 +21,14 @@ import { Screen } from '@/components/Screen';
 import { type Job, navigateUrl, watchJob } from '@/data/jobs';
 import { type Offer, releaseCheck, releaseJob, watchOffer } from '@/data/offers';
 import {
+  type PaidBy,
   type TapResult,
   type TapStep,
   type TripTaps,
   jobButtons,
+  paymentCard,
+  recordPayment,
+  stayAfterDone,
   tapTimes,
   tapTrip,
   watchTripTaps,
@@ -55,6 +61,8 @@ export default function JobScreen() {
   const { state } = useDriverAuth();
   const sharing = useSharing();
   const [job, setJob] = useState<Job | null | undefined>(undefined);
+  // The last details read: kept for the payment once the booking can no longer be read (completed).
+  const [lastJob, setLastJob] = useState<Job | null>(null);
   // undefined = not loaded yet; a refused read keeps the last times seen (the job may just have completed).
   const [taps, setTaps] = useState<TripTaps | null | undefined>(undefined);
   const [offer, setOffer] = useState<Offer | null>(null);
@@ -63,7 +71,16 @@ export default function JobScreen() {
   const [problem, setProblem] = useState<string | null>(null);
   const coolTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => (id ? watchJob(id, setJob) : undefined), [id]);
+  useEffect(
+    () =>
+      id
+        ? watchJob(id, (next) => {
+            setJob(next);
+            if (next) setLastJob(next);
+          })
+        : undefined,
+    [id],
+  );
   useEffect(
     () =>
       id
@@ -79,12 +96,17 @@ export default function JobScreen() {
     [],
   );
 
-  if (job === undefined) {
+  // A booking that cannot be read: wait for his taps before deciding between "paid?" and "no longer yours".
+  if (job === undefined || (job === null && taps === undefined)) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.amber} />
       </View>
     );
+  }
+  const afterDone = job === null && state.status === 'in' && stayAfterDone(taps, state.driver.phone);
+  if (afterDone) {
+    return <AfterDone id={id} job={lastJob} taps={taps ?? null} />;
   }
   if (job === null || state.status !== 'in') {
     return (
@@ -295,6 +317,8 @@ export default function JobScreen() {
         </AppText>
       ) : null}
 
+      <PaymentReceived id={job.id} taps={taps ?? null} />
+
       {times.length ? (
         <Card>
           <AppText variant="small" color={colors.textFaint}>
@@ -379,6 +403,160 @@ export default function JobScreen() {
         </Card>
       ) : null}
     </Screen>
+  );
+}
+
+/**
+ * The job after the robot completed it (he can no longer read the booking):
+ * thanks, the payment card and his trip times, with the details he had.
+ */
+function AfterDone({ id, job, taps }: { id: string; job: Job | null; taps: TripTaps | null }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const packageId = job?.packageId ?? null;
+  const times = tapTimes(taps, packageId);
+  return (
+    <Screen edges={['bottom']}>
+      {job ? (
+        <View style={styles.head}>
+          <AppText variant="title" weight="heavy">
+            {packageName(t, job.packageId)}
+          </AppText>
+          {job.ref ? (
+            <AppText variant="small" color={colors.textFaint}>
+              {job.ref}
+            </AppText>
+          ) : null}
+        </View>
+      ) : null}
+      <Card tone="cream">
+        <AppText>{t.job.finished}</AppText>
+      </Card>
+      <PaymentReceived id={id} taps={taps} />
+      {times.length ? (
+        <Card>
+          <AppText variant="small" color={colors.textFaint}>
+            {t.job.tapsTitle}
+          </AppText>
+          {times.map(({ step, at }) => (
+            <View key={step} style={styles.row}>
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <AppText style={{ flex: 1 }}>{t.job.taps[step]}</AppText>
+              <AppText weight="bold">{formatDateTime(t, at)}</AppText>
+            </View>
+          ))}
+        </Card>
+      ) : null}
+      {job ? (
+        <Card>
+          <AppText variant="small" color={colors.textFaint}>
+            {t.job.customer}
+          </AppText>
+          <AppText variant="heading" weight="bold">
+            {job.name}
+          </AppText>
+          <Button
+            title={t.job.call}
+            icon="call"
+            variant="outline"
+            compact
+            onPress={() => void Linking.openURL(telUrl(job.phone))}
+          />
+        </Card>
+      ) : null}
+    </Screen>
+  );
+}
+
+/**
+ * "Payment received" (SPEC-upi item 4), after Job done: collect ₹A, then
+ * Paid by UPI / Paid in cash with a confirm; once saved, what he recorded and
+ * the way back to My jobs. The answer is set once — no Change.
+ */
+function PaymentReceived({ id, taps }: { id: string; taps: TripTaps | null }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const [busy, setBusy] = useState<PaidBy | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const card = paymentCard(taps);
+
+  if (card.kind === 'none') return null;
+
+  if (card.kind === 'recorded') {
+    return (
+      <Card>
+        <View style={styles.row}>
+          <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+          <AppText weight="heavy" color={colors.success} style={{ flex: 1 }}>
+            {card.paidBy === 'upi' ? t.job.recordedUpi : t.job.recordedCash}
+          </AppText>
+          {card.amount !== null ? <AppText weight="heavy">{rupees(card.amount)}</AppText> : null}
+        </View>
+        <Button
+          title={t.job.back}
+          icon="list"
+          variant="outline"
+          compact
+          onPress={() => router.replace('/')}
+          testID="payment-back"
+        />
+      </Card>
+    );
+  }
+
+  const save = async (paidBy: PaidBy) => {
+    setBusy(paidBy);
+    setProblem(null);
+    const res = await recordPayment(id, paidBy);
+    setBusy(null);
+    // Saved: the live taps bring the "recorded" card by themselves.
+    if (!res.ok)
+      setProblem(res.reason === 'network' || res.reason === 'failed' ? t.job.tapFailed : t.job.tapRefused);
+  };
+
+  const confirm = (paidBy: PaidBy) => {
+    const words =
+      paidBy === 'upi'
+        ? { title: t.job.upiTitle, body: t.job.upiBody, yes: t.job.upiConfirm }
+        : { title: t.job.cashTitle, body: t.job.cashBody, yes: t.job.cashConfirm };
+    Alert.alert(words.title, words.body, [
+      { text: t.jobs.cancel, style: 'cancel' },
+      { text: words.yes, onPress: () => void save(paidBy) },
+    ]);
+  };
+
+  return (
+    <Card tone="cream">
+      <AppText variant="small" color={colors.textFaint}>
+        {t.job.payTitle}
+      </AppText>
+      <AppText variant="heading" weight="heavy" testID="collect">
+        {card.amount !== null ? t.job.collect(rupees(card.amount)) : t.job.collectSoon}
+      </AppText>
+      <Button
+        title={t.job.paidUpi}
+        icon="phone-portrait"
+        onPress={() => confirm('upi')}
+        loading={busy === 'upi'}
+        disabled={busy !== null}
+        testID="paid-upi"
+      />
+      <Button
+        title={t.job.paidCash}
+        icon="cash"
+        variant="dark"
+        onPress={() => confirm('cash')}
+        loading={busy === 'cash'}
+        disabled={busy !== null}
+        testID="paid-cash"
+      />
+      <AppText variant="small" color={colors.textMuted}>
+        {t.job.payHint}
+      </AppText>
+      {problem ? <AppText color={colors.danger}>{problem}</AppText> : null}
+    </Card>
   );
 }
 

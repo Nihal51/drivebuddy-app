@@ -1,4 +1,11 @@
-import { DEFAULT_CONFIG, compareVersions, mustUpdate, parseAppConfig } from './config';
+import {
+  DEFAULT_CASH_LIMIT,
+  DEFAULT_CONFIG,
+  compareVersions,
+  mustUpdate,
+  parseAppConfig,
+  parseCashLimit,
+} from './config';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -151,4 +158,24 @@ test('versions compare number by number', () => {
   expect(mustUpdate('1.0.0', min('1.1.0'))).toBe(true);
   expect(mustUpdate('1.1.0', min('1.1.0'))).toBe(false);
   expect(mustUpdate(null, min('9.9.9'))).toBe(false); // web preview, unknown: never blocks
+});
+
+describe('cash limit', () => {
+  test('read from payments.cashLimit in whole rupees', () => {
+    expect(parseCashLimit({ ...clone(DEFAULT_CONFIG), payments: { cashLimit: 2500 } })).toBe(2500);
+    expect(parseCashLimit({ payments: { cashLimit: 0 } })).toBe(0);
+  });
+
+  test('absent or odd → null (the app then keeps its saved or built-in limit)', () => {
+    expect(parseCashLimit(clone(DEFAULT_CONFIG))).toBeNull();
+    for (const odd of ['2000', 1999.5, -1, 2_000_000, null])
+      expect(parseCashLimit({ payments: { cashLimit: odd } })).toBeNull();
+    expect(parseCashLimit({ payments: 2000 })).toBeNull();
+    expect(parseCashLimit('hello')).toBeNull();
+    expect(DEFAULT_CASH_LIMIT).toBe(2000);
+  });
+
+  test('a payments block never changes whether the prices are accepted', () => {
+    expect(parseAppConfig({ ...clone(DEFAULT_CONFIG), payments: { cashLimit: 'odd' } })).toEqual(LIVE);
+  });
 });

@@ -3,8 +3,11 @@ import {
   RATING_COMMENT_MAX,
   RATING_KEYS,
   isPaymentUrl,
+  isRazorpayUrl,
+  isUpiPayUrl,
   localBillPackage,
   newRatingFields,
+  payKind,
   payUrl,
   toAcceptedPrice,
   toLocalBill,
@@ -141,6 +144,101 @@ describe('payment', () => {
     expect(payUrl(pending)).toBe('https://rzp.io/i/x');
     expect(payUrl(pending && { ...pending, status: 'paid' })).toBeNull();
     expect(payUrl(undefined)).toBeNull();
+  });
+});
+
+describe('UPI payments', () => {
+  // Exactly what the robot builds (SPEC-upi item 3), with encodeURIComponent.
+  const enc = encodeURIComponent;
+  const robotLink = (pa = 'drivebuddy@ybl', am = '750.00') =>
+    `upi://pay?pa=${enc(pa)}&pn=${enc('DriveBuddy')}&am=${am}&cu=INR&tn=${enc('DB-1042')}`;
+
+  test('the robot’s UPI link is accepted, with method and who confirmed it', () => {
+    expect(isUpiPayUrl(robotLink())).toBe(true);
+    expect(isPaymentUrl(robotLink())).toBe(true);
+    expect(isRazorpayUrl(robotLink())).toBe(false);
+    expect(payKind(robotLink())).toBe('upi');
+    expect(payKind('https://rzp.io/i/x')).toBe('razorpay');
+    for (const ok of [
+      'upi://pay?pa=drivebuddy@ybl', // "@" left as it is
+      'upi://pay?pa=raju.sahu-1_x%40okaxis&pn=Drive%20Buddy',
+      'upi://pay?pn=DriveBuddy&pa=drivebuddy%40ybl&am=750',
+      robotLink('9893302783@ybl'),
+    ])
+      expect(isUpiPayUrl(ok)).toBe(true);
+    const p = toPayment({ status: 'pending', method: 'upi', amount: 750, url: robotLink(), by: 'robot' });
+    expect(p).toEqual({ status: 'pending', method: 'upi', amount: 750, url: robotLink(), by: 'robot' });
+    expect(payUrl(p)).toBe(robotLink());
+  });
+
+  test('lookalikes and anything that could pay someone else are refused', () => {
+    for (const bad of [
+      robotLink().replace('upi://pay?', 'upi://payx?'),
+      robotLink().replace('upi://pay?', 'UPI://PAY?'),
+      robotLink().replace('upi://pay?', 'upi://pay/?'),
+      robotLink().replace('upi://pay?', 'upi:/pay?'),
+      robotLink().replace('upi://pay?', 'xupi://pay?'),
+      'upi://pay?',
+      'upi://pay?pn=DriveBuddy&am=750.00&cu=INR', // no pa
+      'upi://pay?pa=&pn=DriveBuddy', // empty pa
+      'upi://pay?xpa=drivebuddy@ybl', // not pa
+      'upi://pay?pa=drivebuddy', // no @
+      'upi://pay?pa=drivebuddy@ybl1', // bank part letters only
+      'upi://pay?pa=d@ybl', // too short
+      `upi://pay?pa=${'a'.repeat(65)}@ybl`,
+      'upi://pay?pa=drive%20buddy@ybl', // a space inside pa
+      'upi://pay?pa=drivebuddy@ybl&pa=thief@ybl', // two payees
+      'upi://pay?pa=drivebuddy@ybl&pn=Drive Buddy', // a space
+      ' upi://pay?pa=drivebuddy@ybl',
+      'upi://pay?pa=drivebuddy@ybl\n',
+      'upi://pay?pa=drivebuddy@ybl#x',
+      'upi://pay?pa=drivebuddy@ybl?pa=thief@ybl',
+      'upi://pay?pa=drivebuddy%40ybl%',
+      'upi://pay?pa=%E0%A4@ybl', // does not decode
+      'upi://pay?pa=drivebuddy@ybl&am=seven',
+      'upi://pay?pa=drivebuddy@ybl&am=750&am=1',
+      'upi://pay?pa=drivebuddy@ybl&cu=USD',
+      `upi://pay?pa=drivebuddy@ybl&tn=${'x'.repeat(480)}`, // over 500
+      'upi://mandate?pa=drivebuddy@ybl',
+      'intent://pay?pa=drivebuddy@ybl',
+      '',
+      null,
+      42,
+    ])
+      expect(isUpiPayUrl(bad)).toBe(false);
+  });
+
+  test('Pay opens the UPI link only for the amount the button shows', () => {
+    const pending = (url: string) => toPayment({ status: 'pending', method: 'upi', amount: 750, url });
+    expect(payUrl(pending(robotLink('drivebuddy@ybl', '750.00')))).not.toBeNull();
+    expect(payUrl(pending(robotLink('drivebuddy@ybl', '750')))).not.toBeNull();
+    expect(payUrl(pending(robotLink('drivebuddy@ybl', '7500.00')))).toBeNull();
+    expect(payUrl(pending('upi://pay?pa=drivebuddy@ybl'))).not.toBeNull(); // the customer types it
+  });
+
+  test('a payment the driver recorded: paid, by cash or UPI, no link', () => {
+    expect(
+      toPayment({
+        status: 'paid',
+        method: 'cash',
+        amount: 750,
+        by: 'driver',
+        paidAt: ts('2026-11-21T10:00:00Z'),
+      }),
+    ).toEqual({
+      status: 'paid',
+      method: 'cash',
+      amount: 750,
+      url: '',
+      by: 'driver',
+      paidAt: new Date('2026-11-21T10:00:00Z'),
+    });
+    // An unknown method or an odd "by" is left out, the payment still reads.
+    expect(toPayment({ status: 'paid', method: 'cheque', amount: 750, by: 7 })).toEqual({
+      status: 'paid',
+      amount: 750,
+      url: '',
+    });
   });
 });
 

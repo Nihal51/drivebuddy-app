@@ -16,6 +16,8 @@ const LIVE = {
     'https://script.google.com/macros/s/AKfycbyJPR141acpum3KirDFgF8BFt79pE7Jf6wUPwbAzF0oyTjLCYuf3KTVdrKsYlIjHyvK/exec',
   /** The office, for "Call office" (DriveBuddy's public number). */
   officePhone: '9111473929',
+  /** The website: its app-config.json has the cash limit (the customer app reads its prices there). */
+  siteUrl: 'https://thedrivebuddy.in',
 };
 
 export const env = {
@@ -29,4 +31,5 @@ export const env = {
   },
   robotUrl: process.env.EXPO_PUBLIC_ROBOT_URL || LIVE.robotUrl,
   officePhone: process.env.EXPO_PUBLIC_OFFICE_PHONE || LIVE.officePhone,
+  siteUrl: (process.env.EXPO_PUBLIC_SITE_URL || LIVE.siteUrl).replace(/\/+$/, ''),
 };

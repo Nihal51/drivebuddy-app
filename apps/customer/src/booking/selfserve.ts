@@ -5,7 +5,7 @@
  * and the customer never sees a button the server would refuse.
  */
 
-import type { Booking } from '@drivebuddy/shared';
+import { type Booking, type Payment, payKind, payUrl } from '@drivebuddy/shared';
 
 /**
  * "Accept price ₹X" on a trip estimate: only the customer who made the
@@ -43,4 +43,23 @@ export const findingDriver = (b: Booking): boolean => b.status === 'confirmed' &
  */
 export function canRate(b: Booking, uid: string | null | undefined): boolean {
   return Boolean(uid) && b.customerUid === uid && b.status === 'completed' && Boolean(b.assignedDriver?.id);
+}
+
+/** What the payment card shows (SPEC-upi item 8). */
+export type PaymentView =
+  | { kind: 'paid'; method: Payment['method'] }
+  /** A checked link: a UPI app (`upi`) or the Razorpay page. */
+  | { kind: 'pay'; url: string; upi: boolean }
+  /** A UPI payment with no link that may open: he pays the driver, or the QR the driver shows. */
+  | { kind: 'pay-driver' }
+  /** A Razorpay payment with no link that may open: Razorpay also sent it by SMS. */
+  | { kind: 'by-sms' };
+
+export function paymentView(p: Payment): PaymentView {
+  if (p.status === 'paid') return { kind: 'paid', method: p.method };
+  const url = payUrl(p);
+  if (url) return { kind: 'pay', url, upi: payKind(url) === 'upi' };
+  return p.method === 'upi' || p.method === 'cash' || /^upi:/i.test(p.url)
+    ? { kind: 'pay-driver' }
+    : { kind: 'by-sms' };
 }

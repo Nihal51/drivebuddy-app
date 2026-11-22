@@ -6,7 +6,9 @@
  *   on a trip estimate. The alerts robot then confirms the booking itself.
  * - `localBill` — written by the robot when the driver taps "Job done" on a
  *   local package: the package plus the hours over it.
- * - `payment` — written by the robot: the Razorpay payment link, then "paid".
+ * - `payment` — written by the robot: the pay link (a Razorpay page, or a
+ *   `upi://pay?` link to DriveBuddy's UPI ID), then "paid" — by Razorpay, or
+ *   once the driver taps "Paid by UPI" / "Paid in cash" in the Driver app.
  * - `ratings/{bookingId}` — created once by the customer after the job.
  *
  * The robot and the website may be a version ahead or behind this app, so
@@ -90,12 +92,20 @@ export function localBillPackage(b: LocalBill): number | null {
 export const PAYMENT_STATUSES = ['pending', 'paid'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-/** The Razorpay payment link the robot made for a completed booking. */
+/** How it was paid: a UPI app, cash to the driver, or a Razorpay page. */
+export const PAYMENT_METHODS = ['upi', 'cash', 'razorpay'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** The robot's pay link for a completed booking, and whether it is paid. */
 export type Payment = {
   status: PaymentStatus;
   amount: number;
-  /** As stored: check it with payUrl before opening it. */
+  /** As stored: check it with payUrl before opening it. '' once the driver recorded the payment. */
   url: string;
+  /** Absent on payments from before UPI (those were Razorpay). */
+  method?: PaymentMethod;
+  /** Who confirmed it was paid ('driver' when he tapped Paid by UPI / in cash). */
+  by?: string;
   linkId?: string;
   at?: Date;
   paidAt?: Date;
@@ -107,6 +117,9 @@ export function toPayment(v: unknown): Payment | undefined {
   const amount = int(v.amount);
   if (!status || !amount) return undefined;
   const p: Payment = { status, amount, url: typeof v.url === 'string' ? v.url.trim() : '' };
+  const method = PAYMENT_METHODS.find((m) => m === v.method);
+  if (method) p.method = method;
+  if (typeof v.by === 'string' && v.by && v.by.length <= 40) p.by = v.by;
   if (typeof v.linkId === 'string' && v.linkId) p.linkId = v.linkId;
   const at = when(v.at);
   if (at) p.at = at;
@@ -125,12 +138,76 @@ export function toPayment(v: unknown): Payment | undefined {
  */
 const PAY_URL = /^https:\/\/(rzp\.io|razorpay\.com)([/?#][^\s\\]*)?$/i;
 
-export const isPaymentUrl = (url: unknown): url is string =>
+/** The same UPI ID pattern as the website's firestore.rules and the robot's UPI_ID check. */
+export const UPI_ID_PATTERN = /^[a-zA-Z0-9.\-_]{2,64}@[a-zA-Z]{2,32}$/;
+
+/**
+ * A UPI pay link as the robot makes it:
+ * `upi://pay?pa=<UPI ID>&pn=<name>&am=750.00&cu=INR&tn=<ref>`, each value
+ * encodeURIComponent-ed. The UPI app pays whoever `pa` names, so: exactly one
+ * `pa`, a real UPI ID; only the characters encodeURIComponent leaves, and "@" (no
+ * spaces, "#", "/" or a second "?"); and an amount and currency, when given,
+ * that read as rupees. Lower-case `upi://pay?` only.
+ */
+const URI_CHAR = "[A-Za-z0-9\\-_.!~*'()%@]";
+const UPI_LINK = new RegExp(`^upi://pay\\?${URI_CHAR}+=${URI_CHAR}*(&${URI_CHAR}+=${URI_CHAR}*)*$`);
+
+/** The link's `name=value` pairs (decoded), or null when one does not decode. */
+function upiParams(url: string): [string, string][] | null {
+  try {
+    return url
+      .slice('upi://pay?'.length)
+      .split('&')
+      .map((pair) => {
+        const i = pair.indexOf('=');
+        return [decodeURIComponent(pair.slice(0, i)), decodeURIComponent(pair.slice(i + 1))];
+      });
+  } catch {
+    return null;
+  }
+}
+
+/** The UPI link's amount in rupees, null when it has none, NaN when it is not one. */
+function upiAmount(params: [string, string][]): number | null {
+  const am = params.filter(([k]) => k === 'am');
+  if (am.length === 0) return null;
+  const v = am.length === 1 ? (am[0] as [string, string])[1] : '';
+  return /^\d{1,7}(\.\d{1,2})?$/.test(v) ? Number(v) : NaN;
+}
+
+export function isUpiPayUrl(url: unknown): url is string {
+  if (typeof url !== 'string' || url.length > 500 || !UPI_LINK.test(url)) return false;
+  const params = upiParams(url);
+  if (!params) return false;
+  const pa = params.filter(([k]) => k === 'pa');
+  if (pa.length !== 1 || !UPI_ID_PATTERN.test((pa[0] as [string, string])[1])) return false;
+  const cu = params.filter(([k]) => k === 'cu');
+  if (cu.length > 1 || (cu.length === 1 && (cu[0] as [string, string])[1] !== 'INR')) return false;
+  return !Number.isNaN(upiAmount(params));
+}
+
+export const isRazorpayUrl = (url: unknown): url is string =>
   typeof url === 'string' && url.length <= 500 && PAY_URL.test(url);
 
-/** The link the Pay button opens, or null when there is nothing safe to open. */
-export const payUrl = (p: Payment | undefined): string | null =>
-  p && p.status === 'pending' && isPaymentUrl(p.url) ? p.url : null;
+/** A link the Pay button may open: a Razorpay page or a UPI pay link. */
+export const isPaymentUrl = (url: unknown): url is string => isRazorpayUrl(url) || isUpiPayUrl(url);
+
+/**
+ * The link the Pay button opens, or null when there is nothing safe to open.
+ * A UPI link must also ask for the amount the button shows (or leave it to the
+ * customer), so "Pay ₹750" can never charge something else.
+ */
+export function payUrl(p: Payment | undefined): string | null {
+  if (!p || p.status !== 'pending' || !isPaymentUrl(p.url)) return null;
+  if (isUpiPayUrl(p.url)) {
+    const am = upiAmount(upiParams(p.url) ?? []);
+    if (am !== null && am !== p.amount) return null;
+  }
+  return p.url;
+}
+
+/** How the pay link pays: 'upi' opens a UPI app, 'razorpay' a web page. */
+export const payKind = (url: string): 'upi' | 'razorpay' => (isUpiPayUrl(url) ? 'upi' : 'razorpay');
 
 /* -------------------------------------------------------------- ratings */
 
