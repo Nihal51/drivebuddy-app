@@ -14,7 +14,16 @@ import { makeStyles, radius, space, useTheme } from '@/theme';
 import { AppText } from './AppText';
 import { Button } from './Button';
 
-export function OnlineCard({ driver, me }: { driver: Driver; me: MyRecord }) {
+export function OnlineCard({
+  driver,
+  me,
+  onOnline,
+}: {
+  driver: Driver;
+  me: MyRecord;
+  /** Told whenever he goes Online / Offline (the job popup shows only while Online). */
+  onOnline?: (on: boolean) => void;
+}) {
   const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
@@ -31,6 +40,10 @@ export function OnlineCard({ driver, me }: { driver: Driver; me: MyRecord }) {
       off();
     };
   }, []);
+
+  useEffect(() => {
+    if (online !== undefined) onOnline?.(Boolean(online));
+  }, [online, onOnline]);
 
   if (online === undefined) return null;
   const isOn = Boolean(online);

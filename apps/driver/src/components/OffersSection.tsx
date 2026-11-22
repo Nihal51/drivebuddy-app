@@ -1,8 +1,12 @@
-/** "New job offers" on the home screen: open offers for his city (and nearby ones nobody took), with what he earns and Accept. */
+/**
+ * "New job offers" on the home screen: open offers for his city (and nearby
+ * ones nobody took), with what he earns and Accept — and, while he is Online,
+ * the "New job" popup for each new one (JobPopupHost).
+ */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { rupees } from '@drivebuddy/shared';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import type { Driver } from '@/auth/DriverAuth';
@@ -14,6 +18,7 @@ import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 import { Button } from './Button';
+import { JobPopupHost } from './JobPopupHost';
 import { OnlineCard } from './OnlineCard';
 
 export function OffersSection({ driver }: { driver: Driver }) {
@@ -22,6 +27,8 @@ export function OffersSection({ driver }: { driver: Driver }) {
   const styles = useStyles();
   const [me, setMe] = useState<MyRecord | null | undefined>(undefined);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [online, setOnline] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,15 +42,48 @@ export function OffersSection({ driver }: { driver: Driver }) {
   const active = me?.status === 'active' && Boolean(me.city);
   useEffect(() => {
     if (!active || !me) return;
-    return watchOpenOffers(me.city, (list) => setOffers(list ?? []));
+    return watchOpenOffers(me.city, (list, complete) => {
+      setOffers(list ?? []);
+      setLoaded(complete);
+    });
   }, [active, me]);
 
-  if (me === undefined || (!active && me === null)) return null; // loading, or the review login
+  /** Accept: the offer and the booking change together (or not at all) → the words for the result. */
+  const take = useCallback(
+    async (o: Offer): Promise<string> => {
+      setBusy(o.id);
+      const res = await acceptOffer(o.id, {
+        driverId: driver.driverId,
+        name: me?.name ?? driver.name,
+        phone: driver.phone,
+        uid: driver.uid,
+      });
+      setBusy(null);
+      return res.ok ? t.offers.accepted : res.reason === 'gone' ? t.offers.gone : t.offers.failed;
+    },
+    [driver, me, t],
+  );
+
+  if (me === undefined) return null; // loading
+  const popups = (
+    <JobPopupHost
+      offers={offers}
+      loaded={loaded}
+      watching={active}
+      canPop={active && online}
+      myCity={me?.city ?? ''}
+      onTake={take}
+    />
+  );
+  if (!active && me === null) return popups; // the review login
   if (!active) {
     return (
-      <AppText variant="small" color={colors.textMuted}>
-        {t.offers.notActive}
-      </AppText>
+      <>
+        <AppText variant="small" color={colors.textMuted}>
+          {t.offers.notActive}
+        </AppText>
+        {popups}
+      </>
     );
   }
   const meNow = me as MyRecord;
@@ -53,28 +93,14 @@ export function OffersSection({ driver }: { driver: Driver }) {
       { text: t.jobs.cancel, style: 'cancel' },
       {
         text: t.offers.accept,
-        onPress: () => {
-          void (async () => {
-            setBusy(o.id);
-            const res = await acceptOffer(o.id, {
-              driverId: driver.driverId,
-              name: me?.name ?? driver.name,
-              phone: driver.phone,
-              uid: driver.uid,
-            });
-            setBusy(null);
-            Alert.alert(
-              t.appName,
-              res.ok ? t.offers.accepted : res.reason === 'gone' ? t.offers.gone : t.offers.failed,
-            );
-          })();
-        },
+        onPress: () => void take(o).then((words) => Alert.alert(t.appName, words)),
       },
     ]);
 
   return (
     <View style={styles.wrap}>
-      <OnlineCard driver={driver} me={meNow} />
+      <OnlineCard driver={driver} me={meNow} onOnline={setOnline} />
+      {popups}
       {offers.length ? (
         <AppText variant="heading" weight="heavy">
           {t.offers.title} ({offers.length})

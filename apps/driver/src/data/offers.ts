@@ -152,14 +152,22 @@ export function mergeOffers(lists: (Offer[] | null | undefined)[]): Offer[] | nu
  * own, so the one the rules or the data do not support yet cannot hide the
  * other during the switch-over.
  */
-export function watchOpenOffers(city: string, onChange: (offers: Offer[] | null) => void): () => void {
+export function watchOpenOffers(
+  city: string,
+  /** `complete`: both lists have answered (an offer missing now is really not open for him). */
+  onChange: (offers: Offer[] | null, complete: boolean) => void,
+): () => void {
   const offers = collection(firestore(), 'offers');
   const queries = [
     query(offers, where('status', '==', 'open'), where('cities', 'array-contains', city)),
     query(offers, where('status', '==', 'open'), where('city', '==', city)),
   ];
   const lists: (Offer[] | null | undefined)[] = queries.map(() => undefined);
-  const emit = () => onChange(mergeOffers(lists));
+  const emit = () =>
+    onChange(
+      mergeOffers(lists),
+      lists.every((l) => l !== undefined),
+    );
   const offs = queries.map((q, i) =>
     onSnapshot(
       q,

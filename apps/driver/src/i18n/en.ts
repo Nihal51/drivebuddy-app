@@ -81,6 +81,10 @@ export const en = {
     failed: 'Could not accept. Check your internet and try again.',
     accepted: 'The job is yours. It is now in My jobs. DriveBuddy will call you to confirm.',
     notActive: 'Job offers appear here once the office marks you Active.',
+    popupNew: 'New job',
+    popupRaised: 'Pay raised',
+    notNow: 'Not now',
+    closesIn: (seconds: number) => `Closes in ${seconds} s`,
   },
 
   earnings: {

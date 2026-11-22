@@ -76,6 +76,10 @@ export const hi: Messages = {
     failed: 'काम नहीं लिया जा सका। इंटरनेट देखकर फिर कोशिश करें।',
     accepted: 'काम आपका हो गया। अब यह "मेरे काम" में है। DriveBuddy आपको कॉल करके काम पक्का करेगा।',
     notActive: 'ऑफ़िस आपको Active करेगा, तब काम के ऑफ़र यहाँ दिखेंगे।',
+    popupNew: 'नया काम',
+    popupRaised: 'कमाई बढ़ी',
+    notNow: 'अभी नहीं',
+    closesIn: (seconds) => `${seconds} सेकंड में बंद होगा`,
   },
 
   earnings: {
