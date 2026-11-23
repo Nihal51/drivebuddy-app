@@ -1,5 +1,5 @@
 import { type City, DEFAULT_CONFIG, type ReturnOption, type TripPlan } from '@drivebuddy/shared';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking } from 'react-native';
 
@@ -180,6 +180,16 @@ describe('Booking, step by step', () => {
     expect(screen.getByTestId('choice-3-hours-600').props.accessibilityState).toMatchObject({
       checked: true,
     });
+  });
+
+  test('12 hours in the city: offered with its price once the website lists it, hidden before', async () => {
+    await openBooking({ category: 'hourly' });
+    expect(screen.getByTestId('choice-3-hours-600')).toBeOnTheScreen();
+    expect(screen.queryByTestId('choice-local-12-hours')).toBeNull();
+    const config = { ...DEFAULT_CONFIG, prices: { ...DEFAULT_CONFIG.prices, twelveHours: 1400 } };
+    await openBooking({ category: 'hourly' }, { config });
+    expect(screen.getByTestId('choice-local-12-hours')).toHaveTextContent(/12 hours in the city/);
+    expect(screen.getByTestId('choice-local-12-hours')).toHaveTextContent(/₹1,400/);
   });
 
   test('a step explains what is missing before moving on, and saves nothing', async () => {
@@ -636,6 +646,51 @@ describe('Booking detail', () => {
       });
       await renderScreen(<BookingDetailScreen />, { auth });
     };
+
+    describe('live fare while the driver is on the job', () => {
+      const START = Date.parse('2026-11-24T04:00:00Z');
+      beforeEach(() => jest.useFakeTimers({ now: START + (9 * 60 + 20) * 60_000 }));
+      afterEach(() => jest.useRealTimers());
+
+      test('a local job: time with the driver, so far ₹X with its breakdown, ticking on', async () => {
+        await show({
+          ...BASE,
+          packageId: '3-hours-600',
+          packageRaw: '3-hours-600',
+          trip: undefined,
+          status: 'assigned',
+          clock: { startAt: new Date(START) },
+        });
+        // 9 h 20 min: 10 hours used (the 10th is past its 15 minutes), 7 past the package.
+        expect(screen.getByText('Driver with you 9 h 20 min · so far ₹1,650')).toBeOnTheScreen();
+        expect(screen.getByText('₹600 package (3 h) + 7 extra hours × ₹150')).toBeOnTheScreen();
+        expect(screen.getByText('Final bill when the job ends.')).toBeOnTheScreen();
+        await act(async () => {
+          jest.advanceTimersByTime(60_000);
+        });
+        expect(screen.getByText('Driver with you 9 h 21 min · so far ₹1,650')).toBeOnTheScreen();
+      });
+
+      test('a trip: time on the trip and the estimate — from his real time once longer than booked', async () => {
+        await show({ ...BASE, status: 'assigned', clock: { startAt: new Date(START) } });
+        expect(screen.getByText('On the trip for 9 h 20 min · estimate ₹1,700')).toBeOnTheScreen();
+        jest.setSystemTime(START + 28 * 60 * 60_000);
+        await act(async () => {
+          jest.advanceTimersByTime(30_000);
+        });
+        expect(screen.getByText('On the trip for 1 day 4 h · estimate ₹2,220')).toBeOnTheScreen();
+        expect(
+          screen.getByText("Longer than booked: the driver's time is priced as in the estimate."),
+        ).toBeOnTheScreen();
+      });
+
+      test('no start time yet, or not on the job: no meter', async () => {
+        await show({ ...BASE, status: 'assigned' });
+        expect(screen.queryByTestId('fare-meter')).toBeNull();
+        await show({ ...BASE, status: 'confirmed', clock: { startAt: new Date(START) } });
+        expect(screen.queryByTestId('fare-meter')).toBeNull();
+      });
+    });
 
     test('the customer accepts the trip estimate with one tap', async () => {
       await show(BASE);

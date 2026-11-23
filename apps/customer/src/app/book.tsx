@@ -10,6 +10,7 @@ import {
   isPackageId,
   isTripPackage,
   istParts,
+  packageOffered,
   packagePrice,
   planTrip,
   trainHours,
@@ -33,7 +34,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
-import { CATEGORIES, type Category, categoryOf, findCategory } from '@/booking/categories';
+import { CATEGORIES, type Category, categoryOf, categoryPackages, findCategory } from '@/booking/categories';
 import { PickupLocation } from '@/booking/PickupLocation';
 import { TripSection, placeName } from '@/booking/TripSection';
 import { trainNote } from '@/booking/trainNote';
@@ -134,7 +135,9 @@ function BookingWizard({
   const { config } = useConfig();
   const { user, profile } = useAuth();
 
-  const startPackage = isPackageId(initialPackage) ? initialPackage : '';
+  // A link to a package the website does not offer yet (12 hours before its price is out) starts at the list.
+  const startPackage =
+    isPackageId(initialPackage) && packageOffered(config, initialPackage) ? initialPackage : '';
   const [values, setValues] = useState<BookingInput>(() => ({
     ...EMPTY_BOOKING,
     packageId: startPackage,
@@ -248,7 +251,8 @@ function BookingWizard({
   };
   const chooseCategory = (c: Category) => {
     setCategory(c);
-    if (c.packages.length === 1) choosePackage(c.packages[0]);
+    const options = categoryPackages(config, c);
+    if (options.length === 1 && options[0]) choosePackage(options[0]);
   };
 
   function next() {
@@ -387,15 +391,15 @@ function BookingWizard({
       {step === 1 ? (
         <>
           <AppText variant="title" weight="heavy" accessibilityRole="header">
-            {category && category.packages.length > 1
+            {category && categoryPackages(config, category).length > 1
               ? t.categories[category.id].name
               : t.wizard.serviceTitle}
           </AppText>
-          {category && category.packages.length > 1 ? (
+          {category && categoryPackages(config, category).length > 1 ? (
             <>
               <AppText color={colors.textMuted}>{t.wizard.optionsTitle}</AppText>
               <View style={styles.options} accessibilityRole="radiogroup">
-                {category.packages.map((id) => (
+                {categoryPackages(config, category).map((id) => (
                   <PackageRow
                     key={id}
                     id={id}

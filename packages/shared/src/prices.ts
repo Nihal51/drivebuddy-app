@@ -46,6 +46,9 @@ export function packagePrice(config: AppConfig, id: PackageId): PackagePrice {
       return { kind: 'fixed', amount: rupees(p.oneHour) };
     case '3-hours-600':
       return { kind: 'fixed', amount: rupees(p.threeHours) };
+    case 'local-12-hours':
+      // Not on an older website (the option is hidden then); a booking that has it is priced on the call.
+      return p.twelveHours ? { kind: 'fixed', amount: rupees(p.twelveHours) } : { kind: 'quote' };
     case 'local-full-day':
       return { kind: 'fixed', amount: rupeeRange(p.fullDay) };
     case 'outstation':
@@ -70,6 +73,10 @@ export function packagePrice(config: AppConfig, id: PackageId): PackagePrice {
       return { kind: 'quote' };
   }
 }
+
+/** Is this package offered with this config? 12 hours only once the website lists its price. */
+export const packageOffered = (config: AppConfig, id: PackageId): boolean =>
+  id !== 'local-12-hours' || Boolean(config.prices.twelveHours);
 
 /** The lowest listed price, for "drivers from ₹300". */
 export function startingFrom(config: AppConfig): string {

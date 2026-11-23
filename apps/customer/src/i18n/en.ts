@@ -102,6 +102,10 @@ export const en = {
   packages: {
     '1-hour-300': { name: '1 hour', blurb: 'A meeting, an errand, a quick hospital visit' },
     '3-hours-600': { name: '3 hours', blurb: 'Shopping, family visits, airport runs' },
+    'local-12-hours': {
+      name: '12 hours in the city',
+      blurb: 'A long day out: weddings, many stops, a late return',
+    },
     'local-full-day': { name: 'Full day in the city', blurb: '8 hours of driving within your city' },
     outstation: { name: 'Outstation trip', blurb: 'Out of town in your own car, by the day' },
     'night-driver': { name: 'Night driver', blurb: '8 PM – 6 AM, for late returns and parties' },
@@ -435,6 +439,16 @@ export const en = {
       extra: (hours: number, rate: string) =>
         `${hours === 1 ? '1 extra hour' : `${hours} extra hours`} × ${rate}`,
       used: (hours: number) => `${hours} h with the driver`,
+    },
+    meter: {
+      title: 'Live fare',
+      withYou: (time: string, amount: string) => `Driver with you ${time} · so far ${amount}`,
+      onTrip: (time: string, amount: string) => `On the trip for ${time} · estimate ${amount}`,
+      onTripTime: (time: string) => `On the trip for ${time}`,
+      overBooked: "Longer than booked: the driver's time is priced as in the estimate.",
+      note: 'Final bill when the job ends.',
+      days: (days: number, hours: number) => `${days} ${days === 1 ? 'day' : 'days'} ${hours} h`,
+      hours: (hours: number, minutes: number) => `${hours} h ${minutes} min`,
     },
     pay: {
       title: 'Payment',

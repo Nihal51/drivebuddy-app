@@ -12,6 +12,7 @@
 export const PACKAGE_IDS = [
   '1-hour-300',
   '3-hours-600',
+  'local-12-hours',
   'local-full-day',
   'outstation',
   'night-driver',
@@ -29,7 +30,7 @@ export const isPackageId = (v: unknown): v is PackageId =>
 
 /** Grouping for the app's service list. */
 export const PACKAGE_GROUPS: { id: 'hourly' | 'day' | 'monthly' | 'special'; packages: PackageId[] }[] = [
-  { id: 'hourly', packages: ['1-hour-300', '3-hours-600'] },
+  { id: 'hourly', packages: ['1-hour-300', '3-hours-600', 'local-12-hours'] },
   { id: 'day', packages: ['local-full-day', 'outstation', 'night-driver'] },
   { id: 'monthly', packages: ['monthly-basic', 'monthly-premium'] },
   { id: 'special', packages: ['medical-emergency', 'wedding-event', 'one-way-drop'] },

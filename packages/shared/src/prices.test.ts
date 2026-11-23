@@ -1,6 +1,14 @@
 import { PACKAGE_IDS } from './catalog';
 import { DEFAULT_CONFIG } from './config';
-import { indianDigits, joiningFees, packagePrice, rupeeRange, rupees, startingFrom } from './prices';
+import {
+  indianDigits,
+  joiningFees,
+  packageOffered,
+  packagePrice,
+  rupeeRange,
+  rupees,
+  startingFrom,
+} from './prices';
 
 test('Indian digit grouping, like the website', () => {
   expect(indianDigits(300)).toBe('300');
@@ -39,4 +47,16 @@ test('prices follow the downloaded config, not the package id', () => {
 
 test('joining fees', () => {
   expect(joiningFees(DEFAULT_CONFIG)).toEqual({ basic: '₹4,000–4,250', premium: '₹2,000' });
+});
+
+describe('12 hours in the city', () => {
+  const withTwelve = { ...DEFAULT_CONFIG, prices: { ...DEFAULT_CONFIG.prices, twelveHours: 1400 } };
+
+  test('a fixed price once the website lists it; offered only then', () => {
+    expect(packagePrice(withTwelve, 'local-12-hours')).toEqual({ kind: 'fixed', amount: '₹1,400' });
+    expect(packageOffered(withTwelve, 'local-12-hours')).toBe(true);
+    expect(packageOffered(DEFAULT_CONFIG, 'local-12-hours')).toBe(false);
+    expect(packagePrice(DEFAULT_CONFIG, 'local-12-hours')).toEqual({ kind: 'quote' });
+    expect(packageOffered(DEFAULT_CONFIG, '3-hours-600')).toBe(true);
+  });
 });

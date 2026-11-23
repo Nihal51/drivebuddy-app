@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '@/auth/AuthProvider';
 import { AcceptPriceCard, WaitingCard } from '@/booking/AcceptPriceCard';
 import { DriverMap } from '@/booking/DriverMap';
+import { FareMeterCard } from '@/booking/FareMeterCard';
 import { PaymentCard } from '@/booking/PaymentCard';
 import { RatingCard } from '@/booking/RatingCard';
 import {
@@ -149,6 +150,8 @@ export default function BookingDetailScreen() {
           />
         </Card>
       ) : null}
+
+      {b.status === 'assigned' ? <FareMeterCard booking={b} config={config} /> : null}
 
       {b.assignedDriver && b.status === 'assigned' ? <DriverMap bookingId={b.id} /> : null}
 

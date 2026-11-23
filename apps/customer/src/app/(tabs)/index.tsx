@@ -19,6 +19,7 @@ import {
   type Category,
   type CategoryId,
   CATEGORIES,
+  categoryPackages,
   categoryPrice,
   categoryRoute,
 } from '@/booking/categories';
@@ -233,7 +234,7 @@ function TabBody({ tab, city, open }: { tab: Tab; city: City; open: Open }) {
   if (!pkg) {
     return (
       <View style={styles.body}>
-        {c.packages.map((id: PackageId) => (
+        {categoryPackages(config, c).map((id: PackageId) => (
           <Line
             key={id}
             testID={`home-package-${id}`}

@@ -179,3 +179,27 @@ describe('cash limit', () => {
     expect(parseAppConfig({ ...clone(DEFAULT_CONFIG), payments: { cashLimit: 'odd' } })).toEqual(LIVE);
   });
 });
+
+describe('12 hours and the extra-hour rate', () => {
+  test('twelveHours is read when the website lists it, left out when it does not', () => {
+    const raw = { ...clone(DEFAULT_CONFIG), prices: { ...DEFAULT_CONFIG.prices, twelveHours: 1400 } };
+    expect(parseAppConfig(raw)?.prices.twelveHours).toBe(1400);
+    expect(parseAppConfig(clone(DEFAULT_CONFIG))?.prices).not.toHaveProperty('twelveHours');
+    expect(DEFAULT_CONFIG.prices.twelveHours).toBeUndefined(); // offered only once the website has it
+  });
+
+  test('localExtraHour is read; an older file without it keeps the built-in rate', () => {
+    const raw = { ...clone(DEFAULT_CONFIG), prices: { ...DEFAULT_CONFIG.prices, localExtraHour: 175 } };
+    expect(parseAppConfig(raw)?.prices.localExtraHour).toBe(175);
+    const old = clone(DEFAULT_CONFIG) as unknown as { prices: Record<string, unknown> };
+    delete old.prices.localExtraHour;
+    expect(parseAppConfig(old)?.prices.localExtraHour).toBe(150);
+  });
+
+  test('an odd value refuses the file, like any other price', () => {
+    for (const odd of [{ twelveHours: '1400' }, { twelveHours: 0 }, { localExtraHour: -1 }])
+      expect(
+        parseAppConfig({ ...clone(DEFAULT_CONFIG), prices: { ...DEFAULT_CONFIG.prices, ...odd } }),
+      ).toBeNull();
+  });
+});

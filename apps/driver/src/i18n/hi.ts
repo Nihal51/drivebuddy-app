@@ -200,6 +200,7 @@ export const hi: Messages = {
   packages: {
     '1-hour-300': '1 घंटा',
     '3-hours-600': '3 घंटे',
+    'local-12-hours': 'शहर में 12 घंटे',
     'local-full-day': 'शहर में पूरा दिन',
     outstation: 'आउटस्टेशन ट्रिप',
     'night-driver': 'रात का ड्राइवर',

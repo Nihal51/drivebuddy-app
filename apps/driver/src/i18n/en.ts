@@ -208,6 +208,7 @@ export const en = {
   packages: {
     '1-hour-300': '1 hour',
     '3-hours-600': '3 hours',
+    'local-12-hours': '12 hours in the city',
     'local-full-day': 'Full day in the city',
     outstation: 'Outstation trip',
     'night-driver': 'Night driver',

@@ -1,4 +1,11 @@
-import { type AppConfig, type PackageId, isPackageId, packagePrice, rupees } from '@drivebuddy/shared';
+import {
+  type AppConfig,
+  type PackageId,
+  isPackageId,
+  packageOffered,
+  packagePrice,
+  rupees,
+} from '@drivebuddy/shared';
 
 import type { IconName } from '@/components/Button';
 import type { Messages } from '@/i18n';
@@ -10,7 +17,7 @@ import { priceLabel } from '@/i18n/format';
  * customer never has to read a list of ten options.
  */
 export const CATEGORIES = [
-  { id: 'hourly', icon: 'time', packages: ['1-hour-300', '3-hours-600'] },
+  { id: 'hourly', icon: 'time', packages: ['1-hour-300', '3-hours-600', 'local-12-hours'] },
   { id: 'day', icon: 'sunny', packages: ['local-full-day'] },
   { id: 'drop', icon: 'car', packages: ['one-way-drop'] },
   { id: 'outstation', icon: 'map', packages: ['outstation'] },
@@ -29,6 +36,10 @@ export const findCategory = (id: string | undefined): Category | undefined =>
 /** The tile a package belongs to. */
 export const categoryOf = (pkg: string): Category | undefined =>
   isPackageId(pkg) ? CATEGORIES.find((c) => (c.packages as readonly string[]).includes(pkg)) : undefined;
+
+/** The packages of a tile the website offers now (12 hours only once it lists its price). */
+export const categoryPackages = (config: AppConfig, category: Category): PackageId[] =>
+  category.packages.filter((id) => packageOffered(config, id));
 
 /** The price on a tile: the cheapest way in ("from ₹300"), or the package's own label. */
 export function categoryPrice(t: Messages, config: AppConfig, category: Category): string {

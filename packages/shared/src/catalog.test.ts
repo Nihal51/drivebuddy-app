@@ -10,6 +10,7 @@ test('package ids match firestore.rules', () => {
     [
       '1-hour-300',
       '3-hours-600',
+      'local-12-hours',
       'local-full-day',
       'outstation',
       'night-driver',

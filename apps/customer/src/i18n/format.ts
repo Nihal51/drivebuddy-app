@@ -13,6 +13,7 @@ import {
   type TripDestination,
   type FieldError,
   type LocalBill,
+  type LocalMeter,
   type PackageId,
   type PackagePrice,
   clock12,
@@ -22,6 +23,7 @@ import {
   pricedByTime,
   rupeeRange,
   rupees,
+  splitMinutes,
   tripInstant,
 } from '@drivebuddy/shared';
 
@@ -216,6 +218,22 @@ export function quoteBreakdown(t: Messages, q: BookingQuote): string {
  * 2 extra hours × ₹150 · 5 h with the driver)". Numbers that do not add up
  * show the total alone rather than a sum that looks wrong.
  */
+/** 560 → "9 h 20 min"; 1680 → "1 day 4 h". */
+export function meterTime(t: Messages, minutes: number): string {
+  const { days, hours, minutes: mins } = splitMinutes(minutes);
+  return days > 0 ? t.detail.meter.days(days, hours) : t.detail.meter.hours(hours, mins);
+}
+
+/** "₹600 package (3 h) + 1 extra hour × ₹150" — the live meter's breakdown, in the bill's words. */
+export function meterBreakdown(t: Messages, m: LocalMeter): string {
+  return [
+    t.detail.localBill.package(rupees(m.packagePrice), m.baseHours),
+    m.extraHours > 0 ? t.detail.localBill.extra(m.extraHours, rupees(m.extraHourRate)) : null,
+  ]
+    .filter(Boolean)
+    .join(' + ');
+}
+
 export function localBillText(t: Messages, b: LocalBill): string {
   const pkg = localBillPackage(b);
   if (pkg === null) return rupees(b.amount);

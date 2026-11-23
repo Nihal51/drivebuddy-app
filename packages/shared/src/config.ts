@@ -26,6 +26,11 @@ export type AppConfig = {
   prices: {
     oneHour: number;
     threeHours: number;
+    /**
+     * 12 hours in the city (added 24 Nov 2026). Absent in older website
+     * files — then the package is not offered (the website would not take it).
+     */
+    twelveHours?: number;
     fullDay: Range;
     /** Per 24 h of the driver's time farther than the last nearby tier (rising with the distance, trip.ts dayRateFor). */
     outstation: Range;
@@ -38,6 +43,8 @@ export type AppConfig = {
      */
     outstationNear: NearRate[];
     nightFrom: number;
+    /** Each hour a local job runs past its package (the robot bills it from the driver's taps). */
+    localExtraHour: number;
   };
   /** How outstation estimates work (site-settings.ts → outstation). */
   outstation: TripRules;
@@ -96,6 +103,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     outstation: { from: 1450, to: 1750 },
     outstationNear: [{ upToKm: 160, from: 1050, to: 1350 }],
     nightFrom: 500,
+    localExtraHour: 150,
   },
   outstation: {
     hoursPerDay: 12,
@@ -267,6 +275,8 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
     isRange(prices.fullDay) &&
     isRange(prices.outstation) &&
     isMoney(prices.nightFrom) &&
+    (prices.twelveHours === undefined || isMoney(prices.twelveHours)) &&
+    (prices.localExtraHour === undefined || isMoney(prices.localExtraHour)) &&
     isRange(monthly.basic) &&
     isCount(monthly.joiningFeePercent) &&
     isMoney(monthly.premium) &&
@@ -310,6 +320,9 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
         : { ...DEFAULT_CONFIG.prices.outstation },
       outstationNear: near,
       nightFrom: p.nightFrom,
+      ...(p.twelveHours !== undefined && { twelveHours: p.twelveHours }),
+      // Older website files: the built-in rate (the robot's setting then).
+      localExtraHour: p.localExtraHour ?? DEFAULT_CONFIG.prices.localExtraHour,
     },
     outstation: tripRules,
     destinations: tripTable,

@@ -93,6 +93,7 @@ export const hi: Messages = {
   packages: {
     '1-hour-300': { name: '1 घंटा', blurb: 'मीटिंग, कोई काम, अस्पताल का छोटा चक्कर' },
     '3-hours-600': { name: '3 घंटे', blurb: 'शॉपिंग, रिश्तेदारों से मिलना, एयरपोर्ट' },
+    'local-12-hours': { name: 'शहर में 12 घंटे', blurb: 'लंबा दिन: शादी, कई जगह रुकना, देर से लौटना' },
     'local-full-day': { name: 'शहर में पूरा दिन', blurb: 'आपके शहर में 8 घंटे की ड्राइविंग' },
     outstation: { name: 'आउटस्टेशन ट्रिप', blurb: 'आपकी कार में शहर से बाहर, प्रति दिन' },
     'night-driver': {
@@ -421,6 +422,16 @@ export const hi: Messages = {
       package: (amount: string, hours: number) => `${amount} पैकेज (${hours} घंटे)`,
       extra: (hours: number, rate: string) => `${hours} घंटे अतिरिक्त × ${rate}`,
       used: (hours: number) => `ड्राइवर के साथ ${hours} घंटे`,
+    },
+    meter: {
+      title: 'अभी तक का किराया',
+      withYou: (time: string, amount: string) => `ड्राइवर ${time} से आपके साथ · अब तक ${amount}`,
+      onTrip: (time: string, amount: string) => `ट्रिप पर ${time} · अनुमान ${amount}`,
+      onTripTime: (time: string) => `ट्रिप पर ${time}`,
+      overBooked: 'बुक किए समय से लंबी ट्रिप: ड्राइवर का समय अनुमान की तरह जोड़ा गया है।',
+      note: 'काम ख़त्म होने पर पक्का बिल बनेगा।',
+      days: (days: number, hours: number) => `${days} दिन ${hours} घंटे`,
+      hours: (hours: number, minutes: number) => `${hours} घंटे ${minutes} मिनट`,
     },
     pay: {
       title: 'भुगतान',
