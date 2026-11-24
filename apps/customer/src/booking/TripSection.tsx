@@ -8,10 +8,11 @@ import {
   rupeeRange,
   rupees,
   searchDestinations,
+  seatsLink,
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { type ReactNode, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
@@ -218,6 +219,12 @@ function Estimate({
   const sameDayKm = kmText(t, near?.upToKm ?? 0);
   const sameDay = rupeeRange(near ?? config.prices.outstation);
   const time = oneWay ? plan.est?.time : undefined;
+  // Farther than the first nearby tier, when the website sends outstation.oneWay: driving days and his way home.
+  const long = oneWay ? plan.est?.long : undefined;
+  const hmOf = (minutes: number) => {
+    const m = Math.max(0, Math.round(minutes));
+    return t.trip.hm(Math.floor(m / 60), m % 60);
+  };
   // "2 h 30 min" — hours to the nearest quarter, for his wait and his ride home.
   const about = (h: number) => {
     const q = Math.round(h * 4) / 4;
@@ -252,6 +259,25 @@ function Estimate({
   } else if (plan.est) {
     const from = t.cities[values.city];
     const timed = plan.dropAt !== undefined && plan.leaveAt !== undefined && plan.homeAt !== undefined;
+    // His way home in words: the wait and the ride (the train picked, or the route's average), and what they cost.
+    const wait = rail.selected ? rail.selected.waitMinutes : ((plan.leaveAt ?? 0) - (plan.dropAt ?? 0)) * 60;
+    const longSplit =
+      long && timed
+        ? (rail.selected ? t.trip.longSplitTrain : t.trip.longSplitAverage)(
+            hmOf(wait),
+            hmOf(long.returnMinutes - wait),
+          )
+        : '';
+    const longParts = long
+      ? [
+          long.returnFullDays ? t.trip.longHomeDays(long.returnFullDays, rupees(long.returnDay)) : null,
+          long.returnLeftoverHours
+            ? t.trip.longHomeHours(long.returnLeftoverHours, rupees(long.returnHourRate))
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' + ') || t.trip.longNothing
+      : '';
     body = (
       <>
         <AppText variant="tiny" weight="bold" color={colors.textMuted}>
@@ -262,9 +288,32 @@ function Estimate({
         </AppText>
         <AppText variant="small" color={colors.textMuted}>
           {t.trip.route(from, placeName(t, plan.dest), kmText(t, plan.km))} ·{' '}
-          {time ? t.trip.awayAbout(time.hours) : tripDays(t, plan)}
+          {long
+            ? t.trip.longSummary(long.drivingDays, Math.round(long.returnMinutes / 60))
+            : time
+              ? t.trip.awayAbout(time.hours)
+              : tripDays(t, plan)}
         </AppText>
-        {time ? (
+        {long ? (
+          // A long one-way drop (website, 24 Nov 2026): the driving days, then his way home, then his ticket.
+          <View style={styles.lines}>
+            <Line
+              label={t.trip.longDriving(
+                long.drivingDays,
+                Math.max(1, Math.round(long.drivingHours)),
+                rupees(long.drivingDay),
+              )}
+              amount={rupees(long.drivingDays * long.drivingDay)}
+              testID="trip-long-driving"
+            />
+            <Line
+              label={t.trip.longHome(hmOf(long.returnMinutes), longSplit, longParts, rupees(long.returnDay))}
+              amount={rupees(long.returnCharge)}
+              testID="trip-long-home"
+            />
+            <Line label={t.trip.ticketLine} amount={t.trip.ticketAmount} testID="trip-long-ticket" />
+          </View>
+        ) : time ? (
           // A one-way drop: the driver's time, from when he leaves until he is home (website, 8 Nov 2026).
           <View style={styles.lines}>
             <Line
@@ -347,16 +396,28 @@ function Estimate({
           <AppText variant="tiny" weight="bold" color={colors.textMuted}>
             {t.trip.explainTitle.toUpperCase()}
           </AppText>
-          {[
-            t.trip.explainRule,
-            t.trip.explainDays(
-              sameDayKm,
-              sameDay,
-              time && !time.short ? rupees(time.dayRate) : rupeeRange(config.prices.outstation),
-            ),
-            t.trip.explainPast(rupees(o.extraHour)),
-            t.trip.explainAverage,
-          ].map((line) => (
+          {(o.oneWay
+            ? [
+                t.trip.explainSameDay(sameDayKm, sameDay),
+                t.trip.explainLongDays(
+                  rupees(o.oneWay.driveDay),
+                  o.oneWay.driveHoursPerDay,
+                  o.oneWay.driveHoursPerDay + (o.oneWay.driveGraceHours ?? 0),
+                ),
+                t.trip.explainLongHome(rupees(o.oneWay.returnHour), rupees(o.oneWay.returnDay)),
+                t.trip.explainAverage,
+              ]
+            : [
+                t.trip.explainRule,
+                t.trip.explainDays(
+                  sameDayKm,
+                  sameDay,
+                  time && !time.short ? rupees(time.dayRate) : rupeeRange(config.prices.outstation),
+                ),
+                t.trip.explainPast(rupees(o.extraHour)),
+                t.trip.explainAverage,
+              ]
+          ).map((line) => (
             <AppText key={line} variant="tiny" color={colors.textMuted}>
               • {line}
             </AppText>
@@ -460,6 +521,9 @@ function TrainsHome({ rail, hasHubs }: { rail: ReturnTrains; hasHubs: boolean })
   } else {
     body = (
       <View style={styles.trainList} accessibilityRole="radiogroup">
+        <AppText variant="tiny" color={colors.textMuted} testID="seats-note">
+          {t.trip.seatsNote}
+        </AppText>
         {rail.options.map((o, i) => {
           const on = rail.selected?.id === o.id;
           return (
@@ -481,11 +545,30 @@ function TrainsHome({ rail, hasHubs }: { rail: ReturnTrains; hasHubs: boolean })
                   {i === 0 ? `${t.trip.trainRecommended}: ` : ''}
                   {o.legs.map((l) => `${l.train.number} ${l.train.name}`).join(' + ')}
                 </AppText>
-                {o.legs.map((l, j) => (
-                  <AppText key={`${l.train.number}-${j}`} variant="tiny" color={colors.textMuted}>
-                    {l.from.name} {clock(l.depart)} → {l.to.name} {clock(l.arrive)}
-                  </AppText>
-                ))}
+                {o.legs.map((l, j) => {
+                  const seats = seatsLink(l.train.number);
+                  return (
+                    <View key={`${l.train.number}-${j}`} style={styles.legRow}>
+                      <AppText variant="tiny" color={colors.textMuted} style={styles.flex}>
+                        {l.from.name} {clock(l.depart)} → {l.to.name} {clock(l.arrive)}
+                      </AppText>
+                      {seats ? (
+                        // Seats are never checked here: the customer looks on ixigo before booking his ticket.
+                        <Pressable
+                          onPress={() => void Linking.openURL(seats).catch(() => {})}
+                          accessibilityRole="link"
+                          accessibilityLabel={`${t.trip.checkSeats} ${l.train.number}`}
+                          hitSlop={8}
+                          testID={`seats-${o.id}-${j}`}
+                        >
+                          <AppText variant="tiny" weight="bold" color={colors.amberText}>
+                            {t.trip.checkSeats} ↗
+                          </AppText>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  );
+                })}
                 <AppText variant="tiny" color={colors.textMuted}>
                   {o.transfer
                     ? t.trip.trainChange(o.transfer.station.name, hm(o.transfer.minutes))
@@ -617,6 +700,7 @@ const useStyles = makeStyles((c) => ({
   toggle: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   tip: { gap: space.xs, backgroundColor: c.cream, borderRadius: radius.sm, padding: space.sm },
   trainList: { gap: space.sm },
+  legRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   trainOption: {
     flexDirection: 'row',
     gap: space.sm,

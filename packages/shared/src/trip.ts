@@ -66,6 +66,26 @@ export type TripRules = {
   mealAllowance: number;
   kmPerDay: number;
   localWithinKm: number;
+  /**
+   * One-way drops farther than the first nearby tier (website, 24 Nov 2026,
+   * outstation.oneWay): each day of driving (driveHoursPerDay hours, the last
+   * up to driveGraceHours longer) at driveDay, then his way home — the wait
+   * and the ride — each full 24 hours at returnDay and each started hour
+   * left over at returnHour, never more than returnDay for them. Older
+   * website files lack it: those drops are priced by the driver's time.
+   */
+  oneWay?: OneWayRates;
+  /** The final bill's free minutes of an hour (website outstation.graceMinutes; 15). */
+  graceMinutes?: number;
+};
+
+/** The customer's prices for a long one-way drop (website outstation.oneWay). */
+export type OneWayRates = {
+  driveDay: number;
+  returnDay: number;
+  returnHour: number;
+  driveHoursPerDay: number;
+  driveGraceHours?: number;
 };
 
 export type CityLeg = {
@@ -262,6 +282,114 @@ export function searchDestinations(all: readonly TripDestination[], search: stri
     .map((x) => x.d);
 }
 
+/* ------------------------------------------------- long one-way drops */
+
+/** Beyond this many km (one way) a one-way drop is a long one: the first nearby tier (same-day drops up to it). */
+export const longOneWayFromKm = (config: Pick<AppConfig, 'prices'>): number =>
+  config.prices.outstationNear?.[0]?.upToKm ?? 0;
+
+/** Priced by driving days and his way home (website, 24 Nov 2026)? Only when the website sends the rates. */
+export const isLongOneWay = (
+  config: Pick<AppConfig, 'prices' | 'outstation'>,
+  km: number | undefined,
+): boolean => Boolean(config.outstation.oneWay) && Math.round(Number(km) || 0) > longOneWayFromKm(config);
+
+/** Whole hours to charge for `minutes`: past the first `graceMinutes` of an hour it counts (grace 0: each started hour). */
+export function chargeHours(minutes: number, graceMinutes: number): number {
+  const m = Math.max(0, Math.floor(Number.isFinite(minutes) ? minutes : 0));
+  const h = Math.floor(m / 60);
+  return m - h * 60 > Math.max(0, graceMinutes) ? h + 1 : h;
+}
+
+/** Driving days: one per driveHoursPerDay, the last up to driveGraceHours longer, at least 1. 12.3 h → 1; 13.1 h → 2; 24 h → 2. */
+export function longDrivingDays(rates: OneWayRates, drivingHours: number): number {
+  const h = Math.max(0, Number.isFinite(drivingHours) ? drivingHours : 0);
+  return Math.max(1, Math.ceil((h - (rates.driveGraceHours ?? 0)) / rates.driveHoursPerDay - 1e-9));
+}
+
+/**
+ * His way home: each full 24 hours at returnDay; the hours left over — each
+ * started hour (the estimate), or after `graceMinutes` (the bill) — at
+ * returnHour, never more than returnDay for them.
+ *   10 h 41 m → 11 h × ₹160, at most ₹1,600 → ₹1,600;  27 h → ₹1,600 + 3 × ₹160.
+ */
+export function longReturn(
+  rates: { returnDay: number; returnHour: number },
+  minutes: number,
+  graceMinutes = 0,
+): { fullDays: number; leftoverHours: number; hours: number; charge: number } {
+  const m = Math.max(0, Math.round(Number.isFinite(minutes) ? minutes : 0));
+  const fullDays = Math.floor(m / 1440);
+  const leftoverHours = chargeHours(m - fullDays * 1440, graceMinutes);
+  const charge = fullDays * rates.returnDay + Math.min(rates.returnDay, leftoverHours * rates.returnHour);
+  return { fullDays, leftoverHours, hours: fullDays * 24 + leftoverHours, charge };
+}
+
+export type LongOneWayPrice = {
+  /** drivingDays × drivingDay + returnCharge; his ticket home is the customer's, apart. */
+  price: number;
+  km: number;
+  drivingHours: number;
+  drivingDays: number;
+  drivingDay: number;
+  /** His way home: minutes, whole hours charged, and its charge. */
+  returnMinutes: number;
+  returnHours: number;
+  returnFullDays: number;
+  returnLeftoverHours: number;
+  returnDay: number;
+  returnHourRate: number;
+  returnCharge: number;
+};
+
+/**
+ * A long one-way drop's price, exactly as the website's longOneWayPrice:
+ * driving days × driveDay + his way home. `drivingHours`: the route's
+ * driving (estimate) or start → drop (meter); `returnMinutes`: the wait and
+ * the ride (estimate) or drop → home (meter). `days`: at least this many
+ * driving days (days booked on top). Undefined without the website's rates.
+ *   Raipur → Ranchi 616 km, 12.3 h, 10 h 41 m → ₹1,600 + ₹1,600 = ₹3,200.
+ */
+export function longOneWayPrice(
+  config: Pick<AppConfig, 'outstation'>,
+  km: number,
+  drivingHours: number,
+  returnMinutes: number,
+  rates: { drivingDay?: number; returnDay?: number; returnHour?: number } = {},
+  days = 0,
+  graceMinutes = 0,
+): LongOneWayPrice | undefined {
+  const set = config.outstation.oneWay;
+  if (!set) return undefined;
+  const drivingDay = Math.round(rates.drivingDay ?? set.driveDay);
+  const returnHourRate = Math.round(rates.returnHour ?? set.returnHour);
+  const returnDay = Math.round(rates.returnDay ?? set.returnDay);
+  const drivingDays = Math.max(longDrivingDays(set, drivingHours), Math.floor(days) || 0);
+  const back = longReturn({ returnDay, returnHour: returnHourRate }, returnMinutes, graceMinutes);
+  return {
+    price: drivingDays * drivingDay + back.charge,
+    km: Math.round(km),
+    drivingHours,
+    drivingDays,
+    drivingDay,
+    returnMinutes: Math.max(0, Math.round(returnMinutes)),
+    returnHours: back.hours,
+    returnFullDays: back.fullDays,
+    returnLeftoverHours: back.leftoverHours,
+    returnDay,
+    returnHourRate,
+    returnCharge: back.charge,
+  };
+}
+
+/** The way-home day rate for an agreed hourly rate: the website's returnDay in the same proportion, at most 10 hours' worth. */
+export function longReturnDayFor(config: Pick<AppConfig, 'outstation'>, returnHourRate: number): number {
+  const set = config.outstation.oneWay;
+  const rate = Math.max(0, Math.round(returnHourRate));
+  if (!set || !set.returnHour) return 10 * rate;
+  return Math.min(10 * rate, Math.round((set.returnDay * rate) / set.returnHour));
+}
+
 /* ------------------------------------------------------------------ plan */
 
 export type TripEstimate = {
@@ -271,8 +399,10 @@ export type TripEstimate = {
   /** The days charged and the price for each (one-way: the 24-hour blocks of his time). */
   days: number;
   dayRate: Range;
-  /** One-way (8 Nov 2026): the price for the driver's time. */
+  /** One-way up to the first nearby tier (8 Nov 2026), or farther on an older website: the price for the driver's time. */
   time?: TimePrice;
+  /** One-way farther than that (24 Nov 2026): driving days and his way home. */
+  long?: LongOneWayPrice;
 };
 
 export type TripPlan = {
@@ -438,9 +568,15 @@ export function planTrip(
     }
   }
 
-  // The price for his time: from the start until he is home (a table without the timings: the drop
-  // and the hours home it gives).
-  const time = timePrice(config, leg.km, timing.homeAt ?? dropAt + leg.oneWay.returnHours);
+  // Farther than the first nearby tier (website, 24 Nov 2026): driving days, then his way home —
+  // the drop → home of the plan (the wait and the ride: the train picked, or the route's average).
+  const long =
+    timing.homeAt !== undefined && timing.dropAt !== undefined && isLongOneWay(config, leg.km)
+      ? longOneWayPrice(config, leg.km, hours, (timing.homeAt - timing.dropAt) * 60, {}, calendar + extraDays)
+      : undefined;
+  // Otherwise the price for his time: from the start until he is home (a table without the timings:
+  // the drop and the hours home it gives).
+  const time = long ? undefined : timePrice(config, leg.km, timing.homeAt ?? dropAt + leg.oneWay.returnHours);
   return {
     ...base,
     km: leg.km,
@@ -452,6 +588,15 @@ export function planTrip(
     nonstop: straight,
     ...timing,
     local,
+    ...(long && {
+      est: {
+        from: long.price,
+        to: long.price,
+        days: long.drivingDays,
+        dayRate: { from: long.drivingDay, to: long.drivingDay },
+        long,
+      },
+    }),
     ...(time && {
       est: {
         from: time.price,
@@ -528,7 +673,8 @@ export function tripRecord(plan: TripPlan, typedPlace: string): BookingTrip {
     destId: plan.dest?.id ?? '',
     kind: plan.kind,
     km: plan.km,
-    days: plan.days,
+    // A long one-way drop: its driving days (what its price counts), as the website writes.
+    days: plan.est?.long ? plan.est.long.drivingDays : plan.days,
     returnHours: plan.returnHours,
     estFrom: plan.est?.from ?? 0,
     estTo: plan.est?.to ?? 0,
@@ -747,8 +893,15 @@ export function parseTripRules(v: unknown): TripRules | null {
   const nearFrom = km(v.nearFromKm);
   const topFrom = km(v.dayTopFromKm);
   const rising = nearFrom !== undefined && topFrom !== undefined && topFrom > nearFrom;
+  const oneWay = parseOneWay(v.oneWay);
+  const grace = v.graceMinutes;
   // Older files also carry the way-home and route-price keys: no longer used, left out.
   return {
+    ...(oneWay && { oneWay }),
+    ...(typeof grace === 'number' &&
+      Number.isInteger(grace) &&
+      grace >= 0 &&
+      grace <= 59 && { graceMinutes: grace }),
     ...(rising && { nearFromKm: nearFrom, dayTopFromKm: topFrom }),
     ...(typeof extraAfter === 'number' &&
       Number.isInteger(extraAfter) &&
@@ -764,6 +917,24 @@ export function parseTripRules(v: unknown): TripRules | null {
     mealAllowance: v.mealAllowance as number,
     kmPerDay: v.kmPerDay as number,
     localWithinKm: v.localWithinKm as number,
+  };
+}
+
+/** outstation.oneWay → checked rates, or undefined (absent or odd: those drops keep the older pricing). */
+function parseOneWay(v: unknown): OneWayRates | undefined {
+  if (!isObj(v)) return undefined;
+  const rupee = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x > 0 && x <= 100_000;
+  const perDay = v.driveHoursPerDay;
+  const grace = v.driveGraceHours;
+  if (!rupee(v.driveDay) || !rupee(v.returnDay) || !rupee(v.returnHour)) return undefined;
+  if (typeof perDay !== 'number' || !Number.isInteger(perDay) || perDay < 1 || perDay > 24) return undefined;
+  const graceOk = typeof grace === 'number' && Number.isFinite(grace) && grace >= 0 && grace <= 12;
+  return {
+    driveDay: v.driveDay as number,
+    returnDay: v.returnDay as number,
+    returnHour: v.returnHour as number,
+    driveHoursPerDay: perDay,
+    ...(graceOk && { driveGraceHours: grace }),
   };
 }
 

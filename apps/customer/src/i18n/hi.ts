@@ -212,6 +212,27 @@ export const hi: Messages = {
     timeTotal: (total: number) =>
       `ड्राइवर का समय: निकलने से घर पहुँचने तक लगभग ${total} घंटे — ड्राइविंग, ट्रेन का इंतज़ार और घर वापसी`,
     returnShort: (n: number) => `घर वापसी (${n} घंटे)`,
+    longSummary: (days: number, hours: number) => `${days} दिन ड्राइविंग + लगभग ${hours} घंटे घर वापसी`,
+    longDriving: (days: number, hours: number, rate: string) =>
+      `${days} दिन ड्राइविंग (लगभग ${hours} घंटे) × ${rate}`,
+    longHome: (about: string, split: string, parts: string, dayMax: string) =>
+      `ड्राइवर की घर वापसी लगभग ${about}${split ? ` (${split})` : ''}: ${parts} (एक दिन में ${dayMax} से ज़्यादा नहीं)`,
+    longHomeDays: (days: number, rate: string) => `${days} दिन × ${rate}`,
+    longHomeHours: (hours: number, rate: string) => `${hours} घंटे × ${rate}`,
+    longNothing: 'कुछ नहीं',
+    longSplitTrain: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}`,
+    longSplitAverage: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}, रूट का औसत`,
+    ticketLine: 'ड्राइवर का घर का टिकट: आप बुक करें और उसका भुगतान करें',
+    ticketAmount: '+ टिकट',
+    checkSeats: 'सीट देखें',
+    seatsNote:
+      'टिकट ख़त्म हो सकते हैं — बुक करने से पहले सीट देख लें। सीट न मिले तो ड्राइवर अगली ट्रेन लेगा; पक्के बिल में उसका असली समय गिना जाएगा।',
+    explainSameDay: (km: string, sameDay: string) =>
+      `${km} तक ड्राइवर उसी दिन घर लौट आता है: पूरी ट्रिप का एक दाम (${sameDay}, दूरी के हिसाब से)।`,
+    explainLongDays: (day: string, perDay: number, last: number) =>
+      `इससे दूर: ड्राइविंग के हर दिन के ${day} — एक दिन में ${perDay} घंटे ड्राइविंग, आख़िरी दिन ${last} घंटे तक।`,
+    explainLongHome: (hour: string, dayMax: string) =>
+      `फिर उसकी घर वापसी — ट्रेन का इंतज़ार और सफ़र: हर शुरू हुए घंटे के ${hour}, हर 24 घंटे में ${dayMax} से ज़्यादा नहीं। यानी 5 घंटे = 5 × ${hour}; 27 घंटे = ${dayMax} + 3 × ${hour}। पक्का बिल असली समय से बनेगा।`,
     nonstop: 'दिन-रात ड्राइविंग',
     nonstopHint: 'रात में आराम नहीं, तो जल्दी पहुँचेगा — ड्राइविंग की कीमत वही।',
     trainsTitle: 'ड्राइवर की वापसी की ट्रेन',

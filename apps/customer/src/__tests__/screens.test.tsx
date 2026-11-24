@@ -377,6 +377,81 @@ describe('Booking, step by step', () => {
     expect(opts.trip).toMatchObject({ destId: 'bengaluru', estFrom: 7260, estTo: 7260 });
   });
 
+  test('past 160 km with the website’s outstation.oneWay: driving days, his way home, his ticket; Check seats', async () => {
+    // Raipur → Ranchi: his train leaves 1 h after the drop and gets him home 9 h 40 min later.
+    mockTrains.answer = (plan, startAt) => {
+      const depart = startAt + ((plan?.dropAt ?? 0) + 1) * 3_600_000;
+      const arrive = depart + (9 * 60 + 40) * 60_000;
+      const option: ReturnOption = {
+        id: `18310@${depart}`,
+        legs: [
+          {
+            train: { number: '18310', name: 'Hatia Sambalpur Exp' },
+            from: { code: 'RNC', name: 'Ranchi' },
+            to: { code: 'R', name: 'Raipur' },
+            depart,
+            arrive,
+            checkedAt: depart - 86_400_000,
+          },
+        ],
+        depart,
+        arrive,
+        expectedArrive: arrive,
+        waitMinutes: 60,
+        totalMinutes: 10 * 60 + 40,
+        scheduled: true,
+        warnings: [],
+      };
+      return { status: 'ok', retrying: false, options: [option], selected: option, select: () => {} };
+    };
+    const config = {
+      ...DEFAULT_CONFIG,
+      outstation: {
+        ...DEFAULT_CONFIG.outstation,
+        oneWay: {
+          driveDay: 1600,
+          returnDay: 1600,
+          returnHour: 160,
+          driveHoursPerDay: 12,
+          driveGraceHours: 1,
+        },
+      },
+    };
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b11' });
+    await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config });
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,200');
+    expect(screen.getByTestId('trip-long-driving')).toHaveTextContent(
+      /1 driving day \(about 12 h\) × ₹1,600.*₹1,600/,
+    );
+    expect(screen.getByTestId('trip-long-home')).toHaveTextContent(
+      /His way home about 10 h 40 min \(waiting 1 h \+ train 9 h 40 min\): 11 h × ₹160 \(never more than ₹1,600 a day\).*₹1,600/,
+    );
+    expect(screen.getByTestId('trip-long-ticket')).toHaveTextContent(
+      /His ticket home: you book and pay for it.*\+ ticket/,
+    );
+    expect(screen.queryByTestId('trip-time-days')).toBeNull();
+    // The trains: the sell-out note above them, and Check seats on each.
+    expect(screen.getByTestId('seats-note')).toHaveTextContent(
+      /Tickets can sell out — check seats before you book/,
+    );
+    await fireEvent.press(screen.getByTestId(/^seats-18310@/));
+    expect(open).toHaveBeenCalledWith('https://www.ixigo.com/trains/18310/seat-availability');
+    open.mockRestore();
+    // Saved as the website saves it: the driving days and the estimate.
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+    await next();
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    expect(mockedSubmit.mock.calls[0][2].trip).toMatchObject({
+      destId: 'ranchi',
+      days: 1,
+      estFrom: 3200,
+      estTo: 3200,
+    });
+  });
+
   test('a one-way drop shows the estimate and saves the trip with it', async () => {
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b3' });
     await openBooking({ package: 'one-way-drop' });

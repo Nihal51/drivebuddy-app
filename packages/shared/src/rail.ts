@@ -545,3 +545,13 @@ export async function findReturn(args: {
     live: anyLive && options.some((o) => !o.scheduled),
   };
 }
+
+/**
+ * Where to check seats on a train (as the website's "Check seats"): ixigo's
+ * seat-availability page for its number, or '' for anything that is not a
+ * train number — so nothing else can be opened from the link.
+ */
+export function seatsLink(trainNumber: string): string {
+  const n = String(trainNumber ?? '').trim();
+  return /^\d{4,6}$/.test(n) ? `https://www.ixigo.com/trains/${n}/seat-availability` : '';
+}

@@ -15,7 +15,10 @@
  *   once the trip runs longer than that — the driver's time priced the way
  *   the estimate is (trip.ts timePrice: 24-hour blocks at the trip's day
  *   price, the hours past them at outstation.extraHour, never more than one
- *   more day).
+ *   more day). A one-way drop past the first nearby tier, when the website
+ *   sends outstation.oneWay: driving days from Start to the drop, then his
+ *   way home from the drop (trip.ts longOneWayPrice, the bill's 15 minutes'
+ *   grace).
  *
  * Nothing here is a bill: the robot (local) or the office (trips) makes that
  * when the job ends.
@@ -24,7 +27,7 @@
 import type { Booking } from './booking';
 import type { PackageId } from './catalog';
 import type { AppConfig } from './config';
-import { isTripPackage, timePrice } from './trip';
+import { isLongOneWay, isTripPackage, longOneWayPrice, longReturnDayFor, timePrice } from './trip';
 
 /** Hours each local package includes (the robot's LOCAL_BASE_HOURS). */
 export const LOCAL_BASE_HOURS: Partial<Record<PackageId, number>> = {
@@ -132,14 +135,57 @@ export function tripMeter(
   const minutes = minutesBetween(start.getTime(), end);
   const booked = whole(b.quote?.amount) ?? whole(b.acceptedPrice?.amount) ?? whole(b.trip?.estTo);
   const km = b.trip?.km ?? b.quote?.km ?? 0;
-  // His time priced like the estimate: at the agreed day rate if the call set one.
-  const time = timePrice(config, km, minutes / 60, {
-    ...(whole(b.quote?.dayRate) ? { dayRate: b.quote?.dayRate } : {}),
-    ...(b.quote && b.quote.extraHourRate > 0 ? { extraHour: b.quote.extraHourRate } : {}),
-  });
+  const real =
+    b.packageId === 'one-way-drop' && isLongOneWay(config, km) ? longSoFar(b, config, km, now) : timeSoFar();
   if (booked === null) return { kind: 'trip', minutes, amount: null, overBooked: false };
-  const over = time !== undefined && time.price > booked;
-  return { kind: 'trip', minutes, amount: over ? time.price : booked, overBooked: over };
+  const over = real !== undefined && real > booked;
+  return { kind: 'trip', minutes, amount: over ? real : booked, overBooked: over };
+
+  /** His time priced like the estimate: 24-hour blocks, at the agreed day rate if the call set one. */
+  function timeSoFar(): number | undefined {
+    return timePrice(config, km, minutes / 60, {
+      ...(whole(b.quote?.dayRate) ? { dayRate: b.quote?.dayRate } : {}),
+      ...(b.quote && b.quote.extraHourRate > 0 ? { extraHour: b.quote.extraHourRate } : {}),
+    })?.price;
+  }
+}
+
+/**
+ * A long one-way drop so far, as its final bill will count it: driving days
+ * from Start to the drop (or now), then his way home from the drop to home
+ * (or now), the first graceMinutes of an hour free — at the rates agreed on
+ * the call, else the website's.
+ */
+function longSoFar(
+  b: Pick<Booking, 'quote' | 'clock'>,
+  config: Pick<AppConfig, 'outstation'>,
+  km: number,
+  now: number,
+): number | undefined {
+  const start = b.clock?.startAt?.getTime();
+  if (start === undefined) return undefined;
+  const drop = b.clock?.dropAt?.getTime();
+  const home = b.clock?.homeAt?.getTime() ?? now;
+  const driveMinutes = minutesBetween(start, drop ?? now);
+  const returnMinutes = drop === undefined ? 0 : minutesBetween(drop, home);
+  const q = b.quote;
+  const rates =
+    q && q.returnHourRate > 0 && whole(q.dayRate)
+      ? {
+          drivingDay: q.dayRate,
+          returnHour: q.returnHourRate,
+          returnDay: longReturnDayFor(config, q.returnHourRate),
+        }
+      : {};
+  return longOneWayPrice(
+    config,
+    km,
+    driveMinutes / 60,
+    returnMinutes,
+    rates,
+    0,
+    config.outstation.graceMinutes ?? 15,
+  )?.price;
 }
 
 /** The meter for a booking the driver is on now, or null (not on the job yet, no start time, not metered). */

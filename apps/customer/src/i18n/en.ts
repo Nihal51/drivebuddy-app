@@ -223,6 +223,28 @@ export const en = {
     timeTotal: (total: number) =>
       `His time: about ${total} h, from when he leaves until he is home — the drive, waiting for his train and the ride home`,
     returnShort: (n: number) => `way home (${n} h)`,
+    longSummary: (days: number, hours: number) =>
+      `${days === 1 ? '1 driving day' : `${days} driving days`} + about ${hours} h home`,
+    longDriving: (days: number, hours: number, rate: string) =>
+      `${days === 1 ? '1 driving day' : `${days} driving days`} (about ${hours} h) × ${rate}`,
+    longHome: (about: string, split: string, parts: string, dayMax: string) =>
+      `His way home about ${about}${split ? ` (${split})` : ''}: ${parts} (never more than ${dayMax} a day)`,
+    longHomeDays: (days: number, rate: string) => `${days === 1 ? '1 day' : `${days} days`} × ${rate}`,
+    longHomeHours: (hours: number, rate: string) => `${hours} h × ${rate}`,
+    longNothing: 'nothing',
+    longSplitTrain: (wait: string, ride: string) => `waiting ${wait} + train ${ride}`,
+    longSplitAverage: (wait: string, ride: string) => `waiting ${wait} + train ${ride}, the route’s average`,
+    ticketLine: 'His ticket home: you book and pay for it',
+    ticketAmount: '+ ticket',
+    checkSeats: 'Check seats',
+    seatsNote:
+      'Tickets can sell out — check seats before you book. If there’s no seat, he takes the next train; the final bill counts his real time.',
+    explainSameDay: (km: string, sameDay: string) =>
+      `Up to ${km} he is home the same day: one price for the trip (${sameDay}, by distance).`,
+    explainLongDays: (day: string, perDay: number, last: number) =>
+      `Farther: ${day} for each day of driving — ${perDay} hours of driving a day, the last day up to ${last} hours.`,
+    explainLongHome: (hour: string, dayMax: string) =>
+      `Then his way home — waiting for the train he takes and the ride: ${hour} for each started hour, never more than ${dayMax} for each 24 hours. So 5 hours home = 5 × ${hour}; 27 hours = ${dayMax} + 3 × ${hour}. The final bill uses his real times.`,
     nonstop: 'Drive day and night',
     nonstopHint: 'No overnight rest, so he gets there sooner — the same price for the driving.',
     trainsTitle: 'Driver’s train home',
