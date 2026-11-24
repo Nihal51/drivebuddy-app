@@ -662,13 +662,13 @@ describe('Booking detail', () => {
           clock: { startAt: new Date(START) },
         });
         // 9 h 20 min: 10 hours used (the 10th is past its 15 minutes), 7 past the package.
-        expect(screen.getByText('Driver with you 9 h 20 min · so far ₹1,650')).toBeOnTheScreen();
-        expect(screen.getByText('₹600 package (3 h) + 7 extra hours × ₹150')).toBeOnTheScreen();
+        expect(screen.getByText('Driver with you 9 h 20 min · so far ₹1,440')).toBeOnTheScreen();
+        expect(screen.getByText('₹600 package (3 h) + 7 extra hours × ₹120')).toBeOnTheScreen();
         expect(screen.getByText('Final bill when the job ends.')).toBeOnTheScreen();
         await act(async () => {
           jest.advanceTimersByTime(60_000);
         });
-        expect(screen.getByText('Driver with you 9 h 21 min · so far ₹1,650')).toBeOnTheScreen();
+        expect(screen.getByText('Driver with you 9 h 21 min · so far ₹1,440')).toBeOnTheScreen();
       });
 
       test('a trip: time on the trip and the estimate — from his real time once longer than booked', async () => {

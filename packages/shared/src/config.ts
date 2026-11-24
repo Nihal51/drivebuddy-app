@@ -103,7 +103,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     outstation: { from: 1450, to: 1750 },
     outstationNear: [{ upToKm: 160, from: 1050, to: 1350 }],
     nightFrom: 500,
-    localExtraHour: 150,
+    localExtraHour: 120,
   },
   outstation: {
     hoursPerDay: 12,

@@ -50,14 +50,14 @@ describe('local jobs', () => {
       baseHours: 3,
       usedHours: 3,
       extraHours: 0,
-      extraHourRate: 150,
+      extraHourRate: 120,
       packagePrice: 600,
       amount: 600,
     });
     expect(localMeter(local('3-hours-600'), CONFIG, at(3 * 60 + 16))).toMatchObject({
       usedHours: 4,
       extraHours: 1,
-      amount: 750,
+      amount: 720,
     });
   });
 
@@ -70,13 +70,13 @@ describe('local jobs', () => {
       usedHours: 9,
       extraHours: 1,
       packagePrice: 1200,
-      amount: 1350,
+      amount: 1320,
     });
     expect(localMeter(local('local-full-day'), CONFIG, at(9 * 60 + 20))).toMatchObject({
       minutes: 560,
       usedHours: 10,
       extraHours: 2,
-      amount: 1500,
+      amount: 1440,
     });
   });
 
@@ -89,7 +89,7 @@ describe('local jobs', () => {
     expect(localMeter(local('local-12-hours'), CONFIG, at(14 * 60 + 30))).toMatchObject({
       usedHours: 15,
       extraHours: 3,
-      amount: 1400 + 3 * 150,
+      amount: 1400 + 3 * 120,
     });
   });
 

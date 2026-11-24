@@ -193,7 +193,7 @@ describe('12 hours and the extra-hour rate', () => {
     expect(parseAppConfig(raw)?.prices.localExtraHour).toBe(175);
     const old = clone(DEFAULT_CONFIG) as unknown as { prices: Record<string, unknown> };
     delete old.prices.localExtraHour;
-    expect(parseAppConfig(old)?.prices.localExtraHour).toBe(150);
+    expect(parseAppConfig(old)?.prices.localExtraHour).toBe(120);
   });
 
   test('an odd value refuses the file, like any other price', () => {
