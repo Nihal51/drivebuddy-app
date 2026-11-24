@@ -223,7 +223,23 @@ export const hi: Messages = {
     longSplitTrain: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}`,
     longSplitAverage: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}, रूट का औसत`,
     ticketLine: 'ड्राइवर का घर का टिकट: आप बुक करें और उसका भुगतान करें',
-    ticketAmount: '+ टिकट',
+    ticketAmount: '+ उसका टिकट',
+    kmSummary: (hours: number) => `और घर वापसी के लगभग ${hours} घंटे`,
+    kmDriving: (km: string, rate: string) => `ड्राइविंग ${km} × ${rate}`,
+    equals: (amount: string) => `= ${amount}`,
+    kmMinimum: (minimum: string, subtotal: string) =>
+      `कम से कम ${minimum} (ड्राइविंग और घर वापसी ${subtotal} बनते हैं)`,
+    kmRounded: (subtotal: string, step: string) => `${subtotal}, नज़दीकी ${step} तक`,
+    driveAbout: (drive: string) => `लगभग ${drive}`,
+    driveBreaks: (n: number, time: string) => ` + ${n} ब्रेक (${time})`,
+    driveDayNight: ', दिन-रात',
+    driveNights: (n: number) => `, ${n} रात आराम`,
+    driveArrives: (at: string) => ` → निकलने के लगभग ${at} बाद पहुँचेगा`,
+    explainKmDrive: (perKm: string) => `इससे दूर: ड्राइविंग ${perKm} प्रति km (एक तरफ़, सड़क से)।`,
+    explainDriveTime: (kmh: number, breakMinutes: number, every: number, maxRoad: number) =>
+      `ड्राइवर लगभग ${kmh} km प्रति घंटे चलाता है, हर ${every} घंटे पर ${breakMinutes} मिनट का ब्रेक, और सड़क पर लगभग ${maxRoad} घंटे के बाद रात को आराम — जब तक आप दिन-रात चलवाना न चाहें।`,
+    explainKmHome: (hour: string, dayMax: string, roundTo: string, minimum: string) =>
+      `फिर उसकी घर वापसी — ट्रेन का इंतज़ार और सफ़र: हर शुरू हुए घंटे के ${hour}, हर 24 घंटे में ${dayMax} से ज़्यादा नहीं। यानी 5 घंटे = 5 × ${hour}; 27 घंटे = ${dayMax} + 3 × ${hour}। कुल रकम नज़दीकी ${roundTo} तक, कम से कम ${minimum}; पक्का बिल असली समय से बनेगा।`,
     checkSeats: 'सीट देखें',
     seatsNote:
       'टिकट ख़त्म हो सकते हैं — बुक करने से पहले सीट देख लें। सीट न मिले तो ड्राइवर अगली ट्रेन लेगा; पक्के बिल में उसका असली समय गिना जाएगा।',

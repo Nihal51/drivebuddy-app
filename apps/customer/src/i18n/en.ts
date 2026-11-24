@@ -235,7 +235,23 @@ export const en = {
     longSplitTrain: (wait: string, ride: string) => `waiting ${wait} + train ${ride}`,
     longSplitAverage: (wait: string, ride: string) => `waiting ${wait} + train ${ride}, the route’s average`,
     ticketLine: 'His ticket home: you book and pay for it',
-    ticketAmount: '+ ticket',
+    ticketAmount: '+ his ticket',
+    kmSummary: (hours: number) => `plus about ${hours} h for his way home`,
+    kmDriving: (km: string, rate: string) => `Driving ${km} × ${rate}`,
+    equals: (amount: string) => `= ${amount}`,
+    kmMinimum: (minimum: string, subtotal: string) =>
+      `Minimum ${minimum} (the drive and his way home come to ${subtotal})`,
+    kmRounded: (subtotal: string, step: string) => `${subtotal} to the nearest ${step}`,
+    driveAbout: (drive: string) => `about ${drive}`,
+    driveBreaks: (n: number, time: string) => ` + ${n} ${n === 1 ? 'break' : 'breaks'} (${time})`,
+    driveDayNight: ', day and night',
+    driveNights: (n: number) => `, resting ${n} ${n === 1 ? 'night' : 'nights'}`,
+    driveArrives: (at: string) => ` → arrives about ${at} after leaving`,
+    explainKmDrive: (perKm: string) => `Farther: the drive is ${perKm} a km (one way, by road).`,
+    explainDriveTime: (kmh: number, breakMinutes: number, every: number, maxRoad: number) =>
+      `He drives about ${kmh} km an hour with a ${breakMinutes}-minute break every ${every} hours, and rests the night after about ${maxRoad} hours on the road — unless you want it driven day and night.`,
+    explainKmHome: (hour: string, dayMax: string, roundTo: string, minimum: string) =>
+      `Then his way home — waiting for the train he takes and the ride: ${hour} for each started hour, never more than ${dayMax} for each 24 hours. So 5 hours home = 5 × ${hour}; 27 hours = ${dayMax} + 3 × ${hour}. The total is rounded to the nearest ${roundTo}, at least ${minimum}; the final bill uses his real times.`,
     checkSeats: 'Check seats',
     seatsNote:
       'Tickets can sell out — check seats before you book. If there’s no seat, he takes the next train; the final bill counts his real time.',

@@ -7,6 +7,8 @@ import {
   type TripPlan,
   rupeeRange,
   rupees,
+  daysRates,
+  kmRates,
   searchDestinations,
   seatsLink,
 } from '@drivebuddy/shared';
@@ -221,6 +223,11 @@ function Estimate({
   const time = oneWay ? plan.est?.time : undefined;
   // Farther than the first nearby tier, when the website sends outstation.oneWay: driving days and his way home.
   const long = oneWay ? plan.est?.long : undefined;
+  // The website's one-way rates, for the explainer: v3 by the km, or v2 driving days.
+  const perKm = kmRates(o.oneWay);
+  const byDays = daysRates(o.oneWay);
+  // v3 (the website's rule since 24 Nov 2026): the drive by the km, then his way home.
+  const byKm = oneWay ? plan.est?.byKm : undefined;
   const hmOf = (minutes: number) => {
     const m = Math.max(0, Math.round(minutes));
     return t.trip.hm(Math.floor(m / 60), m % 60);
@@ -261,23 +268,27 @@ function Estimate({
     const timed = plan.dropAt !== undefined && plan.leaveAt !== undefined && plan.homeAt !== undefined;
     // His way home in words: the wait and the ride (the train picked, or the route's average), and what they cost.
     const wait = rail.selected ? rail.selected.waitMinutes : ((plan.leaveAt ?? 0) - (plan.dropAt ?? 0)) * 60;
+    const homeMinutes = byKm?.homeMinutes ?? long?.returnMinutes ?? 0;
     const longSplit =
-      long && timed
+      (long || byKm) && timed
         ? (rail.selected ? t.trip.longSplitTrain : t.trip.longSplitAverage)(
             hmOf(wait),
-            hmOf(long.returnMinutes - wait),
+            hmOf(homeMinutes - wait),
           )
         : '';
-    const longParts = long
-      ? [
-          long.returnFullDays ? t.trip.longHomeDays(long.returnFullDays, rupees(long.returnDay)) : null,
-          long.returnLeftoverHours
-            ? t.trip.longHomeHours(long.returnLeftoverHours, rupees(long.returnHourRate))
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' + ') || t.trip.longNothing
-      : '';
+    // "1 day × ₹1,500 + 11 h × ₹100": the full days and the started hours of his way home.
+    const homeParts = (fullDays: number, dayRate: number, hours: number, hourRate: number) =>
+      [
+        fullDays ? t.trip.longHomeDays(fullDays, rupees(dayRate)) : null,
+        hours ? t.trip.longHomeHours(hours, rupees(hourRate)) : null,
+      ]
+        .filter(Boolean)
+        .join(' + ') || t.trip.longNothing;
+    const longParts = byKm
+      ? homeParts(byKm.homeFullDays, byKm.homeDayMax, byKm.homeLeftoverHours, byKm.homeHour)
+      : long
+        ? homeParts(long.returnFullDays, long.returnDay, long.returnLeftoverHours, long.returnHourRate)
+        : '';
     body = (
       <>
         <AppText variant="tiny" weight="bold" color={colors.textMuted}>
@@ -288,14 +299,45 @@ function Estimate({
         </AppText>
         <AppText variant="small" color={colors.textMuted}>
           {t.trip.route(from, placeName(t, plan.dest), kmText(t, plan.km))} ·{' '}
-          {long
-            ? t.trip.longSummary(long.drivingDays, Math.round(long.returnMinutes / 60))
-            : time
-              ? t.trip.awayAbout(time.hours)
-              : tripDays(t, plan)}
+          {byKm
+            ? t.trip.kmSummary(Math.round(byKm.homeMinutes / 60))
+            : long
+              ? t.trip.longSummary(long.drivingDays, Math.round(long.returnMinutes / 60))
+              : time
+                ? t.trip.awayAbout(time.hours)
+                : tripDays(t, plan)}
         </AppText>
-        {long ? (
-          // A long one-way drop (website, 24 Nov 2026): the driving days, then his way home, then his ticket.
+        {byKm ? (
+          // A long one-way drop (website, 24 Nov 2026, v3): the drive by the km, his way home, the rounding
+          // or the minimum, his ticket.
+          <View style={styles.lines}>
+            <Line
+              label={t.trip.kmDriving(kmText(t, byKm.km), rupees(byKm.perKm))}
+              amount={t.trip.equals(rupees(byKm.driving))}
+              testID="trip-km-driving"
+            />
+            <Line
+              label={t.trip.longHome(hmOf(byKm.homeMinutes), longSplit, longParts, rupees(byKm.homeDayMax))}
+              amount={t.trip.equals(rupees(byKm.home))}
+              testID="trip-km-home"
+            />
+            {byKm.minimumApplies ? (
+              <Line
+                label={t.trip.kmMinimum(rupees(byKm.minimum), rupees(byKm.subtotal))}
+                amount={rupees(byKm.price)}
+                testID="trip-km-minimum"
+              />
+            ) : byKm.adjust !== 0 ? (
+              <Line
+                label={t.trip.kmRounded(rupees(byKm.subtotal), rupees(byKm.roundTo))}
+                amount={rupees(byKm.price)}
+                testID="trip-km-rounded"
+              />
+            ) : null}
+            <Line label={t.trip.ticketLine} amount={t.trip.ticketAmount} testID="trip-km-ticket" />
+          </View>
+        ) : long ? (
+          // A long one-way drop (website, 24 Nov 2026, v2): the driving days, then his way home, then his ticket.
           <View style={styles.lines}>
             <Line
               label={t.trip.longDriving(
@@ -396,27 +438,49 @@ function Estimate({
           <AppText variant="tiny" weight="bold" color={colors.textMuted}>
             {t.trip.explainTitle.toUpperCase()}
           </AppText>
-          {(o.oneWay
+          {(perKm
             ? [
                 t.trip.explainSameDay(sameDayKm, sameDay),
-                t.trip.explainLongDays(
-                  rupees(o.oneWay.driveDay),
-                  o.oneWay.driveHoursPerDay,
-                  o.oneWay.driveHoursPerDay + (o.oneWay.driveGraceHours ?? 0),
+                t.trip.explainKmDrive(rupees(perKm.perKm)),
+                ...(o.drive
+                  ? [
+                      t.trip.explainDriveTime(
+                        o.drive.kmh,
+                        o.drive.breakMinutes,
+                        o.drive.breakEveryHours,
+                        o.drive.maxRoadHoursPerDay,
+                      ),
+                    ]
+                  : []),
+                t.trip.explainKmHome(
+                  rupees(perKm.homeHour),
+                  rupees(perKm.homeDayMax),
+                  rupees(perKm.roundTo),
+                  rupees(perKm.minimum),
                 ),
-                t.trip.explainLongHome(rupees(o.oneWay.returnHour), rupees(o.oneWay.returnDay)),
                 t.trip.explainAverage,
               ]
-            : [
-                t.trip.explainRule,
-                t.trip.explainDays(
-                  sameDayKm,
-                  sameDay,
-                  time && !time.short ? rupees(time.dayRate) : rupeeRange(config.prices.outstation),
-                ),
-                t.trip.explainPast(rupees(o.extraHour)),
-                t.trip.explainAverage,
-              ]
+            : byDays
+              ? [
+                  t.trip.explainSameDay(sameDayKm, sameDay),
+                  t.trip.explainLongDays(
+                    rupees(byDays.driveDay),
+                    byDays.driveHoursPerDay,
+                    byDays.driveHoursPerDay + (byDays.driveGraceHours ?? 0),
+                  ),
+                  t.trip.explainLongHome(rupees(byDays.returnHour), rupees(byDays.returnDay)),
+                  t.trip.explainAverage,
+                ]
+              : [
+                  t.trip.explainRule,
+                  t.trip.explainDays(
+                    sameDayKm,
+                    sameDay,
+                    time && !time.short ? rupees(time.dayRate) : rupeeRange(config.prices.outstation),
+                  ),
+                  t.trip.explainPast(rupees(o.extraHour)),
+                  t.trip.explainAverage,
+                ]
           ).map((line) => (
             <AppText key={line} variant="tiny" color={colors.textMuted}>
               • {line}
@@ -459,15 +523,32 @@ function Timeline({
   const at = (hours: number) => formatDateTime(t, startAt + Math.round((hours * 60) / 5) * 5 * 60_000);
   const leaveAt = plan.leaveAt ?? plan.dropAt;
   const h = (n: number) => Math.max(1, Math.round(n));
+  const hm = (minutes: number) => {
+    const m = Math.max(0, Math.round(minutes));
+    return t.trip.hm(Math.floor(m / 60), m % 60);
+  };
+  // To the nearest 10 minutes, as the website: "11 h 10 min".
+  const about10 = (hours: number) => hm(Math.round((hours * 60) / 10) * 10);
+  const nights = plan.nonstop ? 0 : Math.max(0, plan.minDays - 1);
+  // With the website's drive rules: "about 11 h 10 min + 2 breaks (1 h 10 min) → arrives about 12 h 20 min after leaving".
+  const driveWords =
+    plan.roadHours !== undefined
+      ? t.trip.driveAbout(about10(plan.driveHours)) +
+        (plan.breaks ? t.trip.driveBreaks(plan.breaks, hm((plan.roadHours - plan.driveHours) * 60)) : '') +
+        (plan.nonstop ? t.trip.driveDayNight : nights > 0 ? t.trip.driveNights(nights) : '') +
+        t.trip.driveArrives(about10(plan.dropAt))
+      : null;
   const rows: { label: string; value: string }[] = [
     { label: t.trip.leaves(from), value: at(0) },
     {
       label: t.trip.driving,
-      value: plan.nonstop
-        ? t.trip.drivingNonstop(h(plan.driveHours))
-        : plan.minDays > 1
-          ? t.trip.drivingDaysRest(h(plan.driveHours), config.outstation.hoursPerDay)
-          : t.trip.onBoard(h(plan.driveHours)),
+      value:
+        driveWords ??
+        (plan.nonstop
+          ? t.trip.drivingNonstop(h(plan.driveHours))
+          : plan.minDays > 1
+            ? t.trip.drivingDaysRest(h(plan.driveHours), config.outstation.hoursPerDay)
+            : t.trip.onBoard(h(plan.driveHours))),
     },
     { label: t.trip.drops(to), value: t.trip.about(at(plan.dropAt)) },
   ];

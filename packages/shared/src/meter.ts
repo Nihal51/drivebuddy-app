@@ -16,9 +16,10 @@
  *   the estimate is (trip.ts timePrice: 24-hour blocks at the trip's day
  *   price, the hours past them at outstation.extraHour, never more than one
  *   more day). A one-way drop past the first nearby tier, when the website
- *   sends outstation.oneWay: driving days from Start to the drop, then his
- *   way home from the drop (trip.ts longOneWayPrice, the bill's 15 minutes'
- *   grace).
+ *   sends outstation.oneWay: v3, the drive by the km (fixed once he starts)
+ *   and his way home from the drop (kmOneWayPrice); v2, driving days from
+ *   Start to the drop and his way home (longOneWayPrice) — both with the
+ *   bill's 15 minutes' grace.
  *
  * Nothing here is a bill: the robot (local) or the office (trips) makes that
  * when the job ends.
@@ -27,7 +28,16 @@
 import type { Booking } from './booking';
 import type { PackageId } from './catalog';
 import type { AppConfig } from './config';
-import { isLongOneWay, isTripPackage, longOneWayPrice, longReturnDayFor, timePrice } from './trip';
+import {
+  type OneWayKmRates,
+  isLongOneWay,
+  isTripPackage,
+  kmOneWayPrice,
+  kmRates,
+  longOneWayPrice,
+  longReturnDayFor,
+  timePrice,
+} from './trip';
 
 /** Hours each local package includes (the robot's LOCAL_BASE_HOURS). */
 export const LOCAL_BASE_HOURS: Partial<Record<PackageId, number>> = {
@@ -135,8 +145,13 @@ export function tripMeter(
   const minutes = minutesBetween(start.getTime(), end);
   const booked = whole(b.quote?.amount) ?? whole(b.acceptedPrice?.amount) ?? whole(b.trip?.estTo);
   const km = b.trip?.km ?? b.quote?.km ?? 0;
-  const real =
-    b.packageId === 'one-way-drop' && isLongOneWay(config, km) ? longSoFar(b, config, km, now) : timeSoFar();
+  const long = b.packageId === 'one-way-drop' && isLongOneWay(config, km);
+  const byKm = long ? kmRates(config.outstation.oneWay) : undefined;
+  const real = byKm
+    ? kmSoFar(b, byKm, km, config.outstation.graceMinutes ?? 15, now)
+    : long
+      ? longSoFar(b, config, km, now)
+      : timeSoFar();
   if (booked === null) return { kind: 'trip', minutes, amount: null, overBooked: false };
   const over = real !== undefined && real > booked;
   return { kind: 'trip', minutes, amount: over ? real : booked, overBooked: over };
@@ -151,7 +166,26 @@ export function tripMeter(
 }
 
 /**
- * A long one-way drop so far, as its final bill will count it: driving days
+ * A long one-way drop so far, v3 (by the km), as its final bill counts it:
+ * the drive is fixed once he has started (km × perKm); his way home from the
+ * drop to home (or now), the first graceMinutes of an hour free; the total
+ * to the nearest roundTo, at least the minimum.
+ */
+function kmSoFar(
+  b: Pick<Booking, 'clock'>,
+  rates: OneWayKmRates,
+  km: number,
+  graceMinutes: number,
+  now: number,
+): number | undefined {
+  if (!b.clock?.startAt) return undefined;
+  const drop = b.clock.dropAt?.getTime();
+  const homeMinutes = drop === undefined ? 0 : minutesBetween(drop, b.clock.homeAt?.getTime() ?? now);
+  return kmOneWayPrice(rates, km, homeMinutes, graceMinutes).price;
+}
+
+/**
+ * A long one-way drop so far, v2, as its final bill will count it: driving days
  * from Start to the drop (or now), then his way home from the drop to home
  * (or now), the first graceMinutes of an hour free — at the rates agreed on
  * the call, else the website's.

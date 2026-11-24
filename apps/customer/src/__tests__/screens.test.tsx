@@ -428,7 +428,7 @@ describe('Booking, step by step', () => {
       /His way home about 10 h 40 min \(waiting 1 h \+ train 9 h 40 min\): 11 h × ₹160 \(never more than ₹1,600 a day\).*₹1,600/,
     );
     expect(screen.getByTestId('trip-long-ticket')).toHaveTextContent(
-      /His ticket home: you book and pay for it.*\+ ticket/,
+      /His ticket home: you book and pay for it.*\+ his ticket/,
     );
     expect(screen.queryByTestId('trip-time-days')).toBeNull();
     // The trains: the sell-out note above them, and Check seats on each.
@@ -449,6 +449,75 @@ describe('Booking, step by step', () => {
       days: 1,
       estFrom: 3200,
       estTo: 3200,
+    });
+  });
+
+  describe('past 160 km, v3: the drive by the km and his way home', () => {
+    const V3 = {
+      ...DEFAULT_CONFIG,
+      outstation: {
+        ...DEFAULT_CONFIG.outstation,
+        oneWay: { perKm: 3, homeHour: 100, homeDayMax: 1500, minimum: 1500, roundTo: 50 },
+        drive: { kmh: 55, breakEveryHours: 4, breakMinutes: 35, maxRoadHoursPerDay: 12 },
+      },
+    };
+
+    test('Raipur → Ranchi with a train 10 h 41 min after the drop: ₹2,950, line by line; the drive with its breaks', async () => {
+      mockTrains.answer = (plan, startAt) => {
+        const depart = startAt + ((plan?.dropAt ?? 0) + 1) * 3_600_000;
+        const arrive = depart + (9 * 60 + 41) * 60_000;
+        const option: ReturnOption = {
+          id: `18310@${depart}`,
+          legs: [
+            {
+              train: { number: '18310', name: 'Hatia Sambalpur Exp' },
+              from: { code: 'RNC', name: 'Ranchi' },
+              to: { code: 'R', name: 'Raipur' },
+              depart,
+              arrive,
+              checkedAt: depart - 86_400_000,
+            },
+          ],
+          depart,
+          arrive,
+          expectedArrive: arrive,
+          waitMinutes: 60,
+          totalMinutes: 10 * 60 + 41,
+          scheduled: true,
+          warnings: [],
+        };
+        return { status: 'ok', retrying: false, options: [option], selected: option, select: () => {} };
+      };
+      const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config: V3 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,950');
+      expect(screen.getByTestId('trip-km-driving')).toHaveTextContent(/Driving 616 km × ₹3.*= ₹1,848/);
+      expect(screen.getByTestId('trip-km-home')).toHaveTextContent(
+        /His way home about 10 h 41 min \(waiting 1 h \+ train 9 h 41 min\): 11 h × ₹100 \(never more than ₹1,500 a day\).*= ₹1,100/,
+      );
+      expect(screen.getByTestId('trip-km-rounded')).toHaveTextContent(/₹2,948 to the nearest ₹50.*₹2,950/);
+      expect(screen.queryByTestId('trip-km-minimum')).toBeNull();
+      expect(screen.getByTestId('trip-km-ticket')).toHaveTextContent(
+        /His ticket home: you book and pay for it.*\+ his ticket/,
+      );
+      expect(screen.getByTestId('trip-timeline')).toHaveTextContent(
+        /about 11 h 10 min \+ 2 breaks \(1 h 10 min\) → arrives about 12 h 20 min after leaving/,
+      );
+      expect(screen.getByTestId('trip-explainer')).toHaveTextContent(/the drive is ₹3 a km/);
+      await fireEvent.press(screen.getByTestId(/^seats-18310@/));
+      expect(open).toHaveBeenCalledWith('https://www.ixigo.com/trains/18310/seat-availability');
+      open.mockRestore();
+    });
+
+    test('Raipur → Gondia, 201 km: the drive and his way home come to less than the minimum → ₹1,500', async () => {
+      mockTrains.answer = () => ({ status: 'off', retrying: false, options: [], select: () => {} });
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'gondia' }, { config: V3 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,500');
+      // 201 km × ₹3 = ₹603, and 2 h wait + 3 h 15 min ride → 6 h × ₹100 = ₹600.
+      expect(screen.getByTestId('trip-km-minimum')).toHaveTextContent(
+        /Minimum ₹1,500 \(the drive and his way home come to ₹1,203\).*₹1,500/,
+      );
+      expect(screen.queryByTestId('trip-km-rounded')).toBeNull();
     });
   });
 
