@@ -82,6 +82,13 @@ export type TripRules = {
   drive?: DriveRules;
   /** The final bill's free minutes of an hour (website outstation.graceMinutes; 15). */
   graceMinutes?: number;
+  /**
+   * A place not in the destination table (any place in India, places.ts):
+   * road km ≈ the straight line × this (website outstation.roadFactor, 1.3).
+   */
+  roadFactor?: number;
+  /** A round trip with up to this many hours of driving in all is back within the 24 hours: one day (14). */
+  sameDayMaxHours?: number;
 };
 
 /**
@@ -266,8 +273,10 @@ export function daySpan(config: Pick<AppConfig, 'prices'>): Range {
 /** When the customer has not picked a time, the estimate assumes the driver leaves at 7 AM (as the website). */
 export const DEFAULT_START_HOUR = 7;
 
-/** The picker's value for a place that is not in the list. */
+/** The picker's value for a place that is not in the list (typed in: the team prices it on the call). */
 export const ELSEWHERE = 'other';
+/** The picker's value for a place from the list of all India (places.ts): km from the map. */
+export const PLACE = 'place';
 
 /**
  * Shown first, before the customer types anything (the app shows the first
@@ -624,7 +633,8 @@ export function planTrip(
   config: AppConfig,
   pkg: TripPackage,
   city: City | '',
-  destId: string,
+  /** A curated destination's id, ELSEWHERE, or a place from the list of all India (places.ts placeDestination). */
+  destId: string | TripDestination,
   bookedDays = 0,
   start: TripStart | number = DEFAULT_START_HOUR,
   nonstop = false,
@@ -642,7 +652,12 @@ export function planTrip(
     raw.weekday !== undefined && Number.isInteger(raw.weekday) && raw.weekday >= 0 && raw.weekday <= 6
       ? raw.weekday
       : undefined;
-  const dest = destId && destId !== ELSEWHERE ? config.destinations.find((d) => d.id === destId) : undefined;
+  const dest =
+    typeof destId === 'object'
+      ? destId
+      : destId && destId !== ELSEWHERE
+        ? config.destinations.find((d) => d.id === destId)
+        : undefined;
   const booked = Math.min(MAX_DAYS, Math.max(0, Math.floor(bookedDays) || 0));
   const leg = dest && city ? dest.from[city] : undefined;
   const sameCity = Boolean(dest && leg && leg.km === 0);
@@ -1059,10 +1074,20 @@ export function parseTripRules(v: unknown): TripRules | null {
   const oneWay = parseOneWay(v.oneWay);
   const drive = parseDrive(v.drive);
   const grace = v.graceMinutes;
+  const factor = v.roadFactor;
+  const sameDay = v.sameDayMaxHours;
   // Older files also carry the way-home and route-price keys: no longer used, left out.
   return {
     ...(oneWay && { oneWay }),
     ...(drive && { drive }),
+    ...(typeof factor === 'number' &&
+      Number.isFinite(factor) &&
+      factor >= 1 &&
+      factor <= 3 && { roadFactor: factor }),
+    ...(typeof sameDay === 'number' &&
+      Number.isFinite(sameDay) &&
+      sameDay > 0 &&
+      sameDay <= 48 && { sameDayMaxHours: sameDay }),
     ...(typeof grace === 'number' &&
       Number.isInteger(grace) &&
       grace >= 0 &&

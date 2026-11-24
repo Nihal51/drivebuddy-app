@@ -10,7 +10,10 @@ import {
   isPackageId,
   isTripPackage,
   istParts,
+  PLACE,
+  type Place,
   packageOffered,
+  placeDestination,
   packagePrice,
   planTrip,
   trainHours,
@@ -23,7 +26,7 @@ import {
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -152,6 +155,8 @@ function BookingWizard({
   const [step, setStep] = useState<Step>(startPackage ? 2 : 1);
   // One-way drop: drive day and night, without the night's rest.
   const [nonstop, setNonstop] = useState(false);
+  // A place from the list of all India (destId PLACE): planned from its km from the map.
+  const [place, setPlace] = useState<Place | null>(null);
   const [category, setCategory] = useState<Category | undefined>(() =>
     startPackage ? categoryOf(startPackage) : findCategory(initialCategory),
   );
@@ -175,13 +180,17 @@ function BookingWizard({
   // When the driver leaves: the time picked, or "as soon as possible" (about 45 minutes from now).
   const startAt = (preferredTime && tripInstant(preferredTime)?.getTime()) || now + START_LEAD_MS;
   const startParts = istParts(startAt);
+  const destination = useMemo(
+    () => (values.destId === PLACE ? (place ? placeDestination(config, place) : '') : values.destId),
+    [values.destId, place, config],
+  );
   const planWith = (train?: { leaveAt: number; homeAt: number; waitHours?: number }) =>
     isTripPackage(values.packageId)
       ? planTrip(
           config,
           values.packageId,
           values.city,
-          values.destId,
+          destination,
           Number(values.days) || 0,
           {
             hour: startParts.hour + startParts.minute / 60,
@@ -500,6 +509,8 @@ function BookingWizard({
                   for (const key of Object.keys(patch)) touch(key as BookingField);
                 }}
                 onUseLocal={() => set('packageId', 'local-full-day')}
+                place={place}
+                onPlace={setPlace}
               />
             </View>
           ) : null}

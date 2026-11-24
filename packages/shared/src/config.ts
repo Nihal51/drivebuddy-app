@@ -77,7 +77,8 @@ export type AppConfig = {
    * the website's `trains` block.
    */
   trains: { lookupUrl: string } & RailRules;
-  site: { url: string; privacy: string; terms: string };
+  /** `places`: the list of all India for the place box (places.ts); older files lack it: site url + PLACES_PATH. */
+  site: { url: string; privacy: string; terms: string; places?: string };
   /**
    * Installed apps older than minVersion show "Please update" (site-settings.ts
    * → app.minVersion on the website). Older website files have no `app`
@@ -114,6 +115,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     mealAllowance: 300,
     kmPerDay: 600,
     localWithinKm: 60,
+    sameDayMaxHours: 14,
     stationHours: 1,
     averageKmh: 50,
   },
@@ -341,7 +343,14 @@ export function parseAppConfig(raw: unknown): AppConfig | null {
     google: { profile: google.profile as string, writeReview: google.writeReview as string },
     alerts: { pingUrl: alerts.pingUrl as string },
     trains: rail,
-    site: { url: site.url as string, privacy: site.privacy as string, terms: site.terms as string },
+    site: {
+      url: site.url as string,
+      privacy: site.privacy as string,
+      terms: site.terms as string,
+      // Only a page on the website itself.
+      ...(isHttps(site.places) &&
+        (site.places as string).startsWith(`${site.url as string}/`) && { places: site.places as string }),
+    },
     app: isObj(app)
       ? {
           minVersion: app.minVersion as string,

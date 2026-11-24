@@ -178,7 +178,12 @@ export const hi: Messages = {
   trip: {
     whereRound: 'कहाँ जाना है?',
     whereOneWay: 'कार कहाँ पहुँचानी है?',
-    search: 'शहर या कस्बा खोजें',
+    search: 'शहर या राज्य खोजें',
+    resultRow: (place: string, km: string) => `${place} · लगभग ${km}`,
+    placesLoading: 'पूरे भारत की जगहें लोड हो रही हैं…',
+    placesOffline: 'इंटरनेट नहीं है: अभी सिर्फ़ हमारी लोकप्रिय जगहें — या “कोई और जगह” चुनें।',
+    placesCredit: 'जगहें: GeoNames (CC BY 4.0) · स्टेशन: datameet (CC0)',
+    fromMap: 'दूरी नक्शे से अनुमानित है — टीम कॉल पर पक्का करेगी।',
     elsewhere: 'कोई और जगह',
     noMatch: 'यह जगह हमारी सूची में नहीं है — “कोई और जगह” चुनें।',
     place: 'शहर या कस्बा',

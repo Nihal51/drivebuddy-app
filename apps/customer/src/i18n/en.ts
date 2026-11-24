@@ -189,7 +189,12 @@ export const en = {
   trip: {
     whereRound: 'Where to?',
     whereOneWay: 'Drop the car in',
-    search: 'Search a city or town',
+    search: 'Search a city or state',
+    resultRow: (place: string, km: string) => `${place} · about ${km}`,
+    placesLoading: 'Loading every place in India…',
+    placesOffline: 'No internet: only our popular places for now — or choose “Somewhere else”.',
+    placesCredit: 'Places: GeoNames (CC BY 4.0) · Stations: datameet (CC0)',
+    fromMap: 'Distance estimated from the map — the team confirms it on the call.',
     elsewhere: 'Somewhere else',
     noMatch: 'Not in our list — choose “Somewhere else”.',
     place: 'City or town',

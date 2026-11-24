@@ -1,4 +1,11 @@
-import { type City, DEFAULT_CONFIG, type ReturnOption, type TripPlan } from '@drivebuddy/shared';
+import {
+  type City,
+  DEFAULT_CONFIG,
+  type Place,
+  type ReturnOption,
+  type TripPlan,
+  parsePlaces,
+} from '@drivebuddy/shared';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking } from 'react-native';
@@ -40,6 +47,11 @@ jest.mock('@/data/selfserve', () => ({
   rememberRated: jest.fn(async () => {}),
 }));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
+// The list of all India for the place box: none (offline) unless a test gives one.
+const mockPlaces: { list: Place[] | null } = { list: null };
+jest.mock('@/data/places', () => ({
+  usePlaces: () => ({ places: mockPlaces.list, state: mockPlaces.list ? 'ready' : 'idle', load: () => {} }),
+}));
 // The trains home: the real hook (off without a lookup address), or a test's own answer.
 const mockTrains: { answer?: (plan: TripPlan | null, startAt: number) => ReturnTrains } = {};
 jest.mock('@/booking/useReturnTrains', () => {
@@ -56,6 +68,7 @@ const mockedSubmit = submitBooking as jest.Mock;
 beforeEach(() => {
   jest.clearAllMocks();
   delete mockTrains.answer;
+  mockPlaces.list = null;
 });
 
 describe('Home', () => {
@@ -599,6 +612,68 @@ describe('Booking, step by step', () => {
     await fireEvent.press(screen.getByTestId('dest-other'));
     expect(screen.getByTestId('trip-place').props.value).toBe('Jaipur');
     expect(screen.getByText(/We work out the distance and call you/)).toBeOnTheScreen();
+  });
+
+  test('all of India: an old name finds ours, a state lists its places, a place from the map is priced and saved', async () => {
+    mockPlaces.list = parsePlaces({
+      places: [
+        ['Prayagraj', 'Uttar Pradesh', 25.4448, 81.8432, 1073438, 'ALY', 'Allahabad, Ilahabad'],
+        ['Thiruvananthapuram', 'Kerala', 8.4855, 76.9492, 784153, 'TVC', 'Trivandrum'],
+        ['Kochi', 'Kerala', 9.9399, 76.2602, 604696, 'ERS', 'Cochin, Ernakulam'],
+      ],
+    });
+    mockTrains.answer = () => ({ status: 'off', retrying: false, options: [], select: () => {} });
+    const config = {
+      ...DEFAULT_CONFIG,
+      outstation: {
+        ...DEFAULT_CONFIG.outstation,
+        roadFactor: 1.3,
+        oneWay: { perKm: 3, homeHour: 100, homeDayMax: 1500, minimum: 1500, roundTo: 50 },
+      },
+    };
+    mockedSubmit.mockResolvedValue({ ok: true, id: 'b12' });
+    await openBooking({ package: 'one-way-drop', city: 'Raipur' }, { config });
+    // An old name: our Prayagraj, with its state and measured km.
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'allahabad');
+    expect(screen.getByTestId('dest-prayagraj')).toHaveTextContent(
+      /Prayagraj, Uttar Pradesh · about [\d,]+\skm/,
+    );
+    // A state lists its places, biggest first.
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'kerala');
+    expect(screen.getByTestId('place-thiruvananthapuram-kerala')).toBeOnTheScreen();
+    expect(screen.getByTestId('places-credit')).toHaveTextContent(
+      'Places: GeoNames (CC BY 4.0) · Stations: datameet (CC0)',
+    );
+    // A place from the map: its km estimated, then priced by the one-way rule.
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'cochin');
+    expect(screen.getByTestId('place-kochi-kerala')).toHaveTextContent(/Kochi, Kerala · about 1,797\skm/);
+    await fireEvent.press(screen.getByTestId('place-kochi-kerala'));
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹8,200');
+    expect(screen.getByTestId('trip-from-map')).toHaveTextContent(/estimated from the map/);
+    expect(screen.getByTestId('trip-km-driving')).toHaveTextContent(/Driving 1,797\skm × ₹3.*= ₹5,391/);
+    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+    await next();
+    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+    await fireEvent.press(screen.getByTestId('submit-booking'));
+    expect(mockedSubmit.mock.calls[0][2].trip).toMatchObject({
+      to: 'Kochi, Kerala',
+      destId: '',
+      kind: 'one-way',
+      km: 1797,
+      estFrom: 8200,
+      estTo: 8200,
+    });
+  });
+
+  test('offline: the search finds our places only, and "Somewhere else" stays', async () => {
+    await openBooking({ package: 'one-way-drop', city: 'Raipur' });
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'Ranchi');
+    expect(screen.getByTestId('dest-ranchi')).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByTestId('trip-search'), 'Kochi');
+    expect(screen.getByText(/Not in our list/)).toBeOnTheScreen();
+    expect(screen.getByTestId('dest-other')).toBeOnTheScreen();
+    expect(screen.queryByTestId('places-credit')).toBeNull();
   });
 
   test('a nearby place suggests the local full day', async () => {

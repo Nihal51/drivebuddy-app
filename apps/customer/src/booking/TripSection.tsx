@@ -7,9 +7,19 @@ import {
   type TripPlan,
   rupeeRange,
   rupees,
+  PICKUP_POINTS,
+  PLACE,
+  type Place,
+  type PlaceEntry,
   daysRates,
   kmRates,
+  placeIndex,
+  placeKm,
+  placeLabel,
+  plainText,
+  roadFactorOf,
   searchDestinations,
+  searchPlaces,
   seatsLink,
 } from '@drivebuddy/shared';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,6 +33,8 @@ import { useConfig } from '@/config/ConfigProvider';
 import { type Messages, useI18n } from '@/i18n';
 import { errorText, formatDateTime, kmText, tripDays } from '@/i18n/format';
 import { TOUCH, makeStyles, radius, space, useTheme } from '@/theme';
+
+import { usePlaces } from '@/data/places';
 
 import type { ReturnTrains } from './useReturnTrains';
 
@@ -46,9 +58,14 @@ export function TripSection({
   showErrors,
   onChange,
   onUseLocal,
+  place,
+  onPlace,
 }: {
   values: BookingInput;
   plan: TripPlan;
+  /** The place from the list of all India picked (destId PLACE), or null. */
+  place: Place | null;
+  onPlace: (place: Place) => void;
   /** One-way drops: the real trains home for that day (useReturnTrains). */
   rail: ReturnTrains;
   /** When the driver leaves (ms): the time picked, or soon for "as soon as possible". */
@@ -67,6 +84,14 @@ export function TripSection({
   const { colors } = useTheme();
   const styles = useStyles();
   const [search, setSearch] = useState('');
+  // Every place in India (places.ts): the list from the website once the box is used; curated ones first.
+  const list = usePlaces(config);
+  const index = useMemo(
+    () => placeIndex(list.places ?? [], config.destinations),
+    [list.places, config.destinations],
+  );
+  const typed = plainText(search).length >= 2;
+  const hits = useMemo(() => (typed ? searchPlaces(index, search, 20) : []), [index, search, typed]);
 
   const found = useMemo(() => searchDestinations(config.destinations, search), [config.destinations, search]);
   const selected = values.destId && values.destId !== ELSEWHERE ? plan.dest : undefined;
@@ -86,22 +111,54 @@ export function TripSection({
         label={round ? t.trip.whereRound : t.trip.whereOneWay}
         value={search}
         onChangeText={setSearch}
+        onFocus={list.load}
         placeholder={t.trip.search}
         autoCorrect={false}
         maxLength={40}
         testID="trip-search"
       />
+      {typed ? (
+        // The search over all of India: "Name, State · about N km", best first, at most 20.
+        <View style={styles.results} accessibilityRole="radiogroup">
+          {hits.map((e) => (
+            <PlaceRow
+              key={e.dest ? `d-${e.dest.id}` : `p-${e.name}-${e.state}-${e.place?.lat}`}
+              entry={e}
+              city={values.city}
+              selected={
+                e.dest
+                  ? values.destId === e.dest.id
+                  : values.destId === PLACE && Boolean(place) && samePlace(place, e.place)
+              }
+              onPress={() => {
+                if (e.dest) onChange({ destId: e.dest.id });
+                else if (e.place) {
+                  onPlace(e.place);
+                  onChange({ destId: PLACE });
+                }
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
       <View style={styles.chips} accessibilityRole="radiogroup">
         {/* A few popular places until the customer searches: a short list reads at a glance. */}
-        {shown.slice(0, search.trim() ? 12 : 8).map((d) => (
-          <Chip
-            key={d.id}
-            label={placeName(t, d)}
-            selected={values.destId === d.id}
-            onPress={() => onChange({ destId: d.id })}
-            testID={`dest-${d.id}`}
-          />
-        ))}
+        {!typed && values.destId === PLACE && place ? (
+          <Chip label={placeLabel(place)} selected onPress={() => {}} testID="dest-place" />
+        ) : null}
+        {typed
+          ? null
+          : shown
+              .slice(0, 8)
+              .map((d) => (
+                <Chip
+                  key={d.id}
+                  label={placeName(t, d)}
+                  selected={values.destId === d.id}
+                  onPress={() => onChange({ destId: d.id })}
+                  testID={`dest-${d.id}`}
+                />
+              ))}
         <Chip
           label={t.trip.elsewhere}
           selected={values.destId === ELSEWHERE}
@@ -109,7 +166,21 @@ export function TripSection({
           testID="dest-other"
         />
       </View>
-      {search.trim() && found.length === 0 ? (
+      {list.state === 'loading' && !list.places ? (
+        <AppText variant="tiny" color={colors.textMuted}>
+          {t.trip.placesLoading}
+        </AppText>
+      ) : list.state === 'offline' ? (
+        <AppText variant="tiny" color={colors.textMuted}>
+          {t.trip.placesOffline}
+        </AppText>
+      ) : null}
+      {list.places ? (
+        <AppText variant="tiny" color={colors.textFaint} testID="places-credit">
+          {t.trip.placesCredit}
+        </AppText>
+      ) : null}
+      {typed && hits.length === 0 ? (
         <AppText variant="small" color={colors.textMuted}>
           {t.trip.noMatch}
         </AppText>
@@ -307,6 +378,12 @@ function Estimate({
                 ? t.trip.awayAbout(time.hours)
                 : tripDays(t, plan)}
         </AppText>
+        {plan.dest.id ? null : (
+          // A place from the map, not one of ours: its km is an estimate.
+          <AppText variant="tiny" color={colors.textMuted} testID="trip-from-map">
+            {t.trip.fromMap}
+          </AppText>
+        )}
         {byKm ? (
           // A long one-way drop (website, 24 Nov 2026, v3): the drive by the km, his way home, the rounding
           // or the minimum, his ticket.
@@ -685,6 +762,57 @@ function TrainsHome({ rail, hasHubs }: { rail: ReturnTrains; hasHubs: boolean })
   );
 }
 
+const samePlace = (a: Place | null, b: Place | undefined) =>
+  Boolean(a && b && a.name === b.name && a.state === b.state && a.lat === b.lat && a.lng === b.lng);
+
+const slug = (s: string) => plainText(s).replace(/ /g, '-');
+
+/** One result: "Name, State · about N km" (the km from the pickup city: measured for ours, from the map otherwise). */
+function PlaceRow({
+  entry,
+  city,
+  selected,
+  onPress,
+}: {
+  entry: PlaceEntry;
+  city: BookingInput['city'];
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { t } = useI18n();
+  const { config } = useConfig();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const name = entry.dest
+    ? `${placeName(t, entry.dest)}${entry.state ? `, ${entry.state}` : ''}`
+    : placeLabel(entry);
+  const km = !city
+    ? 0
+    : entry.dest
+      ? (entry.dest.from[city]?.km ?? 0)
+      : entry.place
+        ? placeKm(PICKUP_POINTS[city], entry.place, roadFactorOf(config))
+        : 0;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      style={[styles.result, selected ? styles.resultOn : null]}
+      testID={entry.dest ? `dest-${entry.dest.id}` : `place-${slug(entry.name)}-${slug(entry.state)}`}
+    >
+      <Ionicons
+        name={selected ? 'radio-button-on' : 'radio-button-off'}
+        size={18}
+        color={selected ? colors.amberText : colors.textMuted}
+      />
+      <AppText variant="small" weight={selected ? 'bold' : undefined} style={styles.flex}>
+        {km > 0 ? t.trip.resultRow(name, kmText(t, km)) : name}
+      </AppText>
+    </Pressable>
+  );
+}
+
 function Line({ label, amount, testID }: { label: string; amount: string; testID?: string }) {
   const { colors } = useTheme();
   const styles = useStyles();
@@ -781,6 +909,19 @@ const useStyles = makeStyles((c) => ({
   toggle: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
   tip: { gap: space.xs, backgroundColor: c.cream, borderRadius: radius.sm, padding: space.sm },
   trainList: { gap: space.sm },
+  results: { gap: space.xs },
+  result: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: c.creamLine,
+    backgroundColor: c.background,
+  },
+  resultOn: { borderColor: c.amber },
   legRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   trainOption: {
     flexDirection: 'row',
