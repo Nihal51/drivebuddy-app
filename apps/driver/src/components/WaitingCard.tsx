@@ -27,7 +27,7 @@ export function WaitingCard({
 }: {
   offer: Offer;
   myCity: string;
-  me: { phone: string; uid: string };
+  me: { driverId: string; phone: string; uid: string };
 }) {
   const { t } = useI18n();
   const { colors } = useTheme();

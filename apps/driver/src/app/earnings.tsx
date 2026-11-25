@@ -28,14 +28,13 @@ export default function EarningsScreen() {
   const { colors } = useTheme();
   const styles = useStyles();
   const { state } = useDriverAuth();
-  const phone = state.status === 'in' ? state.driver.phone : '';
   const driverId = state.status === 'in' ? state.driver.driverId : '';
   const [offers, setOffers] = useState<Offer[] | null>(null);
   // null: no record (the review login) or not readable — then there is nothing to save a UPI ID to.
   const [me, setMe] = useState<MyRecord | null>(null);
   const [cashLimit, setCashLimit] = useState(DEFAULT_CASH_LIMIT);
 
-  useEffect(() => (phone ? watchMyOffers(phone, (list) => setOffers(list ?? [])) : undefined), [phone]);
+  useEffect(() => watchMyOffers(driverId, (list) => setOffers(list ?? [])), [driverId]);
   useEffect(() => (driverId ? watchMyRecord(driverId, setMe) : undefined), [driverId]);
   useEffect(() => loadCashLimit(setCashLimit), []);
 

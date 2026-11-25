@@ -2,11 +2,15 @@ import { type Booking, toBooking, toPayment } from '@drivebuddy/shared';
 
 import {
   canAcceptPrice,
+  canChangeDriver,
   canRate,
   confirmedInstantly,
+  driverView,
+  findingAnotherDriver,
   findingDriver,
   paymentView,
   priceAcceptedWaiting,
+  showsDriver,
 } from './selfserve';
 
 const TRIP = {
@@ -97,6 +101,81 @@ describe('rating', () => {
     expect(canRate(booking({ ...done, assignedDriver: undefined }), 'u1')).toBe(false);
     expect(canRate(booking({ ...done, assignedDriver: { ...DRIVER, id: '' } }), 'u1')).toBe(false);
     expect(canRate(booking({ ...done, customerUid: undefined }), 'u1')).toBe(false);
+  });
+});
+
+describe('the driver, as the customer sees him (SPEC-privacy)', () => {
+  const CARD = {
+    name: 'Suresh Verma',
+    photoUrl: null,
+    rating: 4.8,
+    ratingCount: 23,
+    trips: 120,
+    experienceYears: 8,
+    verified: true,
+    since: null,
+  };
+  const ON = {
+    status: 'assigned',
+    assignedDriver: DRIVER,
+    driverConfirmed: { by: 'robot', driverId: 'd1' },
+    driverCard: CARD,
+  };
+
+  test('only once DriveBuddy has confirmed him and his card is made — never from the booking alone', () => {
+    expect(showsDriver(booking(ON))).toBe(true);
+    expect(showsDriver(booking({ ...ON, driverCard: undefined }))).toBe(false);
+    expect(showsDriver(booking({ ...ON, driverConfirmed: undefined }))).toBe(false);
+    // A confirmation of the driver it had before is not one of him.
+    expect(showsDriver(booking({ ...ON, driverConfirmed: { by: 'robot', driverId: 'd0' } }))).toBe(false);
+    expect(showsDriver(booking({ ...ON, assignedDriver: { name: 'Suresh', phone: '9876500000' } }))).toBe(
+      false,
+    );
+  });
+
+  test('what the screen shows: confirming, his card, or finding another', () => {
+    expect(driverView(booking({ ...ON, driverCard: undefined }), 'u1', false)).toEqual({
+      kind: 'confirming',
+    });
+    const card = driverView(booking(ON), 'u1', false);
+    expect(card).toEqual({ kind: 'card', card: CARD, current: true, changesLeft: 2, canChange: true });
+    // The card is never the driver's number.
+    expect(JSON.stringify(card)).not.toContain('9876500000');
+    expect(driverView(booking({ ...ON, status: 'completed' }), 'u1', false)).toMatchObject({
+      kind: 'card',
+      current: false,
+      canChange: false,
+    });
+    expect(
+      driverView(booking({ ...ON, driverChangeRequest: { at: null, reason: '' } }), 'u1', false),
+    ).toEqual({
+      kind: 'finding-another',
+    });
+    expect(driverView(booking({ status: 'confirmed' }), 'u1', false)).toEqual({ kind: 'none' });
+    expect(driverView(booking({ ...ON, status: 'cancelled' }), 'u1', false)).toEqual({ kind: 'none' });
+  });
+
+  test('finding you another driver: asked for, then back to confirmed with nobody on it yet', () => {
+    expect(findingAnotherDriver(booking({ ...ON, driverChangeRequest: { reason: 'Too far' } }))).toBe(true);
+    expect(findingAnotherDriver(booking({ status: 'confirmed', driverChanges: 1 }))).toBe(true);
+    expect(findingAnotherDriver(booking({ status: 'confirmed' }))).toBe(false); // the first driver
+    expect(findingAnotherDriver(booking({ ...ON, driverChanges: 1 }))).toBe(false); // found him
+  });
+
+  test('Change driver: his customer, twice per booking, one at a time, before he sets off', () => {
+    expect(canChangeDriver(booking(ON), 'u1', false)).toBe(true);
+    expect(canChangeDriver(booking({ ...ON, driverChanges: 1 }), 'u1', false)).toBe(true);
+    expect(driverView(booking({ ...ON, driverChanges: 1 }), 'u1', false)).toMatchObject({ changesLeft: 1 });
+    expect(canChangeDriver(booking({ ...ON, driverChanges: 2 }), 'u1', false)).toBe(false);
+    expect(canChangeDriver(booking(ON), 'u2', false)).toBe(false);
+    expect(canChangeDriver(booking(ON), null, false)).toBe(false);
+    expect(canChangeDriver(booking({ ...ON, driverChangeRequest: { reason: '' } }), 'u1', false)).toBe(false);
+    // Set off: the trip clock, or he is sharing his location (that starts with his Start tap).
+    expect(canChangeDriver(booking({ ...ON, clock: { startAt: new Date() } }), 'u1', false)).toBe(false);
+    expect(canChangeDriver(booking(ON), 'u1', true)).toBe(false);
+    // Not before DriveBuddy has confirmed him, nor after the job.
+    expect(canChangeDriver(booking({ ...ON, driverCard: undefined }), 'u1', false)).toBe(false);
+    expect(canChangeDriver(booking({ ...ON, status: 'completed' }), 'u1', false)).toBe(false);
   });
 });
 

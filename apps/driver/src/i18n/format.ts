@@ -1,6 +1,15 @@
 /** Words built from data — times, package names — in the active language. Pure, so tested in both. */
 
-import { type PackageId, clock12, istDateKey, istParts, tripInstant } from '@drivebuddy/shared';
+import {
+  type AlertResult,
+  type PackageId,
+  clock12,
+  istDateKey,
+  istParts,
+  tripInstant,
+} from '@drivebuddy/shared';
+
+import { type TestView, alertErrorKind } from '@/data/alerts';
 
 import type { Messages } from './en';
 
@@ -52,3 +61,23 @@ export function loginErrorText(
 
 /** "98765 43210" for showing a number back to the driver. */
 export const spacedPhone = (p: string) => (p.length === 10 ? `${p.slice(0, 5)} ${p.slice(5)}` : p);
+
+/** Why a push did not arrive, in words he can act on. */
+export const alertWhy = (t: Messages, error: string | null) => t.alerts.why[alertErrorKind(error)];
+
+/** drivers/{id}.lastAlert → "Last alert reached this phone ✓ · Today, 10:42 am", or why it did not. */
+export function lastAlertText(t: Messages, last: AlertResult | undefined, now: number = Date.now()): string {
+  if (!last) return t.alerts.lastNone;
+  const when = last.at ? formatDateTime(t, last.at, now) : t.dates.today;
+  return last.ok ? t.alerts.lastOk(when) : t.alerts.lastFailed(when, alertWhy(t, last.error));
+}
+
+/** The test alert's state → a line, or null before he has asked for one. */
+export function testText(t: Messages, view: TestView, now: number = Date.now()): string | null {
+  if (view.kind === 'none') return null;
+  if (view.kind === 'waiting') return t.alerts.testWaiting;
+  const { result } = view;
+  return result.ok
+    ? t.alerts.testOk(result.at ? formatDateTime(t, result.at, now) : t.dates.today)
+    : t.alerts.testFailed(alertWhy(t, result.error));
+}

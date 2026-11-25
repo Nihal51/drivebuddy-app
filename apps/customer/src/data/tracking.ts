@@ -1,7 +1,9 @@
 /**
  * The driver's live location on a booking (tracking/{bookingId}), written by
  * the DriveBuddy Driver app between his taps on Start and Arrived.
- * firestore.rules lets the customer who booked while logged in read it.
+ * firestore.rules lets the customer who booked while logged in read it. It
+ * names the driver by id (older app versions: by number, which is never
+ * read here).
  */
 
 import { toDate } from '@drivebuddy/shared';
@@ -9,7 +11,14 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 import { firestore } from '@/firebase/app';
 
-export type DriverSpot = { lat: number; lng: number; active: boolean; at: Date };
+export type DriverSpot = {
+  lat: number;
+  lng: number;
+  active: boolean;
+  at: Date;
+  /** Who sent it; '' from older Driver app versions. */
+  driverId: string;
+};
 
 /** Older than this, the map says the location has not updated for a while. */
 export const STALE_MS = 5 * 60_000;
@@ -22,8 +31,22 @@ export function readSpot(data: Record<string, unknown> | undefined): DriverSpot 
   const at = toDate(data.at);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 6 || lat > 37 || lng < 68 || lng > 98 || !at)
     return null;
-  return { lat, lng, active: data.active === true, at };
+  return {
+    lat,
+    lng,
+    active: data.active === true,
+    at,
+    driverId: typeof data.driverId === 'string' ? data.driverId : '',
+  };
 }
+
+/**
+ * A spot from this booking's driver now — not the last point of a driver it
+ * was taken from (that document stays, marked inactive). Unknown either way
+ * (older versions): it counts.
+ */
+export const spotOfDriver = (spot: DriverSpot | null, driverId: string | undefined): DriverSpot | null =>
+  spot && (!spot.driverId || !driverId || spot.driverId === driverId) ? spot : null;
 
 /** Whole minutes since the last update (never negative). */
 export const minutesAgo = (spot: DriverSpot, now: number) =>

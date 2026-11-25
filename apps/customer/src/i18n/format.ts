@@ -10,6 +10,7 @@ import {
   type BookingField,
   type BookingQuote,
   type BookingTrip,
+  type DriverCard,
   type TripDestination,
   type FieldError,
   type LocalBill,
@@ -250,4 +251,20 @@ export function localBillText(t: Messages, b: LocalBill): string {
     .filter(Boolean)
     .join(' + ');
   return `${rupees(b.amount)} (${parts} · ${t.detail.localBill.used(b.usedHours)})`;
+}
+
+/**
+ * The driver card's lines: "★ 4.8 (23 ratings)" (or "New — no ratings yet"),
+ * "120 trips with DriveBuddy", "8 years’ driving experience", "With
+ * DriveBuddy since Mar 2026" — the last two only when known.
+ */
+export function driverCardLines(t: Messages, c: DriverCard): string[] {
+  const d = t.detail.driver;
+  const since = c.since ? istParts(c.since) : null;
+  return [
+    c.rating !== null && c.ratingCount > 0 ? d.rating(c.rating.toFixed(1), c.ratingCount) : d.noRating,
+    d.trips(c.trips),
+    c.experienceYears !== null ? d.experience(c.experienceYears) : '',
+    since ? d.since(`${t.dates.months[since.month - 1] ?? ''} ${since.year}`) : '',
+  ].filter(Boolean);
 }

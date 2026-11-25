@@ -3,7 +3,7 @@ import { navigateUrl, sortJobs, toJob } from '@/data/jobs';
 import { en } from '@/i18n/en';
 import { formatPreferred, loginErrorText, packageName, spacedPhone } from '@/i18n/format';
 import { hi } from '@/i18n/hi';
-import { inIndia, trackPoint } from '@/tracking/sharing';
+import { inIndia, trackPoint, trackWho } from '@/tracking/sharing';
 
 describe('login', () => {
   test('ten-digit numbers', () => {
@@ -127,8 +127,8 @@ describe('live location', () => {
     timestamp: Date.parse('2026-11-20T04:00:00Z'),
   });
 
-  test('a GPS fix becomes exactly the fields the rules accept', () => {
-    expect(trackPoint(fix({}) as never, '9893302783', 'Raju Sahu')).toEqual({
+  test('a GPS fix becomes exactly the fields the rules accept — by driver id, never his number', () => {
+    expect(trackPoint(fix({}) as never, { driverId: 'd1' }, 'Raju Sahu')).toEqual({
       lat: 21.251384,
       lng: 81.629641,
       acc: 15,
@@ -136,14 +136,22 @@ describe('live location', () => {
       speed: 8.3,
       active: true,
       phoneAt: new Date('2026-11-20T04:00:00Z'),
-      driverPhone: '9893302783',
+      driverId: 'd1',
       driverName: 'Raju Sahu',
     });
-    const bare = trackPoint(fix({ heading: -1, speed: -1, accuracy: null }) as never, '9893302783', '');
+    const bare = trackPoint(fix({ heading: -1, speed: -1, accuracy: null }) as never, { driverId: 'd1' }, '');
     expect(bare).not.toHaveProperty('heading');
     expect(bare).not.toHaveProperty('speed');
     expect(bare).not.toHaveProperty('driverName');
     expect(bare.acc).toBe(0);
+  });
+
+  test('who is driving: the share’s driver id, else his login’s; a number only for an older app’s share', () => {
+    expect(trackWho({ driverId: 'd1', phone: '9893302783' })).toEqual({ driverId: 'd1' });
+    // A share started before this update has no id of its own: his login has it.
+    expect(trackWho({ phone: '9893302783' }, 'd1')).toEqual({ driverId: 'd1' });
+    expect(trackWho({ phone: '9893302783' })).toEqual({ driverPhone: '9893302783' });
+    expect(trackWho({})).toBeNull();
   });
 
   test('fixes outside India are not sent', () => {

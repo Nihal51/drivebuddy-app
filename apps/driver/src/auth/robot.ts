@@ -80,6 +80,22 @@ async function call(payload: Record<string, string>, timeoutMs: number): Promise
   }
 }
 
+/** A doorbell with a job: the robot runs only that part, straight away (apps-script doPost). */
+export type RobotAction = 'alert-test';
+
+/**
+ * Ring the robot's doorbell for `action`, as the other doorbells do but with
+ * { action } in the body so it knows what to look at. Fire and forget: a
+ * missed ring only means the robot finds it on its own round, later.
+ */
+export function ringRobot(action: RobotAction): void {
+  void fetch(env.robotUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action }),
+  }).catch(() => {});
+}
+
 export async function requestCode(phone: string, timeoutMs = 25_000): Promise<CodeSent | Failed> {
   try {
     const body = await call({ action: 'driver-otp', phone }, timeoutMs);

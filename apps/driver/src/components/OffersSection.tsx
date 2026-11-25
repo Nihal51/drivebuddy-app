@@ -1,7 +1,8 @@
 /**
- * "New job offers" on the home screen: open offers for his city (and nearby
- * ones nobody took), with what he earns and Accept — and, while he is Online,
- * the "New job" popup for each new one (JobPopupHost).
+ * "New job offers" on the home screen: Online / Offline and the Job alerts
+ * card, open offers for his city (and nearby ones nobody took), with what he
+ * earns and Accept — and, while he is Online, the "New job" popup for each
+ * new one (JobPopupHost).
  */
 
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,6 +19,7 @@ import { makeStyles, radius, space, useTheme } from '@/theme';
 
 import { AppText } from './AppText';
 import { Button } from './Button';
+import { JobAlertsCard } from './JobAlertsCard';
 import { JobPopupHost } from './JobPopupHost';
 import { OnlineCard } from './OnlineCard';
 
@@ -55,7 +57,6 @@ export function OffersSection({ driver }: { driver: Driver }) {
       const res = await acceptOffer(o.id, {
         driverId: driver.driverId,
         name: me?.name ?? driver.name,
-        phone: driver.phone,
         uid: driver.uid,
       });
       setBusy(null);
@@ -100,6 +101,7 @@ export function OffersSection({ driver }: { driver: Driver }) {
   return (
     <View style={styles.wrap}>
       <OnlineCard driver={driver} me={meNow} onOnline={setOnline} />
+      <JobAlertsCard driver={driver} me={meNow} online={online} />
       {popups}
       {offers.length ? (
         <AppText variant="heading" weight="heavy">

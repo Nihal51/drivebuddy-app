@@ -96,11 +96,11 @@ describe('trip taps', () => {
 });
 
 describe("can't make it", () => {
-  const me = '9893302783';
+  const me = { driverId: 'd1', phone: '9893302783' };
   const offer = (extra: Record<string, unknown> = {}) =>
     toOffer('b1', {
       status: 'taken',
-      takenBy: { id: 'd1', name: 'Raju', phone: me },
+      takenBy: { id: 'd1', name: 'Raju', phone: me.phone },
       city: 'Raipur',
       ...extra,
     });
@@ -113,6 +113,21 @@ describe("can't make it", () => {
     ).toBe('not-from-offer');
     expect(releaseCheck(offer({ status: 'released' }), false, me)).toBe('not-from-offer');
     expect(releaseCheck(offer({ status: 'withdrawn' }), false, me)).toBe('not-from-offer');
+  });
+
+  test('his by driver id (offers taken from 25 Nov 2026 carry no number); by number only without an id', () => {
+    expect(releaseCheck(offer({ takenBy: { id: 'd1', name: 'Raju' } }), false, me)).toBe('ok');
+    // Another driver's id wins over a number that happens to match.
+    expect(releaseCheck(offer({ takenBy: { id: 'd2', name: 'Shyam', phone: me.phone } }), false, me)).toBe(
+      'not-from-offer',
+    );
+    expect(releaseCheck(offer({ takenBy: { name: 'Raju', phone: me.phone } }), false, me)).toBe('ok');
+    expect(
+      releaseCheck(offer({ takenBy: { name: 'Raju', phone: me.phone } }), false, {
+        driverId: 'd1',
+        phone: '',
+      }),
+    ).toBe('not-from-offer');
   });
 
   test('a released offer is read as released and left out of his earnings', () => {

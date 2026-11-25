@@ -5,19 +5,30 @@ import {
   type ReturnOption,
   type TripPlan,
   parsePlaces,
+  telUrl,
+  toBooking,
+  whatsappUrl,
 } from '@drivebuddy/shared';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking } from 'react-native';
 
 import AccountScreen from '@/app/(tabs)/account';
+import BookingsScreen from '@/app/(tabs)/bookings';
 import BookScreen from '@/app/book';
 import BookingDetailScreen from '@/app/booking/[id]';
 import ProfileScreen from '@/app/profile';
 import HomeScreen from '@/app/(tabs)/index';
 import type { ReturnTrains } from '@/booking/useReturnTrains';
 import { submitBooking, watchBooking, watchMyBookings } from '@/data/bookings';
-import { acceptPrice, chooseReturnTrain, ratedOnPhone, ratingState, submitRating } from '@/data/selfserve';
+import {
+  acceptPrice,
+  chooseReturnTrain,
+  ratedOnPhone,
+  ratingState,
+  requestDriverChange,
+  submitRating,
+} from '@/data/selfserve';
 
 import { renderScreen, signedOut } from './test-utils';
 
@@ -46,7 +57,20 @@ jest.mock('@/data/selfserve', () => ({
   ratedOnPhone: jest.fn(async () => null),
   rememberRated: jest.fn(async () => {}),
   chooseReturnTrain: jest.fn(async () => ({ ok: true })),
+  requestDriverChange: jest.fn(async () => ({ ok: true })),
 }));
+// The driver's live location: none unless a test sends one.
+const mockSpot: { emit: (data: Record<string, unknown> | undefined) => void } = { emit: () => {} };
+jest.mock('@/data/tracking', () => {
+  const actual = jest.requireActual<typeof import('@/data/tracking')>('@/data/tracking');
+  return {
+    ...actual,
+    watchDriverSpot: (_id: string, onSpot: (s: unknown) => void) => {
+      mockSpot.emit = (data) => onSpot(actual.readSpot(data));
+      return () => {};
+    },
+  };
+});
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
 // The list of all India for the place box: none (offline) unless a test gives one.
 const mockPlaces: { list: Place[] | null } = { list: null };
@@ -1119,5 +1143,217 @@ describe('Booking detail', () => {
       expect(ratingState).not.toHaveBeenCalled();
       expect(screen.queryByTestId('google-review')).toBeNull();
     });
+  });
+});
+
+describe('the driver on a booking: his card, never his number (SPEC-privacy)', () => {
+  const HIS_NUMBER = '9876500000';
+  const STORED = {
+    name: 'Ravi Sharma',
+    phone: '9876543210',
+    city: 'Raipur',
+    package: '3-hours-600',
+    pickup: 'Shankar Nagar',
+    preferredTime: '2026-11-29T07:30',
+    notes: '',
+    status: 'assigned',
+    source: 'app',
+    ref: 'DB-1044',
+    customerUid: 'u1',
+    // Older bookings still carry his number until HIDE_DRIVER_PHONE: it must never show.
+    assignedDriver: { id: 'd1', name: 'Suresh Verma', phone: HIS_NUMBER },
+  };
+  const CARD = {
+    name: 'Suresh Verma',
+    photoUrl: null,
+    rating: 4.8,
+    ratingCount: 23,
+    trips: 120,
+    experienceYears: 8,
+    verified: true,
+    since: null,
+  };
+  const CONFIRMED = { ...STORED, driverConfirmed: { by: 'robot', driverId: 'd1' }, driverCard: CARD };
+  const auth = { ...signedOut, ready: true, user: { uid: 'u1', email: 'ravi@example.com' } as never };
+  let emit: (data: Record<string, unknown>) => void = () => {};
+
+  const open = async (data: Record<string, unknown>, lang: 'en' | 'hi' = 'en') => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ id: 'b4' });
+    (watchBooking as jest.Mock).mockImplementation((_id: string, onBooking: (b: unknown) => void) => {
+      emit = (d) => onBooking(toBooking('b4', d));
+      emit(data);
+      return () => {};
+    });
+    await renderScreen(<BookingDetailScreen />, { auth, lang });
+  };
+  /** Every prop and text on the screen (a list's props loop back on themselves: each object once). */
+  const noNumberAnywhere = () => {
+    const seen = new WeakSet<object>();
+    const all = JSON.stringify(screen.toJSON(), (_key, value: unknown) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return undefined;
+        seen.add(value);
+      }
+      return value;
+    });
+    expect(all).toContain('DriveBuddy'); // the screen really is in there
+    expect(all).not.toContain(HIS_NUMBER);
+    expect(all).not.toContain('98765 00000');
+    expect(all).not.toMatch(/tel:/);
+  };
+
+  test('before DriveBuddy confirms him: "confirming him", Call DriveBuddy — no name, no number', async () => {
+    const call = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    await open(STORED);
+    expect(screen.getByText('Driver found — DriveBuddy is confirming him')).toBeOnTheScreen();
+    expect(screen.queryByText('Suresh Verma')).toBeNull();
+    expect(screen.queryByTestId('change-driver')).toBeNull();
+    noNumberAnywhere();
+    await fireEvent.press(screen.getByTestId('call-drivebuddy'));
+    expect(call).toHaveBeenCalledWith(telUrl(DEFAULT_CONFIG.contact.phone));
+    call.mockRestore();
+  });
+
+  test('in Hindi too', async () => {
+    await open(STORED, 'hi');
+    expect(screen.getByText('ड्राइवर मिल गया — DriveBuddy उन्हें कन्फ़र्म कर रहा है')).toBeOnTheScreen();
+    expect(screen.getByText('DriveBuddy को कॉल करें')).toBeOnTheScreen();
+  });
+
+  test('confirmed: initials, name, Police verified, rating, trips, experience; Call or WhatsApp DriveBuddy', async () => {
+    const link = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    await open(CONFIRMED);
+    // Decorative (his name is next to it), so hidden from screen readers.
+    expect(screen.getByTestId('driver-initials', { includeHiddenElements: true })).toHaveTextContent('SV');
+    expect(screen.getByText('Suresh Verma')).toBeOnTheScreen();
+    expect(screen.getByTestId('driver-verified')).toHaveTextContent(/Police verified$/);
+    expect(screen.getByTestId('driver-lines')).toHaveTextContent(
+      /★ 4\.8 \(23 ratings\).*120 trips with DriveBuddy.*8 years’ driving experience/,
+    );
+    noNumberAnywhere();
+    await fireEvent.press(screen.getByTestId('call-drivebuddy'));
+    expect(link).toHaveBeenLastCalledWith(telUrl(DEFAULT_CONFIG.contact.phone));
+    await fireEvent.press(screen.getByTestId('whatsapp-drivebuddy'));
+    expect(link).toHaveBeenLastCalledWith(
+      whatsappUrl(DEFAULT_CONFIG.contact.whatsapp, 'Hi DriveBuddy, about my booking DB-1044: '),
+    );
+    link.mockRestore();
+  });
+
+  test('his photo when there is one; no badge for a driver who is not verified', async () => {
+    await open({
+      ...CONFIRMED,
+      driverCard: { ...CARD, photoUrl: 'https://cdn.example/suresh.jpg', verified: false },
+    });
+    expect(screen.getByTestId('driver-photo')).toBeOnTheScreen();
+    expect(screen.queryByTestId('driver-initials', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId('driver-verified')).toBeNull();
+  });
+
+  test('Change driver: 2 changes left, asks first with an optional reason, then finding another', async () => {
+    await open(CONFIRMED);
+    await fireEvent.press(screen.getByText('Change driver (2 changes left)'));
+    expect(screen.getByText('Change your driver?')).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByTestId('change-driver-reason'), 'He is too far away');
+    await fireEvent.press(screen.getByTestId('change-driver-yes'));
+    expect(requestDriverChange).toHaveBeenCalledWith(
+      'b4',
+      'He is too far away',
+      DEFAULT_CONFIG.alerts.pingUrl,
+    );
+    // The phone shows the request at once (its time comes from the server later).
+    await act(async () =>
+      emit({ ...CONFIRMED, driverChangeRequest: { at: null, reason: 'He is too far away' } }),
+    );
+    expect(screen.getByText('Finding you another driver')).toBeOnTheScreen();
+    expect(screen.queryByText('Suresh Verma')).toBeNull();
+    // The robot takes it: back to confirmed with nobody on it — still "another driver", not the first wait.
+    await act(async () =>
+      emit({
+        ...STORED,
+        status: 'confirmed',
+        assignedDriver: null,
+        driverChanges: 1,
+        changedDrivers: ['d1'],
+      }),
+    );
+    expect(screen.getByText('Finding you another driver')).toBeOnTheScreen();
+    expect(screen.queryByText('Finding your driver…')).toBeNull();
+  });
+
+  test('the last change says so; Keep this driver closes it', async () => {
+    await open({ ...CONFIRMED, driverChanges: 1 });
+    await fireEvent.press(screen.getByText('Change driver (1 change left)'));
+    expect(screen.getByText('This is your last change for this booking.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('change-driver-keep'));
+    expect(screen.queryByTestId('change-driver-confirm')).toBeNull();
+    expect(requestDriverChange).not.toHaveBeenCalled();
+  });
+
+  test('refused (he set off meanwhile): call DriveBuddy', async () => {
+    (requestDriverChange as jest.Mock).mockResolvedValueOnce({ ok: false, reason: 'permission' });
+    await open(CONFIRMED);
+    await fireEvent.press(screen.getByTestId('change-driver'));
+    await fireEvent.press(screen.getByTestId('change-driver-yes'));
+    expect(
+      screen.getByText('Your driver can no longer be changed in the app — please call DriveBuddy.'),
+    ).toBeOnTheScreen();
+  });
+
+  test('no Change driver once none are left, or once he has set off (the clock, or his live location)', async () => {
+    await open({ ...CONFIRMED, driverChanges: 2 });
+    expect(screen.queryByTestId('change-driver')).toBeNull();
+    await screen.unmount();
+    await open({ ...CONFIRMED, clock: { startAt: new Date() } });
+    expect(screen.queryByTestId('change-driver')).toBeNull();
+    await screen.unmount();
+    await open(CONFIRMED);
+    expect(screen.getByTestId('change-driver')).toBeOnTheScreen();
+    await act(async () =>
+      mockSpot.emit({
+        lat: 21.25,
+        lng: 81.63,
+        active: true,
+        at: new Date(),
+        driverId: 'd1',
+        driverPhone: HIS_NUMBER,
+      }),
+    );
+    expect(screen.getByText('YOUR DRIVER, LIVE')).toBeOnTheScreen();
+    expect(screen.queryByTestId('change-driver')).toBeNull();
+    noNumberAnywhere();
+  });
+
+  test('the last point of a driver the booking was taken from is not his', async () => {
+    await open(CONFIRMED);
+    await act(async () =>
+      mockSpot.emit({ lat: 21.25, lng: 81.63, active: false, at: new Date(), driverId: 'd0' }),
+    );
+    expect(screen.queryByText('YOUR DRIVER, LIVE')).toBeNull();
+    expect(screen.getByTestId('change-driver')).toBeOnTheScreen();
+  });
+
+  test('My bookings: his name once confirmed, "confirming him" before, "another driver" after a change', async () => {
+    (watchMyBookings as jest.Mock).mockImplementation((_uid: string, onList: (l: unknown[]) => void) => {
+      onList([
+        toBooking('b1', { ...CONFIRMED, ref: 'DB-1' }),
+        toBooking('b2', { ...STORED, ref: 'DB-2' }),
+        toBooking('b3', {
+          ...STORED,
+          ref: 'DB-3',
+          status: 'confirmed',
+          assignedDriver: null,
+          driverChanges: 1,
+        }),
+      ]);
+      return () => {};
+    });
+    await renderScreen(<BookingsScreen />, { auth });
+    expect(screen.getByTestId('booking-driver-b1')).toHaveTextContent(/Suresh Verma$/);
+    expect(screen.getByTestId('booking-driver-b2')).toHaveTextContent(
+      /Driver found — DriveBuddy is confirming him$/,
+    );
+    expect(screen.getByTestId('booking-driver-b3')).toHaveTextContent(/Finding you another driver$/);
+    noNumberAnywhere();
   });
 });

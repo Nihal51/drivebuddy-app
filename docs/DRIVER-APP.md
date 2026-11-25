@@ -8,14 +8,25 @@ A separate app for the team's drivers: `in.thedrivebuddy.driver`, "DriveBuddy Dr
   **Verified** or **Active** in `/admin` get a code; at most 3 codes per number in
   24 hours and 40 a day in all. A driver stays logged in; he needs a new code only on
   a new phone or after logging out.
-- **My jobs:** every booking assigned to his number in `/admin` while it is
+- **My jobs:** every booking assigned to him (by his driver id, `assignedDriver.id`;
+  bookings from before 25 Nov 2026 without an id also by his number) while it is
   "assigned", live. Customer name and Call, pickup and **Navigate** (Google Maps, to
-  the pinned spot when the customer pinned one), time, trip, notes.
+  the pinned spot when the customer pinned one), time, trip, notes. Taking a job
+  writes him as `{ id, name }` — never his number: customers read the booking and
+  call DriveBuddy instead (SPEC-privacy).
 - **Live tracking:** **Start** shares his location every ~15 seconds (a foreground
   service with a notification, no background-location permission) until **Arrived**.
-  The customer sees him on a map in their booking in the DriveBuddy app. Once the job
-  is completed, cancelled or given to another driver, the rules refuse the next point
-  and sharing stops by itself.
+  Each point replaces `tracking/{bookingId}` and names him by `driverId`, never his
+  number. The customer sees him on a map in their booking in the DriveBuddy app. Once
+  the job is completed, cancelled or given to another driver, the rules refuse the next
+  point and sharing stops by itself.
+- **Job alerts card (home):** notifications allowed (Allow / Open settings), signed up
+  for alerts on this phone (`availability/{driverId}.pushToken`, saved again at every
+  app start and when he goes Online, kept while offline, removed at logout if it is
+  this phone's), Online, the last alert (`drivers/{id}.lastAlert`, the robot's), and
+  **Send me a test alert** (`alertTests/{driverId}` = `{ at }`, once a minute, then the
+  robot's doorbell `{ "action": "alert-test" }`; the robot writes `result`). On Android,
+  a hint and a button to the app's settings for battery saving.
 
 Firestore: `firestore.rules` (website repo) — `isDriver()`, `isMyJob()` and
 `match /tracking/{bookingId}`; tests in `tests/rules/rules.test.mjs`.

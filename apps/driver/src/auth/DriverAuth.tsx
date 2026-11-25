@@ -8,9 +8,11 @@
 import { type User, onAuthStateChanged, signInWithCustomToken, signOut } from 'firebase/auth';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { forgetThisPhone, phoneToken } from '@/data/alerts';
+import { within } from '@/data/write';
 import { firebaseAuth } from '@/firebase/auth';
 import { readStored, writeStored } from '@/lib/storage';
-import { goOffline, stopSharing } from '@/tracking/sharing';
+import { forgetPushToken, goOffline, stopSharing } from '@/tracking/sharing';
 
 export type Driver = { uid: string; phone: string; name: string; driverId: string };
 
@@ -86,9 +88,13 @@ export function DriverAuthProvider({ children }: { children: ReactNode }) {
 
   const logOut = useCallback(async () => {
     await stopSharing().catch(() => {});
-    await goOffline().catch(() => {});
+    // Offline, the write would wait for the network: the logout does not.
+    await within(goOffline(), 8_000).catch(() => {});
+    // After going offline (which keeps the token): this phone stops getting his alerts.
+    if (state.status === 'in') await forgetPushToken(state.driver.driverId, phoneToken());
+    forgetThisPhone();
     await signOut(firebaseAuth());
-  }, []);
+  }, [state]);
 
   const value = useMemo(() => ({ state, logIn, logOut }), [state, logIn, logOut]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

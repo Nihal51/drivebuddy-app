@@ -8,6 +8,10 @@
  * becomes "released" and the alerts robot offers it to the others again.
  * When a customer pays him in cash, the robot writes it on the offer
  * (`cashCollected`): that cash is DriveBuddy's, so it comes off his weekly pay.
+ *
+ * He is named on an offer he takes by id and name only (SPEC-privacy, 25 Nov
+ * 2026): the same ref goes on the booking, which the customer reads, so it
+ * never carries his number. Offers taken by older app versions also have it.
  */
 
 import { type PackageId, isPackageId, toDate } from '@drivebuddy/shared';
@@ -42,6 +46,7 @@ export type Offer = {
   to: string;
   driverPay: number;
   status: OfferStatus;
+  /** Who took it: his driver id; his number only on offers taken by older app versions. */
   takenPhone: string;
   takenId: string;
   takenAt?: Date;
@@ -193,9 +198,24 @@ export function watchOffer(id: string, onChange: (offer: Offer | null) => void):
   );
 }
 
-/** Every offer he has taken, live (his earnings). */
-export function watchMyOffers(phone: string, onChange: (offers: Offer[] | null) => void): () => void {
-  const q = query(collection(firestore(), 'offers'), where('takenBy.phone', '==', phone));
+/** The driver, as the offers know him. */
+export type Me = { driverId: string; phone: string };
+
+/**
+ * Taken by him: by his driver id — or, for a ref without an id, by his
+ * number. (Every offer's takenBy has an id — firestore.rules isDriverRef — so
+ * the number is only a safety net.)
+ */
+export const takenByMe = (o: Pick<Offer, 'takenId' | 'takenPhone'>, me: Me): boolean =>
+  o.takenId ? o.takenId === me.driverId : Boolean(me.phone) && o.takenPhone === me.phone;
+
+/** Every offer he has taken, live (his earnings): by his driver id, as the rules' isMe checks. */
+export function watchMyOffers(driverId: string, onChange: (offers: Offer[] | null) => void): () => void {
+  if (!driverId) {
+    onChange(null);
+    return () => {};
+  }
+  const q = query(collection(firestore(), 'offers'), where('takenBy.id', '==', driverId));
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => toOffer(d.id, d.data()))),
@@ -207,14 +227,16 @@ export type AcceptResult = { ok: true } | { ok: false; reason: 'gone' | 'failed'
 
 /**
  * Take the job: the offer becomes his and the booking is assigned to him, in one
- * transaction (both or neither). Someone faster → 'gone'.
+ * transaction (both or neither). Someone faster → 'gone'. He is written as
+ * { id, name } — exactly his record's name (firestore.rules isMeAsDriver) and
+ * no number: the customer reads the booking.
  */
 export async function acceptOffer(
   offerId: string,
-  me: { driverId: string; name: string; phone: string; uid: string },
+  me: { driverId: string; name: string; uid: string },
 ): Promise<AcceptResult> {
   const db = firestore();
-  const ref = { id: me.driverId, name: me.name, phone: me.phone };
+  const ref = { id: me.driverId, name: me.name };
   try {
     await runTransaction(db, async (tx) => {
       const offer = await tx.get(doc(db, 'offers', offerId));
@@ -251,10 +273,10 @@ export async function acceptOffer(
  * customer details) until the office's call; then the job replaces it.
  * Soonest first, like the offers.
  */
-export function waitingOffers(myOffers: Offer[], confirmedJobIds: string[], myPhone: string): Offer[] {
+export function waitingOffers(myOffers: Offer[], confirmedJobIds: string[], me: Me): Offer[] {
   const confirmed = new Set(confirmedJobIds);
   return myOffers
-    .filter((o) => o.status === 'taken' && o.takenPhone === myPhone && !o.done && !confirmed.has(o.id))
+    .filter((o) => o.status === 'taken' && takenByMe(o, me) && !o.done && !confirmed.has(o.id))
     .sort((a, b) => a.when.localeCompare(b.when));
 }
 
@@ -271,11 +293,11 @@ export type ReleaseCheck = 'ok' | 'not-from-offer' | 'started';
  * the booking is still his when the change is written).
  */
 export function releaseCheck(
-  offer: Pick<Offer, 'status' | 'takenPhone'> | null,
+  offer: Pick<Offer, 'status' | 'takenPhone' | 'takenId'> | null,
   started: boolean,
-  myPhone: string,
+  me: Me,
 ): ReleaseCheck {
-  if (!offer || offer.status !== 'taken' || offer.takenPhone !== myPhone) return 'not-from-offer';
+  if (!offer || offer.status !== 'taken' || !takenByMe(offer, me)) return 'not-from-offer';
   if (started) return 'started';
   return 'ok';
 }
@@ -299,7 +321,7 @@ class NotAllowed extends Error {
  */
 export async function releaseJob(
   bookingId: string,
-  me: { phone: string; uid: string },
+  me: Me & { uid: string },
   started: boolean,
 ): Promise<ReleaseResult> {
   const db = firestore();
@@ -309,11 +331,7 @@ export async function releaseJob(
     await within(
       runTransaction(db, async (tx) => {
         const offer = await tx.get(offerRef);
-        const check = releaseCheck(
-          offer.exists() ? toOffer(offer.id, offer.data()) : null,
-          started,
-          me.phone,
-        );
+        const check = releaseCheck(offer.exists() ? toOffer(offer.id, offer.data()) : null, started, me);
         if (check !== 'ok') throw new NotAllowed(check);
         tx.update(offerRef, { status: 'released', updatedAt: serverTimestamp() });
         tx.update(bookingRef, {

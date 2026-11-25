@@ -97,6 +97,23 @@ export function pingAlerts(url: string) {
   fetch(url, { method: 'POST' }).catch(() => {});
 }
 
+/** A doorbell with a job: the robot runs only that part, straight away (apps-script doPost). */
+export type AlertsAction = 'driver-change';
+
+/**
+ * The same doorbell with { action } in the body, so the robot looks at that
+ * one thing at once (a change of driver: within seconds rather than its
+ * ten-minute round). Fire-and-forget, like pingAlerts.
+ */
+export function pingAction(url: string, action: AlertsAction) {
+  fetch(url, {
+    method: 'POST',
+    // text/plain: Apps Script reads the body as-is (the Driver app's login calls send it the same way).
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action }),
+  }).catch(() => {});
+}
+
 /** Live list of the signed-in customer's bookings, newest first. Returns an unsubscribe. */
 export function watchMyBookings(
   uid: string,

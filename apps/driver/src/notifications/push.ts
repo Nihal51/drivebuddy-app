@@ -1,9 +1,13 @@
 /**
  * Job alerts: the alerts robot sends a push notification (through Expo) to
  * the nearest online drivers when a job offer goes out. The token is saved
- * with his Online status (availability/{driverId}); nothing else uses it.
- * Android needs the Firebase file (google-services.json) in the build for
- * this; without it the app still works, only without alerts.
+ * in availability/{driverId} (tracking/sharing.ts) at every app start and
+ * when he goes Online; nothing else uses it. Android needs the Firebase file
+ * (google-services.json) in the build for this; without it the app still
+ * works, only without alerts.
+ *
+ * A test alert ("Send me a test alert", the Job alerts card) carries
+ * `data: { action: 'test-alert' }` and shows like any notification.
  *
  * A job alert carries `data: { offerId }`. With the app open, the "New job"
  * popup shows it, so the alert only sounds (no banner over the popup); a tap
@@ -67,8 +71,29 @@ export function watchOfferTaps(onOffer: (offerId: string) => void): () => void {
   };
 }
 
-/** The Expo push token for job alerts, or '' when they cannot be set up here. */
-export async function jobAlertsToken(channelName: string): Promise<string> {
+/** May this phone show notifications: yes, not yet (we may ask), or no (only the phone's settings can change it). */
+export type AlertPermission = 'granted' | 'ask' | 'blocked';
+
+export function permissionOf(p: { status: string; canAskAgain?: boolean }): AlertPermission {
+  if (p.status === 'granted') return 'granted';
+  return p.canAskAgain === false ? 'blocked' : 'ask';
+}
+
+export async function alertPermission(): Promise<AlertPermission> {
+  try {
+    return permissionOf(await Notifications.getPermissionsAsync());
+  } catch {
+    return 'ask';
+  }
+}
+
+/**
+ * The Expo push token for job alerts, or '' when they cannot be set up here.
+ * `ask`: show the phone's "Allow notifications?" if it has not been answered
+ * (going Online, or his tap on Allow) — not at app start, where it would pop
+ * up before he has seen why.
+ */
+export async function jobAlertsToken(channelName: string, ask = true): Promise<string> {
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('jobs', {
@@ -81,7 +106,7 @@ export async function jobAlertsToken(channelName: string): Promise<string> {
     const perm = await Notifications.getPermissionsAsync();
     const granted =
       perm.status === 'granted' ||
-      (perm.canAskAgain && (await Notifications.requestPermissionsAsync()).status === 'granted');
+      (ask && perm.canAskAgain && (await Notifications.requestPermissionsAsync()).status === 'granted');
     if (!granted) return '';
     const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
     if (!projectId) return '';

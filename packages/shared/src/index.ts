@@ -2,6 +2,7 @@ export * from './account';
 export * from './booking';
 export * from './catalog';
 export * from './config';
+export * from './driver';
 export * from './format';
 export * from './geo';
 export * from './meter';

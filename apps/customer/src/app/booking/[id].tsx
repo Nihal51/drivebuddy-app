@@ -1,11 +1,12 @@
-import { type Booking, prettyPhone, rupees } from '@drivebuddy/shared';
+import { type Booking, rupees } from '@drivebuddy/shared';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AcceptPriceCard, WaitingCard } from '@/booking/AcceptPriceCard';
-import { DriverMap } from '@/booking/DriverMap';
+import { DriverSection } from '@/booking/DriverCard';
+import { DriverMap, useDriverSpot } from '@/booking/DriverMap';
 import { FareMeterCard } from '@/booking/FareMeterCard';
 import { PaymentCard } from '@/booking/PaymentCard';
 import { RatingCard } from '@/booking/RatingCard';
@@ -14,6 +15,7 @@ import {
   canAcceptPrice,
   canRate,
   confirmedInstantly,
+  findingAnotherDriver,
   findingDriver,
   priceAcceptedWaiting,
 } from '@/booking/selfserve';
@@ -39,7 +41,7 @@ import {
   quoteBreakdown,
   tripSummary,
 } from '@/i18n/format';
-import { callNumber, openWebPage } from '@/lib/links';
+import { openWebPage } from '@/lib/links';
 import { makeStyles, space, useTheme } from '@/theme';
 
 type State = { kind: 'loading' } | { kind: 'missing' } | { kind: 'ready'; booking: Booking };
@@ -61,6 +63,14 @@ export default function BookingDetailScreen() {
       () => setState({ kind: 'missing' }), // permission denied = not this customer's booking
     );
   }, [id, user]);
+
+  // Where his driver is, while he shares it (from Start): the map, and the sign he has set off.
+  const live = state.kind === 'ready' ? state.booking : null;
+  const spot = useDriverSpot(
+    live?.id ?? '',
+    live?.assignedDriver?.id,
+    live?.status === 'assigned' && Boolean(live.assignedDriver),
+  );
 
   if (!ready || (user && state.kind === 'loading')) {
     return (
@@ -131,32 +141,19 @@ export default function BookingDetailScreen() {
       )}
 
       {canAcceptPrice(b, user.uid) ? <AcceptPriceCard booking={b} /> : null}
-      {accepted || findingDriver(b) ? <WaitingCard accepted={accepted} /> : null}
+      {(accepted || findingDriver(b)) && !findingAnotherDriver(b) ? (
+        <WaitingCard accepted={accepted} />
+      ) : null}
       {b.payment ? <PaymentCard payment={b.payment} /> : null}
 
-      {b.assignedDriver && b.status === 'assigned' ? (
-        <Card tone="cream">
-          <AppText variant="small" weight="heavy" color={colors.amberText}>
-            {t.detail.yourDriver.toUpperCase()}
-          </AppText>
-          <AppText variant="heading" weight="heavy">
-            {b.assignedDriver.name}
-          </AppText>
-          <AppText color={colors.textMuted}>{prettyPhone(b.assignedDriver.phone)}</AppText>
-          <Button
-            title={t.detail.callDriver}
-            icon="call"
-            variant="dark"
-            onPress={() => void callNumber(b.assignedDriver?.phone ?? '')}
-          />
-        </Card>
-      ) : null}
+      {/* Never his number: his card once DriveBuddy has confirmed him, and Call DriveBuddy. */}
+      <DriverSection booking={b} uid={user.uid} started={Boolean(spot)} />
 
       {b.returnCheck ? <ReturnTrainsCard booking={b} /> : null}
 
       {b.status === 'assigned' ? <FareMeterCard booking={b} config={config} /> : null}
 
-      {b.assignedDriver && b.status === 'assigned' ? <DriverMap bookingId={b.id} /> : null}
+      {b.status === 'assigned' ? <DriverMap spot={spot} /> : null}
 
       <Card>
         <InfoRow icon="time-outline" label={t.detail.when} value={formatPreferred(t, b.preferredTime)} />

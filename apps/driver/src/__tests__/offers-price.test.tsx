@@ -14,6 +14,7 @@ import { ThemeProvider } from '@/theme';
 let mockOffersListener: (offers: Offer[] | null) => void = () => {};
 
 jest.mock('@/components/OnlineCard', () => ({ OnlineCard: () => null }));
+jest.mock('@/components/JobAlertsCard', () => ({ JobAlertsCard: () => null }));
 jest.mock('expo-router', () => ({ router: { canDismiss: () => false, dismissAll: jest.fn() } }));
 jest.mock('@/data/me', () => ({
   ...jest.requireActual('@/data/me'),

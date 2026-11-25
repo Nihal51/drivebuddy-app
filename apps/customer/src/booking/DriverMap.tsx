@@ -5,23 +5,40 @@ import { WebView } from 'react-native-webview';
 
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
-import { type DriverSpot, STALE_MS, minutesAgo, watchDriverSpot } from '@/data/tracking';
+import { type DriverSpot, STALE_MS, minutesAgo, spotOfDriver, watchDriverSpot } from '@/data/tracking';
 import { useI18n } from '@/i18n';
 import { makeStyles, radius, space, useTheme } from '@/theme';
+
+/**
+ * Where this booking's driver is, live, while he shares it from the Driver
+ * app (Start → Arrived); null before he starts. A point left by a driver the
+ * booking was taken from does not count (spotOfDriver). `on`: only while a
+ * driver is on the job.
+ */
+export function useDriverSpot(
+  bookingId: string,
+  driverId: string | undefined,
+  on: boolean,
+): DriverSpot | null {
+  const [spot, setSpot] = useState<{ bookingId: string; spot: DriverSpot | null } | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    return watchDriverSpot(bookingId, (s) => setSpot({ bookingId, spot: s }));
+  }, [bookingId, on]);
+  return on && spot?.bookingId === bookingId ? spotOfDriver(spot.spot, driverId) : null;
+}
 
 /**
  * The driver moving on a map, while he shares his location from the
  * DriveBuddy Driver app (Start → Arrived). Nothing shows until he starts.
  * OpenStreetMap in a web view, like the pickup map: no key, no bill.
  */
-export function DriverMap({ bookingId }: { bookingId: string }) {
+export function DriverMap({ spot }: { spot: DriverSpot | null }) {
   const { t } = useI18n();
   const { colors } = useTheme();
   const styles = useStyles();
-  const [spot, setSpot] = useState<DriverSpot | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => watchDriverSpot(bookingId, setSpot), [bookingId]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);

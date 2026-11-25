@@ -17,6 +17,18 @@ import {
 } from './returnTrains';
 import { type PickupGeo, toPickupGeo } from './geo';
 import {
+  type DriverCard,
+  type DriverChangeRequest,
+  type DriverConfirmed,
+  type DriverRef,
+  toChangedDrivers,
+  toDriverCard,
+  toDriverChangeRequest,
+  toDriverChanges,
+  toDriverConfirmed,
+  toDriverRef,
+} from './driver';
+import {
   type BookingStatus,
   type City,
   type PackageId,
@@ -217,8 +229,6 @@ export function newBookingFields(
 
 /* ------------------------------------------------------------ read model */
 
-export type DriverRef = { id: string; name: string; phone: string };
-
 export type Booking = {
   id: string;
   name: string;
@@ -235,7 +245,18 @@ export type Booking = {
   createdAt?: Date;
   /** "DB-1042", given by the alerts robot within a minute of booking. */
   ref?: string;
+  /** His id and name; never his number (SPEC-privacy: customers call DriveBuddy instead). */
   assignedDriver?: DriverRef;
+  /** DriveBuddy has confirmed the driver (robot or office); absent until then. */
+  driverConfirmed?: DriverConfirmed;
+  /** What the customer sees of him once confirmed (robot-written). */
+  driverCard?: DriverCard;
+  /** "Change driver", waiting for the robot. */
+  driverChangeRequest?: DriverChangeRequest;
+  /** Changes of driver made so far (the robot's count, 0 when absent). */
+  driverChanges: number;
+  /** Drivers this booking was taken from at the customer's request (the robot's). */
+  changedDrivers: string[];
   cancelReason?: string;
   updatedAt?: Date;
   /** Outstation trip / one-way drop: where, how long, and the estimate shown. */
@@ -274,13 +295,6 @@ export function toDate(v: unknown): Date | undefined {
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
-function toDriver(v: unknown): DriverRef | undefined {
-  if (typeof v !== 'object' || v === null) return undefined;
-  const d = v as Record<string, unknown>;
-  const ref = { id: str(d.id), name: str(d.name), phone: str(d.phone) };
-  return ref.name && ref.phone ? ref : undefined;
-}
-
 /** A stored document → a Booking, tolerating missing or odd fields from older records. */
 export function toBooking(id: string, data: Record<string, unknown>): Booking {
   const pkg = str(data.package);
@@ -298,7 +312,12 @@ export function toBooking(id: string, data: Record<string, unknown>): Booking {
     source: str(data.source),
     createdAt: toDate(data.createdAt),
     ref: str(data.ref) || undefined,
-    assignedDriver: toDriver(data.assignedDriver),
+    assignedDriver: toDriverRef(data.assignedDriver),
+    driverConfirmed: toDriverConfirmed(data.driverConfirmed),
+    driverCard: toDriverCard(data.driverCard),
+    driverChangeRequest: toDriverChangeRequest(data.driverChangeRequest),
+    driverChanges: toDriverChanges(data.driverChanges),
+    changedDrivers: toChangedDrivers(data.changedDrivers),
     cancelReason: str(data.cancelReason) || undefined,
     updatedAt: toDate(data.updatedAt),
     trip: toTrip(data.trip),

@@ -2,9 +2,11 @@
  * His own driver record (drivers/{driverId}; the rules let a driver read only
  * his own): name, city and status from the office; his UPI ID, which he sets
  * himself on My earnings for the weekly payouts; and his rating and strikes,
- * which only the alerts robot writes (customers' stars, jobs given back).
+ * which only the alerts robot writes (customers' stars, jobs given back) —
+ * as is lastAlert, whether the last push reached his phone.
  */
 
+import { type AlertResult, toAlertResult } from '@drivebuddy/shared';
 import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 import { firestore } from '@/firebase/app';
@@ -21,6 +23,8 @@ export type MyRecord = {
   ratingAvg?: number;
   ratingCount: number;
   strikes: number;
+  /** What became of the last push to his phone (robot-written; absent until one has gone). */
+  lastAlert?: AlertResult;
 };
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
@@ -29,6 +33,7 @@ const count = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v
 export function toMyRecord(d: Record<string, unknown>): MyRecord {
   const ratingCount = count(d.ratingCount);
   const avg = d.ratingAvg;
+  const lastAlert = toAlertResult(d.lastAlert);
   return {
     name: str(d.name),
     city: str(d.city),
@@ -37,6 +42,7 @@ export function toMyRecord(d: Record<string, unknown>): MyRecord {
     ...(ratingCount > 0 && typeof avg === 'number' && avg >= 1 && avg <= 5 ? { ratingAvg: avg } : {}),
     ratingCount,
     strikes: count(d.strikes),
+    ...(lastAlert ? { lastAlert } : {}),
   };
 }
 

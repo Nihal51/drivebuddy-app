@@ -73,6 +73,43 @@ export const en = {
     channel: 'Job offers',
   },
 
+  alerts: {
+    title: 'Job alerts',
+    working: 'Working',
+    attention: 'Needs attention',
+    permissionOn: 'Notifications allowed',
+    permissionOff: 'Notifications are off — you will miss new jobs',
+    allow: 'Allow notifications',
+    openSettings: 'Open settings',
+    signedUp: 'Signed up for alerts on this phone',
+    notSignedUp: 'Not signed up for alerts on this phone yet',
+    signUp: 'Sign up again',
+    onlineOn: 'Online — new jobs near you come to this phone',
+    onlineOff: 'Offline — go online to get new job alerts',
+    lastNone: 'No alert has been sent to this phone yet.',
+    lastOk: (when: string) => `Last alert reached this phone ✓ · ${when}`,
+    lastFailed: (when: string, why: string) => `Last alert did not arrive (${when}). ${why}`,
+    test: 'Send me a test alert',
+    testWaiting: 'Sending a test alert… the answer shows here in a minute.',
+    testOk: (when: string) =>
+      `Test alert sent ✓ ${when}. It should be on your phone now — not there? See the battery setting below.`,
+    testFailed: (why: string) => `The test alert did not arrive. ${why}`,
+    testTooSoon: 'Wait a minute before the next test.',
+    testAskFailed: 'Could not ask for a test. Check your internet and try again.',
+    why: {
+      NoToken: 'This phone is not signed up for alerts. Allow notifications, then try again.',
+      DeviceNotRegistered: 'This phone no longer takes alerts. Close the app, open it again, then try again.',
+      NoReceipt: 'No answer came about it. Try again.',
+      settings:
+        'Alerts cannot reach phones just now because of a setting at DriveBuddy. The office has been told.',
+      other: 'Something went wrong on the way. Try again, or call the office.',
+    },
+    batteryTitle: 'Allow DriveBuddy to run in the background',
+    batteryBody:
+      'Some phones stop alerts to save battery. In the settings, open Battery and choose "Unrestricted" (or "Don\'t optimise") for DriveBuddy Driver.',
+    batteryButton: 'Open app settings',
+  },
+
   offers: {
     title: 'New job offers',
     youEarn: (amount: string) => `You earn ${amount}`,

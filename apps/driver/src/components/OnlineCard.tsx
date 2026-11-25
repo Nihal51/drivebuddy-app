@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import type { Driver } from '@/auth/DriverAuth';
+import { rememberPhoneToken } from '@/data/alerts';
 import type { MyRecord } from '@/data/me';
 import { useI18n } from '@/i18n';
 import { jobAlertsToken } from '@/notifications/push';
@@ -54,7 +55,9 @@ export function OnlineCard({
     if (isOn) {
       await goOffline();
     } else {
+      // Going online signs this phone up for alerts again (goOnline saves the token).
       const token = await jobAlertsToken(t.online.channel);
+      rememberPhoneToken(token);
       const res = await goOnline(
         { driverId: driver.driverId, city: me.city, name: me.name, phone: driver.phone },
         token,

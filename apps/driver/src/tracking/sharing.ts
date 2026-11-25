@@ -6,7 +6,8 @@
  * to tracking/{bookingId}; firestore.rules accepts it only from the driver the
  * booking is assigned to and only while it is "assigned", so the moment the
  * office completes or reassigns the job the next write is refused and sharing
- * stops by itself.
+ * stops by itself. The customer reads that document, so it names the driver
+ * by his driver id, never his number (SPEC-privacy, 25 Nov 2026).
  *
  * This file must be imported when the app starts (app/_layout.tsx): Android
  * can wake the JavaScript for the task without opening a screen.
@@ -14,9 +15,10 @@
 
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { PermissionsAndroid, Platform } from 'react-native';
 
+import { failureOf, within } from '@/data/write';
 import { firestore } from '@/firebase/app';
 import { firebaseAuth } from '@/firebase/auth';
 import { readJson, writeJson, writeStored } from '@/lib/storage';
@@ -26,11 +28,29 @@ const STATE_KEY = 'dbd.sharing';
 
 export type Sharing = {
   bookingId: string;
-  phone: string;
+  /** Who is driving, on every point. Absent on a share started by an older app version (see trackWho). */
+  driverId?: string;
+  /** Older app versions named him by number; kept only to finish such a share. */
+  phone?: string;
   name: string;
   startedAt: number;
   lastSentAt?: number;
 };
+
+/** Who is driving, as tracking/{bookingId} says it (firestore.rules isTrack). */
+export type TrackWho = { driverId: string } | { driverPhone: string };
+
+/**
+ * The share's driver → how the points name him: his driver id (from the
+ * share, else from his login). Only a share an older app version started,
+ * with no id anywhere, still goes by his number — the rules accept that
+ * until the robot's HIDE_DRIVER_PHONE switch, and it ends with that trip.
+ */
+export function trackWho(s: Pick<Sharing, 'driverId' | 'phone'>, loginDriverId = ''): TrackWho | null {
+  const driverId = s.driverId || loginDriverId;
+  if (driverId) return { driverId };
+  return s.phone ? { driverPhone: s.phone } : null;
+}
 
 export type StartResult =
   { ok: true } | { ok: false; reason: 'permission' | 'gps-off' | 'other-job' | 'failed' };
@@ -38,7 +58,7 @@ export type StartResult =
 type Fix = Pick<Location.LocationObject, 'coords' | 'timestamp'>;
 
 /** One GPS fix → the fields firestore.rules (isTrack) accepts, without the server time. */
-export function trackPoint(fix: Fix, phone: string, name: string) {
+export function trackPoint(fix: Fix, who: TrackWho, name: string) {
   const { latitude, longitude, accuracy, heading, speed } = fix.coords;
   const round = (n: number, d: number) => Math.round(n * 10 ** d) / 10 ** d;
   return {
@@ -51,7 +71,7 @@ export function trackPoint(fix: Fix, phone: string, name: string) {
     ...(typeof speed === 'number' && speed >= 0 && speed <= 100 ? { speed: round(speed, 1) } : {}),
     active: true,
     phoneAt: new Date(fix.timestamp),
-    driverPhone: phone,
+    ...who,
     ...(name.trim().length >= 2 ? { driverName: name.trim().slice(0, 60) } : {}),
   };
 }
@@ -83,16 +103,37 @@ export const currentSharing = () => readJson<Sharing>(STATE_KEY);
 const isRefused = (err: unknown) =>
   typeof err === 'object' && err !== null && (err as { code?: string }).code === 'permission-denied';
 
-/** Write the newest fix; stop sharing when the rules say the job is no longer his. */
+/** His driver id from his login (a share started before this version has none of its own). */
+async function loginDriverId(): Promise<string> {
+  try {
+    const user = firebaseAuth().currentUser;
+    const id = user ? (await user.getIdTokenResult()).claims.driverId : '';
+    return typeof id === 'string' ? id : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Write the newest fix — setDoc, so the document is replaced and an older
+ * point's number goes with it; stop sharing when the rules say the job is no
+ * longer his.
+ */
 export async function sendFix(fix: Fix): Promise<void> {
-  const s = await currentSharing();
+  let s = await currentSharing();
   if (!s || !inIndia(fix)) return;
   const auth = firebaseAuth();
   await auth.authStateReady();
   if (!auth.currentUser) return;
+  if (!s.driverId) {
+    const driverId = await loginDriverId();
+    if (driverId) s = { ...s, driverId };
+  }
+  const who = trackWho(s);
+  if (!who) return;
   try {
     await setDoc(doc(firestore(), 'tracking', s.bookingId), {
-      ...trackPoint(fix, s.phone, s.name),
+      ...trackPoint(fix, who, s.name),
       at: serverTimestamp(),
     });
     const next = { ...s, lastSentAt: Date.now() };
@@ -114,9 +155,15 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(LOCATION_TASK, 
 
 /**
  * "Online" for job offers: while it is on, availability/{driverId} gets his
- * spot about every 2 minutes and his phone's push token, so the alerts robot
- * sends a new job to the nearest online drivers first. One location service
- * does both: every 15 s while sharing on a job, every 2 min while only online.
+ * spot about every 2 minutes, so the alerts robot sends a new job to the
+ * nearest online drivers first. One location service does both: every 15 s
+ * while sharing on a job, every 2 min while only online.
+ *
+ * The same document holds his phone's push token (`pushToken`), the only
+ * place the robot looks for it. It stays there while he is offline too: the
+ * robot offers new jobs only to drivers who are online, but his reminders,
+ * "the customer chose another driver" and a test alert must still reach him.
+ * It goes when he logs out (forgetPushToken).
  */
 export type Online = {
   driverId: string;
@@ -154,9 +201,64 @@ async function writeAvailability(o: Online, online: boolean, fix?: Fix | null) {
     name: o.name,
     phone: o.phone,
     ...(online ? spot : {}),
-    ...(online && o.token ? { pushToken: o.token } : {}),
+    ...(o.token ? { pushToken: o.token } : {}),
     at: serverTimestamp(),
   });
+}
+
+/**
+ * Save this phone's push token for job alerts — at every app start and when
+ * he allows notifications — in the same place and format going Online does
+ * (availability/{driverId}.pushToken). Online: also into the saved state, so
+ * the 2-minute writes carry it. The rest of the document is left as it is
+ * (his spot stays); a driver who has never been online gets one, offline.
+ * false = not saved (not Active, or no internet).
+ */
+export async function savePushToken(
+  me: { driverId: string; city: string; name: string; phone: string },
+  token: string,
+): Promise<boolean> {
+  if (!token || !me.driverId) return false;
+  const o = await currentOnline();
+  if (o && o.driverId === me.driverId && o.token !== token) {
+    const next = { ...o, token };
+    await writeJson(ONLINE_KEY, next);
+    onlineListeners.forEach((cb) => cb(next));
+  }
+  const ref = doc(firestore(), 'availability', me.driverId);
+  try {
+    await within(updateDoc(ref, { pushToken: token, at: serverTimestamp() }));
+    return true;
+  } catch (err) {
+    // No internet: the write waits on the phone and reaches the server by itself.
+    if (failureOf(err) === 'network') return false;
+    // No document yet, or the office changed his name or city since: write it afresh.
+    try {
+      await within(writeAvailability({ ...me, token }, Boolean(o)));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Logging out: this phone must stop getting his alerts — but only this
+ * phone's token goes. If he has since logged in on another phone, the token
+ * saved is that phone's, and logging out of the old one must not cut his
+ * alerts there. `token` = this phone's ('' = unknown: nothing is removed).
+ * Within a few seconds at most, so logging out offline never hangs.
+ */
+export async function forgetPushToken(driverId: string, token: string, ms = 8_000): Promise<void> {
+  if (!driverId || !token) return;
+  const ref = doc(firestore(), 'availability', driverId);
+  try {
+    const snap = await within(getDoc(ref), ms);
+    if (!snap.exists() || snap.data().pushToken !== token) return;
+    await within(updateDoc(ref, { online: false, pushToken: deleteField(), at: serverTimestamp() }), ms);
+  } catch {
+    // Offline or refused: the robot drops a dead token itself (DeviceNotRegistered).
+  }
 }
 
 /** A fix while online: tell the robot where he is, at most every ~2 minutes. */
@@ -268,7 +370,7 @@ async function askNotifications() {
 
 export async function startSharing(
   job: { id: string },
-  driver: { phone: string; name: string },
+  driver: { driverId: string; name: string },
   notification: { title: string; body: string },
 ): Promise<StartResult> {
   try {
@@ -283,7 +385,7 @@ export async function startSharing(
 
     const state: Sharing = {
       bookingId: job.id,
-      phone: driver.phone,
+      driverId: driver.driverId,
       name: driver.name,
       startedAt: Date.now(),
     };

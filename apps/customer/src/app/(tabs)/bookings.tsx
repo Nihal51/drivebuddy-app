@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, RefreshControl, SectionList, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/AuthProvider';
+import { findingAnotherDriver, showsDriver } from '@/booking/selfserve';
 import { AppText } from '@/components/AppText';
 import { EmptyState, Notice, SectionTitle } from '@/components/bits';
 import { Button } from '@/components/Button';
@@ -151,15 +152,36 @@ function BookingCard({ booking: b }: { booking: Booking }) {
           {b.pickup}
         </AppText>
       </View>
-      {b.status === 'assigned' && b.assignedDriver ? (
-        <View style={styles.line}>
-          <Ionicons name="person-circle-outline" size={16} color={colors.info} />
-          <AppText variant="small" weight="bold" color={colors.info}>
-            {b.assignedDriver.name}
-          </AppText>
-        </View>
-      ) : null}
+      <DriverLine booking={b} />
     </Pressable>
+  );
+}
+
+/**
+ * Who is driving, in one line: his name once DriveBuddy has confirmed him
+ * (never his number), "confirming him" before that, or "finding you another
+ * driver" after a Change driver.
+ */
+function DriverLine({ booking: b }: { booking: Booking }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const text = findingAnotherDriver(b)
+    ? t.bookings.findingAnother
+    : b.status !== 'assigned' || !b.assignedDriver
+      ? null
+      : showsDriver(b)
+        ? (b.driverCard?.name ?? b.assignedDriver.name)
+        : t.bookings.driverConfirming;
+  if (!text) return null;
+  const named = b.status === 'assigned' && showsDriver(b) && !b.driverChangeRequest;
+  return (
+    <View style={styles.line} testID={`booking-driver-${b.id}`}>
+      <Ionicons name={named ? 'person-circle-outline' : 'hourglass-outline'} size={16} color={colors.info} />
+      <AppText variant="small" weight="bold" color={colors.info} style={styles.flex}>
+        {text}
+      </AppText>
+    </View>
   );
 }
 

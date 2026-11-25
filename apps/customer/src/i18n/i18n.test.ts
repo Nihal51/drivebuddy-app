@@ -5,6 +5,7 @@ import {
   billBreakdown,
   quoteBreakdown,
   clockText,
+  driverCardLines,
   errorText,
   formatDateTime,
   formatPreferred,
@@ -161,4 +162,35 @@ test('a local package bill, in both languages', () => {
   );
   // Numbers that do not add up: the total only.
   expect(localBillText(en, { ...bill, amount: 200 })).toBe('₹200');
+});
+
+test('the driver card in words, in both languages — what is not known is left out', () => {
+  const card = {
+    name: 'Raju Sahu',
+    photoUrl: null,
+    rating: 4.8,
+    ratingCount: 23,
+    trips: 120,
+    experienceYears: 8,
+    verified: true,
+    since: new Date('2026-03-01T00:00:00Z'),
+  };
+  expect(driverCardLines(en, card)).toEqual([
+    '★ 4.8 (23 ratings)',
+    '120 trips with DriveBuddy',
+    '8 years’ driving experience',
+    'With DriveBuddy since Mar 2026',
+  ]);
+  expect(driverCardLines(hi, card)).toEqual([
+    '★ 4.8 (23 रेटिंग)',
+    'DriveBuddy के साथ 120 ट्रिप',
+    '8 साल का ड्राइविंग अनुभव',
+    'मार्च 2026 से DriveBuddy के साथ',
+  ]);
+  const fresh = { ...card, rating: null, ratingCount: 0, trips: 1, experienceYears: null, since: null };
+  expect(driverCardLines(en, fresh)).toEqual([
+    'New on DriveBuddy — no ratings yet',
+    '1 trip with DriveBuddy',
+  ]);
+  expect(driverCardLines(en, { ...card, rating: 5, ratingCount: 1 })[0]).toBe('★ 5.0 (1 rating)');
 });

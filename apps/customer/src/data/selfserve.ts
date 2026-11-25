@@ -1,18 +1,18 @@
 /**
- * The customer's own writes after booking: accepting a trip price, and the
- * rating after the job. Each is the smallest write firestore.rules allows
- * (website repo), and none ever throws — the screen turns the outcome into
- * words.
+ * The customer's own writes after booking: accepting a trip price, the train
+ * home, "Change driver", and the rating after the job. Each is the smallest
+ * write firestore.rules allows (website repo), and none ever throws — the
+ * screen turns the outcome into words.
  */
 
-import { type NewRatingFields, newRatingFields } from '@drivebuddy/shared';
+import { type NewRatingFields, changeReason, newRatingFields } from '@drivebuddy/shared';
 import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 import { firestore } from '@/firebase/app';
 import { readStored, writeStored } from '@/lib/storage';
 import { reportError } from '@/lib/monitoring';
 
-import { type SubmitFailure, failureReason, pingAlerts } from './bookings';
+import { type SubmitFailure, failureReason, pingAction, pingAlerts } from './bookings';
 
 export type WriteResult = { ok: true } | { ok: false; reason: SubmitFailure };
 
@@ -54,6 +54,33 @@ export async function chooseReturnTrain(
   } catch (err) {
     const reason = failureReason(err);
     if (reason !== 'network') reportError(err, `return-train:${reason}`);
+    return { ok: false, reason };
+  }
+}
+
+/**
+ * "Change driver" (SPEC-privacy §2): exactly `driverChangeRequest` = { at,
+ * reason } — the server's time, and why (optional, at most 200 characters) —
+ * and nothing else (firestore.rules isChangeRequest). The rules also check it
+ * is the customer's booking, a driver is on it and has not started, fewer
+ * than 2 changes so far and none pending; a refusal comes back as
+ * 'permission'. Then the robot's doorbell for exactly this, so another driver
+ * gets the offer in seconds.
+ */
+export async function requestDriverChange(
+  bookingId: string,
+  reason: string,
+  pingUrl = '',
+): Promise<WriteResult> {
+  try {
+    await updateDoc(doc(firestore(), 'bookings', bookingId), {
+      driverChangeRequest: { at: serverTimestamp(), reason: changeReason(reason) },
+    });
+    if (pingUrl) pingAction(pingUrl, 'driver-change');
+    return { ok: true };
+  } catch (err) {
+    const reason = failureReason(err);
+    if (reason !== 'network' && reason !== 'permission') reportError(err, `change-driver:${reason}`);
     return { ok: false, reason };
   }
 }

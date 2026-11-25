@@ -47,7 +47,7 @@ jest.mock('@/data/jobs', () => ({
 }));
 jest.mock('@/data/offers', () => ({
   ...jest.requireActual('@/data/offers'),
-  watchMyOffers: (_phone: string, fn: (offers: Offer[] | null) => void) => {
+  watchMyOffers: (_driverId: string, fn: (offers: Offer[] | null) => void) => {
     mockMyOffers = fn;
     return () => {};
   },
@@ -146,6 +146,15 @@ test("Can't make it before the call: asks first, then gives it back", async () =
   });
   await fireEvent.press(screen.getByTestId('waiting-release-b1'));
   expect(alert).toHaveBeenCalledWith('Give this job back?', expect.any(String), expect.any(Array));
-  expect(mockRelease).toHaveBeenCalledWith('b1', { phone: '9893302783', uid: 'u1' }, false);
+  expect(mockRelease).toHaveBeenCalledWith('b1', { driverId: 'd1', phone: '9893302783', uid: 'u1' }, false);
   alert.mockRestore();
+});
+
+test('an offer taken by his driver id alone (no number on it, from 25 Nov 2026) waits too', async () => {
+  await show();
+  await act(async () => {
+    mockJobs([]);
+    mockMyOffers([{ ...OFFER, id: 'b2', takenPhone: '' }]);
+  });
+  expect(screen.getByTestId('waiting-b2')).toBeOnTheScreen();
 });

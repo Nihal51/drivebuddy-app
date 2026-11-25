@@ -61,7 +61,7 @@ function Jobs({ driver }: { driver: Driver }) {
     });
   }, [phone, driverId, round]);
 
-  useEffect(() => watchMyOffers(phone, (list) => setMyOffers(list ?? [])), [phone, round]);
+  useEffect(() => watchMyOffers(driverId, (list) => setMyOffers(list ?? [])), [driverId, round]);
   useEffect(() => {
     let alive = true;
     void readMyRecord(driverId).then((r) => alive && setMyCity(r?.city ?? ''));
@@ -76,7 +76,7 @@ function Jobs({ driver }: { driver: Driver }) {
     ? waitingOffers(
         myOffers,
         knownJobs.map((j) => j.id),
-        phone,
+        { driverId, phone },
       )
     : [];
 
@@ -111,7 +111,7 @@ function Jobs({ driver }: { driver: Driver }) {
       <OffersSection driver={driver} />
 
       {waiting.map((o) => (
-        <WaitingCard key={o.id} offer={o} myCity={myCity} me={{ phone, uid }} />
+        <WaitingCard key={o.id} offer={o} myCity={myCity} me={{ driverId, phone, uid }} />
       ))}
 
       {failed ? (

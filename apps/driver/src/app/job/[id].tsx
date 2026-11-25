@@ -125,7 +125,7 @@ export default function JobScreen() {
   const sharingThis = sharing?.bookingId === job.id;
   const buttons = jobButtons(taps ?? null, job.packageId, sharingThis);
   const times = tapTimes(taps ?? null, job.packageId);
-  const canRelease = !sharingThis && releaseCheck(offer, Boolean(taps?.leftAt), driver.phone) === 'ok';
+  const canRelease = !sharingThis && releaseCheck(offer, Boolean(taps?.leftAt), driver) === 'ok';
 
   const tapProblem = (res: TapResult) =>
     res.ok ? null : res.reason === 'network' || res.reason === 'failed' ? t.job.tapFailed : t.job.tapRefused;
@@ -202,7 +202,11 @@ export default function JobScreen() {
   const release = async () => {
     setBusy('release');
     setProblem(null);
-    const res = await releaseJob(job.id, { phone: driver.phone, uid: driver.uid }, Boolean(taps?.leftAt));
+    const res = await releaseJob(
+      job.id,
+      { driverId: driver.driverId, phone: driver.phone, uid: driver.uid },
+      Boolean(taps?.leftAt),
+    );
     setBusy(null);
     if (res.ok) {
       Alert.alert(t.appName, t.job.released);

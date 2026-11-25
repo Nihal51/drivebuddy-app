@@ -1,6 +1,13 @@
 import { getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
-import { acceptPrice, ratedOnPhone, ratingState, rememberRated, submitRating } from './selfserve';
+import {
+  acceptPrice,
+  ratedOnPhone,
+  ratingState,
+  rememberRated,
+  requestDriverChange,
+  submitRating,
+} from './selfserve';
 
 jest.mock('@/firebase/app', () => ({ firestore: () => ({}) }));
 jest.mock('firebase/firestore', () => ({
@@ -14,7 +21,10 @@ jest.mock('firebase/firestore', () => ({
 const denied = () => Object.assign(new Error('denied'), { code: 'permission-denied' });
 const offline = () => Object.assign(new Error('offline'), { code: 'unavailable' });
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  global.fetch = jest.fn(async () => ({ ok: true })) as unknown as typeof fetch;
+});
 
 describe('accept price', () => {
   test('writes acceptedPrice and nothing else', async () => {
@@ -31,6 +41,41 @@ describe('accept price', () => {
     await expect(acceptPrice('b1', 1700)).resolves.toEqual({ ok: false, reason: 'permission' });
     (updateDoc as jest.Mock).mockRejectedValue(offline());
     await expect(acceptPrice('b1', 1700)).resolves.toEqual({ ok: false, reason: 'network' });
+  });
+});
+
+describe('change driver', () => {
+  const PING = 'https://script.google.com/macros/s/robot/exec';
+
+  test('exactly driverChangeRequest = { at: server time, reason }, then the doorbell says what to look at', async () => {
+    (updateDoc as jest.Mock).mockResolvedValue(undefined);
+    await expect(requestDriverChange('b1', '  He is too far away  ', PING)).resolves.toEqual({ ok: true });
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'bookings/b1' },
+      { driverChangeRequest: { at: 'SERVER_TIME', reason: 'He is too far away' } },
+    );
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(PING);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({ action: 'driver-change' });
+  });
+
+  test('no reason is fine; a long one is cut to what the rules take', async () => {
+    (updateDoc as jest.Mock).mockResolvedValue(undefined);
+    await requestDriverChange('b1', '', PING);
+    await requestDriverChange('b1', 'x'.repeat(260), PING);
+    const reasons = (updateDoc as jest.Mock).mock.calls.map(
+      ([, data]) => (data as { driverChangeRequest: { reason: string } }).driverChangeRequest.reason,
+    );
+    expect(reasons).toEqual(['', 'x'.repeat(200)]);
+  });
+
+  test('refused (he has set off, no changes left, one pending): a reason, and no doorbell', async () => {
+    (updateDoc as jest.Mock).mockRejectedValue(denied());
+    await expect(requestDriverChange('b1', '', PING)).resolves.toEqual({ ok: false, reason: 'permission' });
+    (updateDoc as jest.Mock).mockRejectedValue(offline());
+    await expect(requestDriverChange('b1', '', PING)).resolves.toEqual({ ok: false, reason: 'network' });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
 

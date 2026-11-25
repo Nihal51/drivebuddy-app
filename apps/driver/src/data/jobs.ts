@@ -1,10 +1,16 @@
 /**
- * The driver's jobs: bookings assigned to his number, still "assigned", and
+ * The driver's jobs: bookings assigned to him, still "assigned", and
  * confirmed by DriveBuddy for him (`driverConfirmed.driverId` = his driver
  * id, after the office's call). firestore.rules lets a driver read exactly
- * these, so the query below must ask for exactly that. Until the call, a job
- * he took shows only as "Waiting for confirmation" from his offer (no
+ * these, so the queries below must ask for exactly that. Until the call, a
+ * job he took shows only as "Waiting for confirmation" from his offer (no
  * customer details: the booking is not readable to him yet).
+ *
+ * "Assigned to him" is by his driver id (`assignedDriver.id`, SPEC-privacy
+ * 25 Nov 2026: bookings stop carrying his number, so customers never get
+ * it). Bookings from before that may name him by number only, so a second
+ * query by number picks up those — and only those without an id — until the
+ * robot's HIDE_DRIVER_PHONE backfill has given every booking an id.
  *
  * A driver never sees what the customer pays or DriveBuddy's cut — only his
  * own pay (on the offer). The booking he reads still holds the customer's
@@ -21,7 +27,6 @@ import {
   type ReturnCheckOption,
   readPickupGeo,
   toBooking,
-  toDate,
   tripInstant,
 } from '@drivebuddy/shared';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
@@ -37,25 +42,16 @@ export type JobTrain = Omit<ReturnCheckOption, 'waitCharge' | 'price'>;
 /** The robot's train check at the drop, without the customer's prices. */
 export type JobReturnCheck = Omit<ReturnCheck, 'options'> & { options: JobTrain[] };
 
-/** DriveBuddy called him and confirmed the job (robot-written; absent until then). */
-export type DriverConfirmed = { at?: Date; by: string; driverId: string };
+/** The customer's "Change driver" (and why) and the drivers taken off before him: not his to read. */
+type CustomerKeys = 'driverChangeRequest' | 'changedDrivers';
 
-export type Job = Omit<Booking, MoneyKeys | 'trip' | 'returnCheck'> & {
+export type Job = Omit<Booking, MoneyKeys | CustomerKeys | 'trip' | 'returnCheck'> & {
   /** Where and how long — without the customer's estimate. */
   trip?: Omit<BookingTrip, 'estFrom' | 'estTo'>;
   /** After a one-way drop over 160 km: the trains home (the customer books his ticket), without prices. */
   returnCheck?: JobReturnCheck;
   pickupGeo: PickupGeo | null;
-  driverConfirmed?: DriverConfirmed;
 };
-
-export function toDriverConfirmed(v: unknown): DriverConfirmed | undefined {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) return undefined;
-  const d = v as Record<string, unknown>;
-  const str = (x: unknown) => (typeof x === 'string' ? x : '');
-  const at = toDate(d.at);
-  return { ...(at ? { at } : {}), by: str(d.by), driverId: str(d.driverId) };
-}
 
 /** Confirmed for him: a confirmation that names another driver (the job was his before) does not count. */
 export const confirmedForMe = (job: Pick<Job, 'driverConfirmed'>, driverId: string): boolean =>
@@ -87,9 +83,22 @@ export function notesForDriver(notes: string): string {
 }
 
 export function toJob(id: string, data: Record<string, unknown>): Job {
-  const { quote, bill, acceptedPrice, localBill, payment, returnPrice, returnCheck, trip, notes, ...rest } =
-    toBooking(id, data);
+  const {
+    quote,
+    bill,
+    acceptedPrice,
+    localBill,
+    payment,
+    returnPrice,
+    driverChangeRequest,
+    changedDrivers,
+    returnCheck,
+    trip,
+    notes,
+    ...rest
+  } = toBooking(id, data);
   void [quote, bill, acceptedPrice, localBill, payment, returnPrice]; // taken out on purpose: the customer's money
+  void [driverChangeRequest, changedDrivers]; // and the customer's own business
   const job: Job = { ...rest, notes: notesForDriver(notes), pickupGeo: readPickupGeo(data.pickupGeo) };
   if (returnCheck) {
     job.returnCheck = {
@@ -106,8 +115,6 @@ export function toJob(id: string, data: Record<string, unknown>): Job {
     void [estFrom, estTo];
     job.trip = where;
   }
-  const confirmed = toDriverConfirmed(data.driverConfirmed);
-  if (confirmed) job.driverConfirmed = confirmed;
   return job;
 }
 
@@ -129,26 +136,73 @@ export function navigateUrl(job: Pick<Job, 'pickup' | 'pickupGeo' | 'city'>): st
 
 type Listener = (jobs: Job[] | null, error?: unknown) => void;
 
-/** The My jobs query's filters (field, '==', value): the same conditions the rules check. */
-export function myJobsFilters(phone: string, driverId: string): [string, '==', string][] {
-  return [
-    ['assignedDriver.phone', '==', phone],
+type Filters = [string, '==', string][];
+
+/**
+ * The My jobs queries' filters (field, '==', value): the same conditions the
+ * rules check (isMyJob, isConfirmedMe) — by his driver id, and by his number
+ * for bookings from before 25 Nov 2026 (see mergeJobs).
+ */
+export function myJobsQueries(phone: string, driverId: string): { byId: Filters; byPhone: Filters } {
+  const rest: Filters = [
     ['status', '==', 'assigned'],
     ['driverConfirmed.driverId', '==', driverId],
   ];
+  return {
+    byId: [['assignedDriver.id', '==', driverId], ...rest],
+    byPhone: [['assignedDriver.phone', '==', phone], ...rest],
+  };
+}
+
+/**
+ * The two lists → his jobs, each once, in order. From the list by number only
+ * bookings that name nobody by id count: one that has an id is his only if it
+ * is his id (and then it is in the list by id too). `undefined` = not loaded
+ * yet, null = it could not be read (once the rules drop the number, that
+ * query is refused); null only when neither could be read.
+ */
+export function mergeJobs(
+  byId: Job[] | null | undefined,
+  byPhone: Job[] | null | undefined,
+  driverId: string,
+): Job[] | null {
+  if (byId === null && byPhone === null) return null;
+  const jobs = new Map<string, Job>();
+  for (const j of byId ?? []) jobs.set(j.id, j);
+  for (const j of byPhone ?? []) {
+    const id = j.assignedDriver?.id ?? '';
+    if (!jobs.has(j.id) && (!id || id === driverId)) jobs.set(j.id, j);
+  }
+  return sortJobs([...jobs.values()]);
 }
 
 /** Live list of this driver's confirmed jobs; null + error when it cannot be read. Returns the unsubscribe. */
 export function watchJobs(phone: string, driverId: string, onChange: Listener): () => void {
-  const q = query(
-    collection(firestore(), 'bookings'),
-    ...myJobsFilters(phone, driverId).map(([field, op, value]) => where(field, op, value)),
+  const bookings = collection(firestore(), 'bookings');
+  const { byId, byPhone } = myJobsQueries(phone, driverId);
+  const lists: (Job[] | null | undefined)[] = [undefined, undefined];
+  let lastError: unknown;
+  // Told once both have answered, so a job never shows from one list and then jumps.
+  const emit = () => {
+    if (lists.some((l) => l === undefined)) return;
+    const jobs = mergeJobs(lists[0], lists[1], driverId);
+    onChange(jobs, jobs ? undefined : lastError);
+  };
+  const offs = [byId, byPhone].map((filters, i) =>
+    onSnapshot(
+      query(bookings, ...filters.map(([field, op, value]) => where(field, op, value))),
+      (snap) => {
+        lists[i] = snap.docs.map((d) => toJob(d.id, d.data()));
+        emit();
+      },
+      (err) => {
+        lists[i] = null;
+        lastError = err;
+        emit();
+      },
+    ),
   );
-  return onSnapshot(
-    q,
-    (snap) => onChange(sortJobs(snap.docs.map((d) => toJob(d.id, d.data())))),
-    (err) => onChange(null, err),
-  );
+  return () => offs.forEach((off) => off());
 }
 
 /** One job, live; null once it is no longer his (completed, cancelled, reassigned). */
