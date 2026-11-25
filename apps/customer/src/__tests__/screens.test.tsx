@@ -501,11 +501,11 @@ describe('Booking, step by step', () => {
       );
     });
 
-    test('Bengaluru: 2 nights on the road, the drive with paise → ₹6,200', async () => {
+    test('Bengaluru: 2 nights on the road, the drive in whole rupees → ₹6,200', async () => {
       mockTrains.answer = noTrains;
       await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'bengaluru' }, { config: V4 });
       expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,200');
-      expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,370\skm.*₹5,077\.50/);
+      expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,370\skm.*₹5,078/);
       expect(screen.getByTestId('trip-v4-nights')).toHaveTextContent(/2 nights on the road × ₹300.*₹600/);
     });
   });
@@ -641,7 +641,7 @@ describe('Booking, step by step', () => {
     await fireEvent.press(screen.getByTestId('place-kochi-kerala'));
     expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹7,050');
     expect(screen.getByTestId('trip-from-map')).toHaveTextContent(/estimated from the map/);
-    expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,797\skm.*₹6,465\.25/);
+    expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,797\skm.*₹6,465/);
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');

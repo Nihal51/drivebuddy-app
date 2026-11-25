@@ -92,16 +92,16 @@ export function errorText(t: Messages, field: BookingField, code: FieldError): s
 /** 1214 → "1,214 km" / "1,214 किमी". */
 export const kmText = (t: Messages, km: number) => t.trip.km(indianDigits(km));
 
-/** "2 days" / "2 days + 23 h for the driver to get home". */
+/** "2 days" / "2 days on the road + 23 h for him to get home". */
 export function tripDays(t: Messages, trip: Pick<BookingTrip, 'kind' | 'days' | 'returnHours'>): string {
   const days = t.trip.days(trip.days);
   return trip.kind === 'one-way' && trip.returnHours > 0
-    ? `${days} + ${t.trip.returnHours(trip.returnHours)}`
+    ? `${days} ${t.trip.onRoad} + ${t.trip.returnHours(trip.returnHours)}`
     : days;
 }
 
 /**
- * "Raipur → Delhi · one-way drop · 1,214 km · 2 days + 38 h for the driver to get home · estimate ₹5,620–5,820".
+ * "Raipur → Delhi · one-way drop · 1,214 km · 2 days on the road + 38 h for him to get home · estimate ₹5,620–5,820".
  * With `destinations`, a listed place is named in the customer's language.
  */
 export function tripSummary(

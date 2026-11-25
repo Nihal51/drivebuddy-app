@@ -359,7 +359,7 @@ function Estimate({
           <View style={styles.lines}>
             <Line
               label={t.trip.v4Drive(kmText(t, long.km))}
-              amount={rupeesPaise(long.drive)}
+              amount={rupees(Math.round(long.drive))}
               testID="trip-v4-drive"
             />
             {long.nights ? (

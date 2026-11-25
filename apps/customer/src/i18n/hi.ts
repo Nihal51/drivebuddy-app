@@ -199,6 +199,7 @@ export const hi: Messages = {
     km: (n: string) => `${n} किमी`,
     days: (n: number) => `${n} दिन`,
     returnHours: (n: number) => `ड्राइवर की घर वापसी के ${n} घंटे`,
+    onRoad: 'सड़क पर',
     awayAbout: (hours: number) => `ड्राइवर लगभग ${hours} घंटे बाहर रहेगा`,
     timeSameDay: (km: string) => `पूरी ट्रिप की एक कीमत — ${km}, ड्राइवर उसी दिन घर पहुँच जाएगा`,
     timeDays: (days: number, rate: string) => `ड्राइवर के समय के ${days} × 24 घंटे × ${rate}`,
