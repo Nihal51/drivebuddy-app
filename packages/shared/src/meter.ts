@@ -16,10 +16,10 @@
  *   the estimate is (trip.ts timePrice: 24-hour blocks at the trip's day
  *   price, the hours past them at outstation.extraHour, never more than one
  *   more day). A one-way drop past the first nearby tier, when the website
- *   sends outstation.oneWay: v3, the drive by the km (fixed once he starts)
- *   and his way home from the drop (kmOneWayPrice); v2, driving days from
- *   Start to the drop and his way home (longOneWayPrice) — both with the
- *   bill's 15 minutes' grace.
+ *   sends outstation.oneWay (v4): the drive and the nights as booked (the
+ *   plan's days), and once he has dropped the car his wait for the train —
+ *   the drop to his Boarded tap, or to the chosen train's departure, or to
+ *   now; the robot's final price with the chosen train when it is there.
  *
  * Nothing here is a bill: the robot (local) or the office (trips) makes that
  * when the job ends.
@@ -28,16 +28,8 @@
 import type { Booking } from './booking';
 import type { PackageId } from './catalog';
 import type { AppConfig } from './config';
-import {
-  type OneWayKmRates,
-  isLongOneWay,
-  isTripPackage,
-  kmOneWayPrice,
-  kmRates,
-  longOneWayPrice,
-  longReturnDayFor,
-  timePrice,
-} from './trip';
+import type { ReturnChoice, ReturnPrice } from './returnTrains';
+import { type OneWayRates, isLongOneWay, isTripPackage, longOneWayPrice, timePrice } from './trip';
 
 /** Hours each local package includes (the robot's LOCAL_BASE_HOURS). */
 export const LOCAL_BASE_HOURS: Partial<Record<PackageId, number>> = {
@@ -135,7 +127,10 @@ export function localMeter(
 }
 
 export function tripMeter(
-  b: Pick<Booking, 'packageId' | 'quote' | 'acceptedPrice' | 'clock' | 'trip'>,
+  b: Pick<Booking, 'packageId' | 'quote' | 'acceptedPrice' | 'clock' | 'trip'> & {
+    returnChoice?: ReturnChoice;
+    returnPrice?: ReturnPrice;
+  },
   config: Pick<AppConfig, 'prices' | 'outstation'>,
   now: number,
 ): TripMeter | null {
@@ -143,15 +138,16 @@ export function tripMeter(
   if (!isTripPackage(b.packageId) || !start) return null;
   const end = b.clock?.homeAt?.getTime() ?? now;
   const minutes = minutesBetween(start.getTime(), end);
-  const booked = whole(b.quote?.amount) ?? whole(b.acceptedPrice?.amount) ?? whole(b.trip?.estTo);
   const km = b.trip?.km ?? b.quote?.km ?? 0;
-  const long = b.packageId === 'one-way-drop' && isLongOneWay(config, km);
-  const byKm = long ? kmRates(config.outstation.oneWay) : undefined;
-  const real = byKm
-    ? kmSoFar(b, byKm, km, config.outstation.graceMinutes ?? 15, now)
-    : long
-      ? longSoFar(b, config, km, now)
-      : timeSoFar();
+  const rates = config.outstation.oneWay;
+  const long = b.packageId === 'one-way-drop' && rates && isLongOneWay(config, km) ? rates : undefined;
+  // With the train chosen at the drop, the robot's final price with it is the new figure to go by.
+  const chosen =
+    long && b.returnPrice && b.returnChoice && b.returnPrice.train === b.returnChoice.train
+      ? whole(b.returnPrice.price)
+      : null;
+  const booked = chosen ?? whole(b.quote?.amount) ?? whole(b.acceptedPrice?.amount) ?? whole(b.trip?.estTo);
+  const real = long ? longSoFar(b, long, km, now) : timeSoFar();
   if (booked === null) return { kind: 'trip', minutes, amount: null, overBooked: false };
   const over = real !== undefined && real > booked;
   return { kind: 'trip', minutes, amount: over ? real : booked, overBooked: over };
@@ -166,65 +162,31 @@ export function tripMeter(
 }
 
 /**
- * A long one-way drop so far, v3 (by the km), as its final bill counts it:
- * the drive is fixed once he has started (km × perKm); his way home from the
- * drop to home (or now), the first graceMinutes of an hour free; the total
- * to the nearest roundTo, at least the minimum.
+ * A long one-way drop so far (v4), as its final bill will count it: the drive
+ * and the nights as booked (the plan's days − 1), and once the car is dropped
+ * his wait for the train — to his Boarded tap, else to the chosen train's
+ * departure (or now, if later), else to now. The bill's stops are the
+ * office's to set, so they are left out here.
  */
-function kmSoFar(
-  b: Pick<Booking, 'clock'>,
-  rates: OneWayKmRates,
+function longSoFar(
+  b: Pick<Booking, 'clock' | 'trip'> & { returnChoice?: ReturnChoice },
+  rates: OneWayRates,
   km: number,
-  graceMinutes: number,
   now: number,
 ): number | undefined {
   if (!b.clock?.startAt) return undefined;
   const drop = b.clock.dropAt?.getTime();
-  const homeMinutes = drop === undefined ? 0 : minutesBetween(drop, b.clock.homeAt?.getTime() ?? now);
-  return kmOneWayPrice(rates, km, homeMinutes, graceMinutes).price;
-}
-
-/**
- * A long one-way drop so far, v2, as its final bill will count it: driving days
- * from Start to the drop (or now), then his way home from the drop to home
- * (or now), the first graceMinutes of an hour free — at the rates agreed on
- * the call, else the website's.
- */
-function longSoFar(
-  b: Pick<Booking, 'quote' | 'clock'>,
-  config: Pick<AppConfig, 'outstation'>,
-  km: number,
-  now: number,
-): number | undefined {
-  const start = b.clock?.startAt?.getTime();
-  if (start === undefined) return undefined;
-  const drop = b.clock?.dropAt?.getTime();
-  const home = b.clock?.homeAt?.getTime() ?? now;
-  const driveMinutes = minutesBetween(start, drop ?? now);
-  const returnMinutes = drop === undefined ? 0 : minutesBetween(drop, home);
-  const q = b.quote;
-  const rates =
-    q && q.returnHourRate > 0 && whole(q.dayRate)
-      ? {
-          drivingDay: q.dayRate,
-          returnHour: q.returnHourRate,
-          returnDay: longReturnDayFor(config, q.returnHourRate),
-        }
-      : {};
-  return longOneWayPrice(
-    config,
-    km,
-    driveMinutes / 60,
-    returnMinutes,
-    rates,
-    0,
-    config.outstation.graceMinutes ?? 15,
-  )?.price;
+  const until = b.clock.boardAt?.getTime() ?? Math.max(now, b.returnChoice?.dep?.getTime() ?? 0);
+  const waitHours = drop === undefined ? 0 : Math.max(0, until - drop) / 3_600_000;
+  return longOneWayPrice(rates, km, { nights: Math.max(0, (b.trip?.days ?? 1) - 1), waitHours }).price;
 }
 
 /** The meter for a booking the driver is on now, or null (not on the job yet, no start time, not metered). */
 export function fareMeter(
-  b: Pick<Booking, 'status' | 'packageId' | 'quote' | 'acceptedPrice' | 'clock' | 'trip'>,
+  b: Pick<
+    Booking,
+    'status' | 'packageId' | 'quote' | 'acceptedPrice' | 'clock' | 'trip' | 'returnChoice' | 'returnPrice'
+  >,
   config: Pick<AppConfig, 'prices' | 'outstation'>,
   now: number,
 ): FareMeter | null {

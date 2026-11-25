@@ -6,13 +6,13 @@
  */
 
 import { type NewRatingFields, newRatingFields } from '@drivebuddy/shared';
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 import { firestore } from '@/firebase/app';
 import { readStored, writeStored } from '@/lib/storage';
 import { reportError } from '@/lib/monitoring';
 
-import { type SubmitFailure, failureReason } from './bookings';
+import { type SubmitFailure, failureReason, pingAlerts } from './bookings';
 
 export type WriteResult = { ok: true } | { ok: false; reason: SubmitFailure };
 
@@ -29,6 +29,31 @@ export async function acceptPrice(bookingId: string, amount: number): Promise<Wr
   } catch (err) {
     const reason = failureReason(err);
     if (reason !== 'network') reportError(err, `accept-price:${reason}`);
+    return { ok: false, reason };
+  }
+}
+
+/**
+ * "I booked this train" (SPEC-v4 §2): exactly `returnChoice` = { train, dep,
+ * at } and nothing else — one of the trains the robot offered at the drop,
+ * its departure, the server's time (firestore.rules isReturnChoice /
+ * isOfferedTrain). Then the robot's doorbell, so the final price comes now.
+ */
+export async function chooseReturnTrain(
+  bookingId: string,
+  train: string,
+  dep: Date,
+  pingUrl = '',
+): Promise<WriteResult> {
+  try {
+    await updateDoc(doc(firestore(), 'bookings', bookingId), {
+      returnChoice: { train, dep: Timestamp.fromDate(dep), at: serverTimestamp() },
+    });
+    if (pingUrl) pingAlerts(pingUrl);
+    return { ok: true };
+  } catch (err) {
+    const reason = failureReason(err);
+    if (reason !== 'network') reportError(err, `return-train:${reason}`);
     return { ok: false, reason };
   }
 }

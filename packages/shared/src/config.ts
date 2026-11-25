@@ -76,7 +76,11 @@ export type AppConfig = {
    * address ('' = off: the typical time is used) and the planning rules —
    * the website's `trains` block.
    */
-  trains: { lookupUrl: string } & RailRules;
+  /**
+   * toStationMinutes: the train check at the drop (v4, 24 Nov 2026) — he can
+   * board this long after the drop. Older website files lack it: 90.
+   */
+  trains: { lookupUrl: string; toStationMinutes: number } & RailRules;
   /** `places`: the list of all India for the place box (places.ts); older files lack it: site url + PLACES_PATH. */
   site: { url: string; privacy: string; terms: string; places?: string };
   /**
@@ -140,6 +144,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     directWithinHours: 24,
     maxWaitHours: 48,
     maxOptions: 5,
+    toStationMinutes: 90,
   },
   google: {
     profile: 'https://maps.app.goo.gl/5yJuHkFUZXmYgVhJ6',
@@ -228,6 +233,9 @@ function parseTrains(v: unknown): AppConfig['trains'] | null {
     directWithinHours: v.directWithinHours as number,
     maxWaitHours: v.maxWaitHours as number,
     maxOptions: v.maxOptions as number,
+    toStationMinutes: n(v.toStationMinutes, 600)
+      ? (v.toStationMinutes as number)
+      : DEFAULT_CONFIG.trains.toStationMinutes,
   };
 }
 

@@ -17,7 +17,7 @@ import ProfileScreen from '@/app/profile';
 import HomeScreen from '@/app/(tabs)/index';
 import type { ReturnTrains } from '@/booking/useReturnTrains';
 import { submitBooking, watchBooking, watchMyBookings } from '@/data/bookings';
-import { acceptPrice, ratedOnPhone, ratingState, submitRating } from '@/data/selfserve';
+import { acceptPrice, chooseReturnTrain, ratedOnPhone, ratingState, submitRating } from '@/data/selfserve';
 
 import { renderScreen, signedOut } from './test-utils';
 
@@ -45,6 +45,7 @@ jest.mock('@/data/selfserve', () => ({
   submitRating: jest.fn(async () => 'ok'),
   ratedOnPhone: jest.fn(async () => null),
   rememberRated: jest.fn(async () => {}),
+  chooseReturnTrain: jest.fn(async () => ({ ok: true })),
 }));
 jest.mock('@/firebase/google', () => ({ isGoogleLoginAvailable: () => false }));
 // The list of all India for the place box: none (offline) unless a test gives one.
@@ -390,95 +391,70 @@ describe('Booking, step by step', () => {
     expect(opts.trip).toMatchObject({ destId: 'bengaluru', estFrom: 7260, estTo: 7260 });
   });
 
-  test('past 160 km with the website’s outstation.oneWay: driving days, his way home, his ticket; Check seats', async () => {
-    // Raipur → Ranchi: his train leaves 1 h after the drop and gets him home 9 h 40 min later.
-    mockTrains.answer = (plan, startAt) => {
-      const depart = startAt + ((plan?.dropAt ?? 0) + 1) * 3_600_000;
-      const arrive = depart + (9 * 60 + 40) * 60_000;
-      const option: ReturnOption = {
-        id: `18310@${depart}`,
-        legs: [
-          {
-            train: { number: '18310', name: 'Hatia Sambalpur Exp' },
-            from: { code: 'RNC', name: 'Ranchi' },
-            to: { code: 'R', name: 'Raipur' },
-            depart,
-            arrive,
-            checkedAt: depart - 86_400_000,
-          },
-        ],
-        depart,
-        arrive,
-        expectedArrive: arrive,
-        waitMinutes: 60,
-        totalMinutes: 10 * 60 + 40,
-        scheduled: true,
-        warnings: [],
-      };
-      return { status: 'ok', retrying: false, options: [option], selected: option, select: () => {} };
-    };
-    const config = {
+  describe('past 160 km, v4: the drive, the nights, his wait for the train', () => {
+    const V4 = {
       ...DEFAULT_CONFIG,
       outstation: {
         ...DEFAULT_CONFIG.outstation,
         oneWay: {
-          driveDay: 1600,
-          returnDay: 1600,
-          returnHour: 160,
-          driveHoursPerDay: 12,
-          driveGraceHours: 1,
+          firstKm: 200,
+          first: 1500,
+          perKm: 2.5,
+          fartherFromKm: 500,
+          perKmFarther: 3.25,
+          night: 300,
+          waitFromKm: 500,
+          waitFreeHours: 4,
+          waitHour: 100,
+          waitMax: 1200,
+          stopsFreeHours: 1,
+          stopsHour: 100,
+          minimum: 1500,
+          roundTo: 50,
         },
-      },
-    };
-    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-    mockedSubmit.mockResolvedValue({ ok: true, id: 'b11' });
-    await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config });
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,200');
-    expect(screen.getByTestId('trip-long-driving')).toHaveTextContent(
-      /1 driving day \(about 12 h\) × ₹1,600.*₹1,600/,
-    );
-    expect(screen.getByTestId('trip-long-home')).toHaveTextContent(
-      /His way home about 10 h 40 min \(waiting 1 h \+ train 9 h 40 min\): 11 h × ₹160 \(never more than ₹1,600 a day\).*₹1,600/,
-    );
-    expect(screen.getByTestId('trip-long-ticket')).toHaveTextContent(
-      /His ticket home: you book and pay for it.*\+ his ticket/,
-    );
-    expect(screen.queryByTestId('trip-time-days')).toBeNull();
-    // The trains: the sell-out note above them, and Check seats on each.
-    expect(screen.getByTestId('seats-note')).toHaveTextContent(
-      /Tickets can sell out — check seats before you book/,
-    );
-    await fireEvent.press(screen.getByTestId(/^seats-18310@/));
-    expect(open).toHaveBeenCalledWith('https://www.ixigo.com/trains/18310/seat-availability');
-    open.mockRestore();
-    // Saved as the website saves it: the driving days and the estimate.
-    await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
-    await next();
-    await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
-    await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
-    await fireEvent.press(screen.getByTestId('submit-booking'));
-    expect(mockedSubmit.mock.calls[0][2].trip).toMatchObject({
-      destId: 'ranchi',
-      days: 1,
-      estFrom: 3200,
-      estTo: 3200,
-    });
-  });
-
-  describe('past 160 km, v3: the drive by the km and his way home', () => {
-    const V3 = {
-      ...DEFAULT_CONFIG,
-      outstation: {
-        ...DEFAULT_CONFIG.outstation,
-        oneWay: { perKm: 3, homeHour: 100, homeDayMax: 1500, minimum: 1500, roundTo: 50 },
         drive: { kmh: 55, breakEveryHours: 4, breakMinutes: 35, maxRoadHoursPerDay: 12 },
       },
     };
+    const noTrains = () => ({ status: 'off' as const, retrying: false, options: [], select: () => {} });
 
-    test('Raipur → Ranchi with a train 10 h 41 min after the drop: ₹2,950, line by line; the drive with its breaks', async () => {
+    test('Raipur → Ranchi with the route’s usual wait: ₹3,350, line by line, and saved as the website saves it', async () => {
+      mockTrains.answer = noTrains;
+      mockedSubmit.mockResolvedValue({ ok: true, id: 'b11' });
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config: V4 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹3,350');
+      expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 616\skm.*₹2,627/);
+      expect(screen.queryByTestId('trip-v4-nights')).toBeNull();
+      expect(screen.getByTestId('trip-v4-wait')).toHaveTextContent(
+        /Train wait about 10 h 45 min \(the route’s usual wait\): 7 h × ₹100 \(the first 4 h free, at most ₹1,200\).*₹700/,
+      );
+      expect(screen.getByTestId('trip-v4-total')).toHaveTextContent(/To the nearest ₹50.*= ₹3,350/);
+      expect(screen.getByTestId('trip-v4-ticket')).toHaveTextContent(
+        /His ticket home: you book and pay for it.*\+ his ticket/,
+      );
+      expect(screen.getByTestId('trip-v4-note')).toHaveTextContent(
+        'The final price is set by the train he takes home — at most ₹1,200 more for his wait.',
+      );
+      expect(screen.getByTestId('trip-timeline')).toHaveTextContent(
+        /about 11 h 10 min \+ 2 breaks \(1 h 10 min\) → arrives about 12 h 20 min after leaving/,
+      );
+      expect(screen.getByTestId('trip-explainer')).toHaveTextContent(/₹1,500 for the first 200\skm/);
+      await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
+      await next();
+      await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
+      await fireEvent.changeText(screen.getByTestId('field-phone'), '9876543210');
+      await fireEvent.press(screen.getByTestId('submit-booking'));
+      expect(mockedSubmit.mock.calls[0][2].trip).toMatchObject({
+        destId: 'ranchi',
+        days: 1,
+        estFrom: 3350,
+        estTo: 3350,
+      });
+    });
+
+    test('a train picked 2 h after the drop: his wait is free → ₹2,650; Check seats on each train', async () => {
       mockTrains.answer = (plan, startAt) => {
-        const depart = startAt + ((plan?.dropAt ?? 0) + 1) * 3_600_000;
-        const arrive = depart + (9 * 60 + 41) * 60_000;
+        const depart = startAt + ((plan?.dropAt ?? 0) + 2) * 3_600_000;
+        const arrive = depart + 9 * 3_600_000;
         const option: ReturnOption = {
           id: `18310@${depart}`,
           legs: [
@@ -494,43 +470,43 @@ describe('Booking, step by step', () => {
           depart,
           arrive,
           expectedArrive: arrive,
-          waitMinutes: 60,
-          totalMinutes: 10 * 60 + 41,
+          waitMinutes: 120,
+          totalMinutes: 11 * 60,
           scheduled: true,
           warnings: [],
         };
         return { status: 'ok', retrying: false, options: [option], selected: option, select: () => {} };
       };
       const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config: V3 });
-      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,950');
-      expect(screen.getByTestId('trip-km-driving')).toHaveTextContent(/Driving 616 km × ₹3.*= ₹1,848/);
-      expect(screen.getByTestId('trip-km-home')).toHaveTextContent(
-        /His way home about 10 h 41 min \(waiting 1 h \+ train 9 h 41 min\): 11 h × ₹100 \(never more than ₹1,500 a day\).*= ₹1,100/,
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'ranchi' }, { config: V4 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹2,650');
+      expect(screen.getByTestId('trip-v4-wait')).toHaveTextContent(
+        /Train wait about 2 h \(the train you picked\): free \(the first 4 h\)/,
       );
-      expect(screen.getByTestId('trip-km-rounded')).toHaveTextContent(/₹2,948 to the nearest ₹50.*₹2,950/);
-      expect(screen.queryByTestId('trip-km-minimum')).toBeNull();
-      expect(screen.getByTestId('trip-km-ticket')).toHaveTextContent(
-        /His ticket home: you book and pay for it.*\+ his ticket/,
+      expect(screen.getByTestId('seats-note')).toHaveTextContent(
+        /Tickets can sell out — check seats before you book/,
       );
-      expect(screen.getByTestId('trip-timeline')).toHaveTextContent(
-        /about 11 h 10 min \+ 2 breaks \(1 h 10 min\) → arrives about 12 h 20 min after leaving/,
-      );
-      expect(screen.getByTestId('trip-explainer')).toHaveTextContent(/the drive is ₹3 a km/);
       await fireEvent.press(screen.getByTestId(/^seats-18310@/));
       expect(open).toHaveBeenCalledWith('https://www.ixigo.com/trains/18310/seat-availability');
       open.mockRestore();
     });
 
-    test('Raipur → Gondia, 201 km: the drive and his way home come to less than the minimum → ₹1,500', async () => {
-      mockTrains.answer = () => ({ status: 'off', retrying: false, options: [], select: () => {} });
-      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'gondia' }, { config: V3 });
-      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,500');
-      // 201 km × ₹3 = ₹603, and 2 h wait + 3 h 15 min ride → 6 h × ₹100 = ₹600.
-      expect(screen.getByTestId('trip-km-minimum')).toHaveTextContent(
-        /Minimum ₹1,500 \(the drive and his way home come to ₹1,203\).*₹1,500/,
+    test('Nagpur, 284 km: no wait line, "No charge for his wait at this distance"', async () => {
+      mockTrains.answer = noTrains;
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'nagpur' }, { config: V4 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹1,700');
+      expect(screen.queryByTestId('trip-v4-wait')).toBeNull();
+      expect(screen.getByTestId('trip-v4-note')).toHaveTextContent(
+        'No charge for his wait at this distance.',
       );
-      expect(screen.queryByTestId('trip-km-rounded')).toBeNull();
+    });
+
+    test('Bengaluru: 2 nights on the road, the drive with paise → ₹6,200', async () => {
+      mockTrains.answer = noTrains;
+      await openBooking({ package: 'one-way-drop', city: 'Raipur', dest: 'bengaluru' }, { config: V4 });
+      expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹6,200');
+      expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,370\skm.*₹5,077\.50/);
+      expect(screen.getByTestId('trip-v4-nights')).toHaveTextContent(/2 nights on the road × ₹300.*₹600/);
     });
   });
 
@@ -628,7 +604,22 @@ describe('Booking, step by step', () => {
       outstation: {
         ...DEFAULT_CONFIG.outstation,
         roadFactor: 1.3,
-        oneWay: { perKm: 3, homeHour: 100, homeDayMax: 1500, minimum: 1500, roundTo: 50 },
+        oneWay: {
+          firstKm: 200,
+          first: 1500,
+          perKm: 2.5,
+          fartherFromKm: 500,
+          perKmFarther: 3.25,
+          night: 300,
+          waitFromKm: 500,
+          waitFreeHours: 4,
+          waitHour: 100,
+          waitMax: 1200,
+          stopsFreeHours: 1,
+          stopsHour: 100,
+          minimum: 1500,
+          roundTo: 50,
+        },
       },
     };
     mockedSubmit.mockResolvedValue({ ok: true, id: 'b12' });
@@ -648,9 +639,9 @@ describe('Booking, step by step', () => {
     await fireEvent.changeText(screen.getByTestId('trip-search'), 'cochin');
     expect(screen.getByTestId('place-kochi-kerala')).toHaveTextContent(/Kochi, Kerala · about 1,797\skm/);
     await fireEvent.press(screen.getByTestId('place-kochi-kerala'));
-    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹8,200');
+    expect(screen.getByTestId('trip-estimate')).toHaveTextContent('₹7,050');
     expect(screen.getByTestId('trip-from-map')).toHaveTextContent(/estimated from the map/);
-    expect(screen.getByTestId('trip-km-driving')).toHaveTextContent(/Driving 1,797\skm × ₹3.*= ₹5,391/);
+    expect(screen.getByTestId('trip-v4-drive')).toHaveTextContent(/Drive 1,797\skm.*₹6,465\.25/);
     await fireEvent.changeText(screen.getByTestId('field-pickup'), 'Shankar Nagar, Raipur');
     await next();
     await fireEvent.changeText(screen.getByTestId('field-name'), 'Ravi Sharma');
@@ -661,8 +652,8 @@ describe('Booking, step by step', () => {
       destId: '',
       kind: 'one-way',
       km: 1797,
-      estFrom: 8200,
-      estTo: 8200,
+      estFrom: 7050,
+      estTo: 7050,
     });
   });
 
@@ -1015,6 +1006,89 @@ describe('Booking detail', () => {
         payment: { status: 'paid', method: 'upi', amount: 750, by: 'driver' },
       });
       expect(screen.getByText('Paid ₹750 ✓ · UPI')).toBeOnTheScreen();
+    });
+
+    describe('after the drop: his train home', () => {
+      const CHECK = {
+        at: new Date('2026-11-24T14:05:00Z'),
+        dropAt: new Date('2026-11-24T14:00:00Z'),
+        options: [
+          {
+            train: '18452',
+            name: 'Tapaswini Exp',
+            from: 'RNC',
+            dep: new Date('2026-11-24T16:10:00Z'),
+            arr: new Date('2026-11-25T01:40:00Z'),
+            change: null,
+            waitMin: 130,
+            waitCharge: 0,
+            price: 2650,
+          },
+          {
+            train: '12873',
+            name: 'Jharkhand Exp',
+            from: 'HTE',
+            dep: new Date('2026-11-25T03:00:00Z'),
+            arr: new Date('2026-11-25T14:00:00Z'),
+            change: { station: 'JSG', train: '18109', dep: new Date('2026-11-25T09:00:00Z') },
+            waitMin: 780,
+            waitCharge: 900,
+            price: 3550,
+          },
+        ],
+        bus: false,
+        failed: false,
+      };
+      const dropped = { ...BASE, status: 'assigned', assignedDriver: undefined, returnCheck: CHECK };
+
+      test('the trains with the whole price each, Check seats ↗, and "I booked this train"', async () => {
+        const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+        await show(dropped);
+        expect(
+          screen.getByText('Your driver has dropped the car. Book his ticket home — pick a train.'),
+        ).toBeOnTheScreen();
+        expect(screen.getByTestId('return-18452')).toHaveTextContent(
+          /18452 Tapaswini Exp.*Leaves .* · arrives Raipur .*₹2,650 total/,
+        );
+        expect(screen.getByTestId('return-12873')).toHaveTextContent(/change at JSG to 18109.*₹3,550 total/);
+        expect(screen.getByText(/We do not check seats/)).toBeOnTheScreen();
+        await fireEvent.press(screen.getByTestId('return-seats-18452'));
+        expect(open).toHaveBeenCalledWith('https://www.ixigo.com/trains/18452/seat-availability');
+        await fireEvent.press(screen.getByTestId('return-book-18452'));
+        expect(chooseReturnTrain).toHaveBeenCalledWith('b2', '18452', new Date('2026-11-24T16:10:00Z'), '');
+        open.mockRestore();
+      });
+
+      test('chosen: the final price once the robot has it', async () => {
+        const choice = {
+          train: '18452',
+          dep: new Date('2026-11-24T16:10:00Z'),
+          at: new Date('2026-11-24T14:20:00Z'),
+        };
+        await show({ ...dropped, returnChoice: choice });
+        expect(screen.getByTestId('return-chosen')).toHaveTextContent(
+          'Train 18452 — the final price comes in a few minutes.',
+        );
+        expect(screen.queryByTestId('return-book-12873')).toBeNull();
+        await show({
+          ...dropped,
+          returnChoice: choice,
+          returnPrice: { price: 2650, waitCharge: 0, train: '18452' },
+        });
+        expect(screen.getByTestId('return-chosen')).toHaveTextContent('Final price ₹2,650 · train 18452');
+      });
+
+      test('no train soon: by bus; the lookup failed: the team calls; a closed booking cannot choose', async () => {
+        await show({ ...dropped, returnCheck: { ...CHECK, options: [], bus: true } });
+        expect(screen.getByText('No train home soon — he comes home by bus.')).toBeOnTheScreen();
+        await show({ ...dropped, returnCheck: { ...CHECK, options: [], failed: true } });
+        expect(
+          screen.getByText('We could not check the trains just now — our team will call you.'),
+        ).toBeOnTheScreen();
+        await show({ ...dropped, status: 'completed' });
+        expect(screen.getByTestId('return-18452')).toBeOnTheScreen();
+        expect(screen.queryByTestId('return-book-18452')).toBeNull();
+      });
     });
 
     test('rating the driver: 5 stars, a comment, then the Google review link', async () => {

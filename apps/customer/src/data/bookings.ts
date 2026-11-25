@@ -93,7 +93,7 @@ export function failureReason(err: unknown): SubmitFailure {
  * Ring the alerts robot so Telegram arrives in seconds instead of within a
  * minute. Fire-and-forget: it carries no data and a failure changes nothing.
  */
-function pingAlerts(url: string) {
+export function pingAlerts(url: string) {
   fetch(url, { method: 'POST' }).catch(() => {});
 }
 

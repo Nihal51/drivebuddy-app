@@ -10,14 +10,15 @@ describe('trip taps', () => {
   const arrived = { ...left, arrivedAt: at('2026-11-20T04:30:00Z') };
   const done = { ...arrived, doneAt: at('2026-11-20T07:40:00Z') };
 
-  test('the buttons come in order: Start, Arrived, Job done (and Reached home after a one-way drop)', () => {
+  test('the buttons come in order: Start, Arrived, Job done (and Boarded, Reached home after a one-way drop)', () => {
     expect(tapSteps('3-hours-600')).toEqual(['leftAt', 'arrivedAt', 'doneAt']);
-    expect(tapSteps('one-way-drop')).toEqual(['leftAt', 'arrivedAt', 'doneAt', 'homeAt']);
+    expect(tapSteps('one-way-drop')).toEqual(['leftAt', 'arrivedAt', 'doneAt', 'boardAt', 'homeAt']);
     expect(nextTap(null, '3-hours-600')).toBe('leftAt');
     expect(nextTap(left, '3-hours-600')).toBe('arrivedAt');
     expect(nextTap(arrived, 'outstation')).toBe('doneAt');
     expect(nextTap(done, 'outstation')).toBeNull();
-    expect(nextTap(done, 'one-way-drop')).toBe('homeAt');
+    expect(nextTap(done, 'one-way-drop')).toBe('boardAt');
+    expect(nextTap({ ...done, boardAt: at('2026-11-20T09:00:00Z') }, 'one-way-drop')).toBe('homeAt');
     expect(nextTap({ ...done, homeAt: at('2026-11-20T12:00:00Z') }, 'one-way-drop')).toBeNull();
     expect(nextTap(null, null)).toBe('leftAt');
   });
@@ -34,7 +35,15 @@ describe('trip taps', () => {
     expect(tapCheck(left, 'doneAt', '3-hours-600')).toBe('order');
     expect(tapCheck(null, 'arrivedAt', '3-hours-600')).toBe('order');
     expect(tapCheck(done, 'homeAt', '3-hours-600')).toBe('order'); // only one-way drops
-    expect(tapCheck(done, 'homeAt', 'one-way-drop')).toBe('ok');
+    expect(tapCheck(done, 'homeAt', 'one-way-drop')).toBe('ok'); // home by bus, without boarding
+    expect(tapCheck(done, 'boardAt', 'one-way-drop')).toBe('ok');
+    expect(tapCheck(done, 'boardAt', 'outstation')).toBe('order'); // one-way drops only
+    expect(tapCheck(arrived, 'boardAt', 'one-way-drop')).toBe('order'); // after the drop
+    const home = { ...done, homeAt: at('2026-11-20T12:00:00Z') };
+    expect(tapCheck(home, 'boardAt', 'one-way-drop')).toBe('order'); // not after home
+    expect(tapCheck({ ...done, boardAt: at('2026-11-20T09:00:00Z') }, 'boardAt', 'one-way-drop')).toBe(
+      'already',
+    );
   });
 
   test('the job screen: share again after a restart, stop sharing when it should be off', () => {
@@ -42,12 +51,14 @@ describe('trip taps', () => {
       tap: 'leftAt',
       shareAgain: false,
       stopSharing: false,
+      homeByBus: false,
     });
     // On his way and sharing: just Arrived.
     expect(jobButtons(left, '3-hours-600', true)).toEqual({
       tap: 'arrivedAt',
       shareAgain: false,
       stopSharing: false,
+      homeByBus: false,
     });
     // On his way, but the phone restarted (sharing off): offer to share again.
     expect(jobButtons(left, '3-hours-600', false).shareAgain).toBe(true);
@@ -58,7 +69,10 @@ describe('trip taps', () => {
       tap: null,
       shareAgain: false,
       stopSharing: false,
+      homeByBus: false,
     });
+    // After a one-way drop: Boarded the train, or home by bus.
+    expect(jobButtons(done, 'one-way-drop', false)).toMatchObject({ tap: 'boardAt', homeByBus: true });
   });
 
   test('saved times are listed in order; a stored document is read safely', () => {

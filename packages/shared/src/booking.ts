@@ -7,6 +7,14 @@
  * refused. booking.test.ts holds this file to that list.
  */
 
+import {
+  type ReturnCheck,
+  type ReturnChoice,
+  type ReturnPrice,
+  toReturnCheck,
+  toReturnChoice,
+  toReturnPrice,
+} from './returnTrains';
 import { type PickupGeo, toPickupGeo } from './geo';
 import {
   type BookingStatus,
@@ -248,6 +256,10 @@ export type Booking = {
   localBill?: LocalBill;
   /** The payment link for the bill, and whether it is paid. */
   payment?: Payment;
+  /** One-way over 160 km, after the drop: the trains home the robot found, the one booked, the final price with it. */
+  returnCheck?: ReturnCheck;
+  returnChoice?: ReturnChoice;
+  returnPrice?: ReturnPrice;
 };
 
 /** Firestore Timestamp | Date | anything → Date | undefined, without importing the Firebase SDK here. */
@@ -298,6 +310,9 @@ export function toBooking(id: string, data: Record<string, unknown>): Booking {
     acceptedPrice: toAcceptedPrice(data.acceptedPrice),
     localBill: toLocalBill(data.localBill),
     payment: toPayment(data.payment),
+    returnCheck: toReturnCheck(data.returnCheck),
+    returnChoice: toReturnChoice(data.returnChoice),
+    returnPrice: toReturnPrice(data.returnPrice),
   };
 }
 

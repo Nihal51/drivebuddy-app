@@ -18,6 +18,7 @@ const PHONE = '9893302783';
 let mockJobListener: (job: Job | null) => void = () => {};
 let mockTapsListener: (taps: TripTaps | null | undefined) => void = () => {};
 const mockRecordPayment = jest.fn(async () => ({ ok: true as const, already: false }));
+const mockTapTrip = jest.fn(async () => ({ ok: true as const, already: false }));
 
 jest.mock('expo-router', () => ({
   router: { replace: jest.fn() },
@@ -48,6 +49,7 @@ jest.mock('@/data/tripTaps', () => ({
     return () => {};
   },
   recordPayment: (...args: unknown[]) => (mockRecordPayment as (...a: unknown[]) => unknown)(...args),
+  tapTrip: (...args: unknown[]) => (mockTapTrip as (...a: unknown[]) => unknown)(...args),
 }));
 
 /* Everything the customer pays, with odd figures that cannot be mistaken for anything else on screen. */
@@ -144,7 +146,10 @@ const emit = async (job: Job | null, taps: TripTaps | null | undefined) =>
     mockTapsListener(taps);
   });
 
-beforeEach(() => mockRecordPayment.mockClear());
+beforeEach(() => {
+  mockRecordPayment.mockClear();
+  mockTapTrip.mockClear();
+});
 
 test('no customer price anywhere on the job screen, before or after Job done', async () => {
   await show();
@@ -208,4 +213,96 @@ test('a job that is not his, with no Job done of his, still says so', async () =
   expect(screen.getByText('This job is no longer assigned to you.')).toBeOnTheScreen();
   await emit(null, { ...DONE, driverPhone: '9000000000' });
   expect(screen.queryByTestId('paid-cash')).toBeNull();
+});
+
+describe('a one-way drop after the drop (SPEC-v4)', () => {
+  const ts = (iso: string) => ({ toDate: () => new Date(iso) });
+  const ONE_WAY = (extra: Record<string, unknown> = {}): Job =>
+    toJob('b1', {
+      name: 'Anita Verma',
+      phone: '9876500000',
+      package: 'one-way-drop',
+      city: 'Raipur',
+      pickup: 'Shankar Nagar',
+      status: 'assigned',
+      assignedDriver: { id: 'd1', name: 'Raju', phone: PHONE },
+      driverConfirmed: { by: 'robot', driverId: 'd1' },
+      trip: {
+        to: 'Ranchi',
+        destId: 'ranchi',
+        kind: 'one-way',
+        km: 616,
+        days: 1,
+        returnHours: 21,
+        estFrom: 3350,
+        estTo: 3350,
+      },
+      ...extra,
+    });
+  const CHECK = {
+    at: ts('2026-11-21T07:45:00Z'),
+    options: [
+      {
+        train: '18452',
+        name: 'Tapaswini Exp',
+        from: 'RNC',
+        dep: ts('2026-11-21T10:10:00Z'),
+        change: null,
+        waitMin: 145,
+        waitCharge: 0,
+        price: 2650,
+      },
+      {
+        train: '12873',
+        name: 'Jharkhand Exp',
+        from: 'HTE',
+        dep: ts('2026-11-21T21:00:00Z'),
+        change: { station: 'JSG', train: '18109', dep: ts('2026-11-22T03:00:00Z') },
+        waitMin: 795,
+        waitCharge: 900,
+        price: 3550,
+      },
+    ],
+    bus: false,
+    failed: false,
+  };
+
+  test('looking up trains, then the options (no prices); Boarded the train or home by bus', async () => {
+    await show();
+    await emit(ONE_WAY(), DONE);
+    expect(screen.getByText('Looking up trains home…')).toBeOnTheScreen();
+    expect(screen.getByTestId('tap-boardAt')).toBeOnTheScreen();
+    expect(screen.getByTestId('tap-homeAt-bus')).toBeOnTheScreen();
+    await emit(ONE_WAY({ returnCheck: CHECK }), DONE);
+    expect(screen.getByText('Trains home (the customer books the ticket)')).toBeOnTheScreen();
+    expect(screen.getByTestId('train-18452')).toHaveTextContent(/18452 Tapaswini Exp · RNC/);
+    expect(screen.getByTestId('train-12873')).toHaveTextContent(/change at JSG → 18109/);
+    for (const f of ['2650', '2,650', '3550', '3,550', '₹900']) expect(allText()).not.toContain(f);
+  });
+
+  test('chosen: "Your train"; boarded: only Reached home is left', async () => {
+    const choice = { train: '18452', dep: ts('2026-11-21T10:10:00Z'), at: ts('2026-11-21T08:00:00Z') };
+    await show();
+    await emit(ONE_WAY({ returnCheck: CHECK, returnChoice: choice }), DONE);
+    expect(screen.getByTestId('your-train')).toHaveTextContent(/Your train: 18452 at /);
+    await emit(ONE_WAY({ returnCheck: CHECK, returnChoice: choice }), {
+      ...DONE,
+      boardAt: at('2026-11-21T10:12:00Z'),
+    });
+    expect(screen.getByTestId('tap-homeAt')).toBeOnTheScreen();
+    expect(screen.queryByTestId('tap-homeAt-bus')).toBeNull();
+    expect(screen.getByText('Boarded the train')).toBeOnTheScreen(); // in the trip times
+  });
+
+  test('Boarded asks first, then taps boardAt', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_t, _b, buttons) => {
+      void buttons?.[1]?.onPress?.();
+    });
+    await show();
+    await emit(ONE_WAY({ returnCheck: CHECK }), DONE);
+    await fireEvent.press(screen.getByTestId('tap-boardAt'));
+    expect(alert).toHaveBeenCalledWith('Boarded the train?', expect.any(String), expect.any(Array));
+    expect(mockTapTrip).toHaveBeenCalledWith('b1', 'boardAt', 'one-way-drop', PHONE);
+    alert.mockRestore();
+  });
 });

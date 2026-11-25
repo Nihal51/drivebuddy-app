@@ -217,43 +217,43 @@ export const hi: Messages = {
     timeTotal: (total: number) =>
       `ड्राइवर का समय: निकलने से घर पहुँचने तक लगभग ${total} घंटे — ड्राइविंग, ट्रेन का इंतज़ार और घर वापसी`,
     returnShort: (n: number) => `घर वापसी (${n} घंटे)`,
-    longSummary: (days: number, hours: number) => `${days} दिन ड्राइविंग + लगभग ${hours} घंटे घर वापसी`,
-    longDriving: (days: number, hours: number, rate: string) =>
-      `${days} दिन ड्राइविंग (लगभग ${hours} घंटे) × ${rate}`,
-    longHome: (about: string, split: string, parts: string, dayMax: string) =>
-      `ड्राइवर की घर वापसी लगभग ${about}${split ? ` (${split})` : ''}: ${parts} (एक दिन में ${dayMax} से ज़्यादा नहीं)`,
-    longHomeDays: (days: number, rate: string) => `${days} दिन × ${rate}`,
-    longHomeHours: (hours: number, rate: string) => `${hours} घंटे × ${rate}`,
-    longNothing: 'कुछ नहीं',
-    longSplitTrain: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}`,
-    longSplitAverage: (wait: string, ride: string) => `इंतज़ार ${wait} + ट्रेन ${ride}, रूट का औसत`,
     ticketLine: 'ड्राइवर का घर का टिकट: आप बुक करें और उसका भुगतान करें',
     ticketAmount: '+ उसका टिकट',
-    kmSummary: (hours: number) => `और घर वापसी के लगभग ${hours} घंटे`,
-    kmDriving: (km: string, rate: string) => `ड्राइविंग ${km} × ${rate}`,
+    v4Drive: (km: string) => `ड्राइविंग ${km}`,
+    v4Nights: (n: number, rate: string) => `रास्ते में ${n} रात × ${rate}`,
+    v4Wait: (about: string, picked: boolean, hours: number, rate: string, free: number, max: string) =>
+      `ट्रेन का इंतज़ार लगभग ${about} (${picked ? 'आपकी चुनी ट्रेन' : 'इस रूट का आम इंतज़ार'}): ${hours} घंटे × ${rate} (पहले ${free} घंटे मुफ़्त, ज़्यादा से ज़्यादा ${max})`,
+    v4WaitFree: (about: string, picked: boolean, free: number) =>
+      `ट्रेन का इंतज़ार लगभग ${about} (${picked ? 'आपकी चुनी ट्रेन' : 'इस रूट का आम इंतज़ार'}): मुफ़्त (पहले ${free} घंटे)`,
+    v4Minimum: (minimum: string, subtotal: string) => `कम से कम ${minimum} (सब मिलाकर ${subtotal} बनते हैं)`,
+    v4Rounded: (step: string) => `नज़दीकी ${step} तक`,
+    v4NoteFar: (max: string) =>
+      `पक्का दाम ड्राइवर की घर की ट्रेन से तय होगा — उसके इंतज़ार के लिए ज़्यादा से ज़्यादा ${max} और।`,
+    v4NoteNear: 'इस दूरी पर उसके इंतज़ार का कोई पैसा नहीं।',
+    explainV4Drive: (
+      first: string,
+      firstKm: string,
+      perKm: string,
+      farther: string,
+      perKmFarther: string,
+      night: string,
+    ) =>
+      `इससे दूर: पहले ${firstKm} के ${first}, फिर ${farther} तक ${perKm} प्रति km और उसके बाद ${perKmFarther} प्रति km — और रास्ते में रुकने की हर रात के ${night}।`,
+    explainV4Wait: (from: string, free: number, hour: string, max: string) =>
+      `${from} से दूर: घर की ट्रेन का उसका इंतज़ार — पहले ${free} घंटे मुफ़्त, फिर हर शुरू हुए घंटे के ${hour}, ज़्यादा से ज़्यादा ${max}। ट्रेन के सफ़र का कोई पैसा नहीं; पक्का दाम उस ट्रेन से तय होगा जिससे वह जाएगा।`,
     equals: (amount: string) => `= ${amount}`,
-    kmMinimum: (minimum: string, subtotal: string) =>
-      `कम से कम ${minimum} (ड्राइविंग और घर वापसी ${subtotal} बनते हैं)`,
-    kmRounded: (subtotal: string, step: string) => `${subtotal}, नज़दीकी ${step} तक`,
     driveAbout: (drive: string) => `लगभग ${drive}`,
     driveBreaks: (n: number, time: string) => ` + ${n} ब्रेक (${time})`,
     driveDayNight: ', दिन-रात',
     driveNights: (n: number) => `, ${n} रात आराम`,
     driveArrives: (at: string) => ` → निकलने के लगभग ${at} बाद पहुँचेगा`,
-    explainKmDrive: (perKm: string) => `इससे दूर: ड्राइविंग ${perKm} प्रति km (एक तरफ़, सड़क से)।`,
     explainDriveTime: (kmh: number, breakMinutes: number, every: number, maxRoad: number) =>
       `ड्राइवर लगभग ${kmh} km प्रति घंटे चलाता है, हर ${every} घंटे पर ${breakMinutes} मिनट का ब्रेक, और सड़क पर लगभग ${maxRoad} घंटे के बाद रात को आराम — जब तक आप दिन-रात चलवाना न चाहें।`,
-    explainKmHome: (hour: string, dayMax: string, roundTo: string, minimum: string) =>
-      `फिर उसकी घर वापसी — ट्रेन का इंतज़ार और सफ़र: हर शुरू हुए घंटे के ${hour}, हर 24 घंटे में ${dayMax} से ज़्यादा नहीं। यानी 5 घंटे = 5 × ${hour}; 27 घंटे = ${dayMax} + 3 × ${hour}। कुल रकम नज़दीकी ${roundTo} तक, कम से कम ${minimum}; पक्का बिल असली समय से बनेगा।`,
     checkSeats: 'सीट देखें',
     seatsNote:
       'टिकट ख़त्म हो सकते हैं — बुक करने से पहले सीट देख लें। सीट न मिले तो ड्राइवर अगली ट्रेन लेगा; पक्के बिल में उसका असली समय गिना जाएगा।',
     explainSameDay: (km: string, sameDay: string) =>
       `${km} तक ड्राइवर उसी दिन घर लौट आता है: पूरी ट्रिप का एक दाम (${sameDay}, दूरी के हिसाब से)।`,
-    explainLongDays: (day: string, perDay: number, last: number) =>
-      `इससे दूर: ड्राइविंग के हर दिन के ${day} — एक दिन में ${perDay} घंटे ड्राइविंग, आख़िरी दिन ${last} घंटे तक।`,
-    explainLongHome: (hour: string, dayMax: string) =>
-      `फिर उसकी घर वापसी — ट्रेन का इंतज़ार और सफ़र: हर शुरू हुए घंटे के ${hour}, हर 24 घंटे में ${dayMax} से ज़्यादा नहीं। यानी 5 घंटे = 5 × ${hour}; 27 घंटे = ${dayMax} + 3 × ${hour}। पक्का बिल असली समय से बनेगा।`,
     nonstop: 'दिन-रात ड्राइविंग',
     nonstopHint: 'रात में आराम नहीं, तो जल्दी पहुँचेगा — ड्राइविंग की कीमत वही।',
     trainsTitle: 'ड्राइवर की वापसी की ट्रेन',
@@ -464,6 +464,23 @@ export const hi: Messages = {
       package: (amount: string, hours: number) => `${amount} पैकेज (${hours} घंटे)`,
       extra: (hours: number, rate: string) => `${hours} घंटे अतिरिक्त × ${rate}`,
       used: (hours: number) => `ड्राइवर के साथ ${hours} घंटे`,
+    },
+    trains: {
+      title: 'ड्राइवर की घर की ट्रेन',
+      dropped: 'आपके ड्राइवर ने गाड़ी छोड़ दी है। उसका घर का टिकट बुक करें — एक ट्रेन चुनें।',
+      failed: 'अभी ट्रेनें नहीं देख सके — हमारी टीम आपको कॉल करेगी।',
+      none: 'जल्दी कोई ट्रेन नहीं — वह बस से घर आएगा।',
+      leaves: (dep: string, city: string, arr: string) => `छूटेगी ${dep} · ${city} पहुँचेगी ${arr}`,
+      change: (station: string, train: string) => ` · ${station} पर ${train} में बदलें`,
+      total: (amount: string) => `कुल ${amount}`,
+      checkSeats: 'सीट देखें ↗',
+      noSeatCheck: 'हम सीट नहीं देखते — उसका टिकट बुक करने से पहले रेलवे की साइट पर देख लें।',
+      booked: 'मैंने यह ट्रेन बुक की',
+      lateFirst: 'पहली ट्रेन देर से है — बस भी ठीक है; पक्के बिल में उसका असली इंतज़ार गिना जाएगा।',
+      chosen: (train: string) => `ट्रेन ${train} — पक्का दाम कुछ मिनट में आएगा।`,
+      final: (amount: string, train: string) => `पक्का दाम ${amount} · ट्रेन ${train}`,
+      saveFailed: 'सेव नहीं हुआ। इंटरनेट देखकर फिर कोशिश करें।',
+      refused: 'यह ट्रेन सेव नहीं हो सकी — कृपया हमें कॉल करें।',
     },
     meter: {
       title: 'अभी तक का किराया',

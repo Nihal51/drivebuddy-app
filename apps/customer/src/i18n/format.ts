@@ -218,6 +218,12 @@ export function quoteBreakdown(t: Messages, q: BookingQuote): string {
  * 2 extra hours × ₹150 · 5 h with the driver)". Numbers that do not add up
  * show the total alone rather than a sum that looks wrong.
  */
+/** 5077.5 → "₹5,077.50", 2627 → "₹2,627": the v4 drive's price can have paise (₹2.50 a km). */
+export function rupeesPaise(n: number): string {
+  const paise = Math.round(Math.abs(n) * 100) % 100;
+  return paise === 0 ? rupees(n) : `${rupees(Math.trunc(n))}.${String(paise).padStart(2, '0')}`;
+}
+
 /** 560 → "9 h 20 min"; 1680 → "1 day 4 h". */
 export function meterTime(t: Messages, minutes: number): string {
   const { days, hours, minutes: mins } = splitMinutes(minutes);

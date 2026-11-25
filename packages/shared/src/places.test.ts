@@ -18,7 +18,7 @@ import {
   plainText,
   searchPlaces,
 } from './places';
-import { planTrip, tripRecord } from './trip';
+import { V4_DEFAULTS, planTrip, tripRecord } from './trip';
 
 const ROWS = [
   ['Nagpur', 'Maharashtra', 21.1463, 79.0849, 2228018, 'NGPB', ''],
@@ -116,7 +116,7 @@ describe('a place not among ours', () => {
     outstation: {
       ...DEFAULT_CONFIG.outstation,
       roadFactor: 1.3,
-      oneWay: { perKm: 3, homeHour: 100, homeDayMax: 1500, minimum: 1500, roundTo: 50 },
+      oneWay: V4_DEFAULTS,
     },
   };
 
@@ -151,9 +151,10 @@ describe('a place not among ours', () => {
   test('priced from its km and saved as the website saves it', () => {
     const dest = placeDestination(CONFIG, byName('Kochi'));
     const plan = planTrip(CONFIG, 'one-way-drop', 'Raipur', dest);
-    // 1,797 km × ₹3 = 5,391 + his way home 1 h + 35 h 56 m on the bus → 36 h 56 m: ₹1,500 + 13 h × ₹100.
-    expect(plan.est?.byKm).toMatchObject({ km: 1797, driving: 5391, home: 2800 });
-    expect(plan.est?.from).toBe(8200);
+    // 1,797 km: ₹1,500 + 300 × ₹2.50 + 1,297 × ₹3.25 = 6,465.25; 2 nights on the road ₹600; his wait
+    // 1 h (stationHours, a place from the map): free → 7,065.25 → ₹7,050.
+    expect(plan.est?.long).toMatchObject({ km: 1797, drive: 6465.25, nights: 2, waitCharge: 0 });
+    expect(plan.est?.from).toBe(7050);
     expect(tripRecord(plan, '')).toEqual({
       to: 'Kochi, Kerala',
       destId: '',
@@ -161,8 +162,8 @@ describe('a place not among ours', () => {
       km: 1797,
       days: plan.days,
       returnHours: plan.returnHours,
-      estFrom: 8200,
-      estTo: 8200,
+      estFrom: 7050,
+      estTo: 7050,
     });
     // A round trip there: the days at the day price for the distance.
     const round = planTrip(CONFIG, 'outstation', 'Raipur', dest);

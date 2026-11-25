@@ -47,6 +47,7 @@ const TAP_BUTTON: Record<
   leftAt: { title: (t) => t.job.start, hint: (t) => t.job.startHint, icon: 'navigate', dark: false },
   arrivedAt: { title: (t) => t.job.arrived, hint: (t) => t.job.arrivedHint, icon: 'flag', dark: true },
   doneAt: { title: (t) => t.job.done, hint: (t) => t.job.doneHint, icon: 'checkmark-done', dark: false },
+  boardAt: { title: (t) => t.job.board, hint: (t) => t.job.boardHint, icon: 'train', dark: false },
   homeAt: { title: (t) => t.job.home, hint: (t) => t.job.homeHint, icon: 'home', dark: true },
 };
 
@@ -169,11 +170,13 @@ export default function JobScreen() {
     setBusy(null);
   };
 
-  const confirmTap = (step: 'doneAt' | 'homeAt') => {
+  const confirmTap = (step: 'doneAt' | 'boardAt' | 'homeAt') => {
     const words =
       step === 'doneAt'
         ? { title: t.job.doneTitle, body: t.job.doneBody, yes: t.job.doneConfirm }
-        : { title: t.job.homeTitle, body: t.job.homeBody, yes: t.job.homeConfirm };
+        : step === 'boardAt'
+          ? { title: t.job.boardTitle, body: t.job.boardBody, yes: t.job.boardConfirm }
+          : { title: t.job.homeTitle, body: t.job.homeBody, yes: t.job.homeConfirm };
     Alert.alert(words.title, words.body, [
       { text: t.jobs.cancel, style: 'cancel' },
       { text: words.yes, onPress: () => void tap(step) },
@@ -181,7 +184,7 @@ export default function JobScreen() {
   };
 
   const onTap = (step: TapStep) =>
-    step === 'doneAt' || step === 'homeAt' ? confirmTap(step) : void tap(step);
+    step === 'doneAt' || step === 'boardAt' || step === 'homeAt' ? confirmTap(step) : void tap(step);
 
   const shareAgain = async () => {
     setBusy('share');
@@ -223,7 +226,7 @@ export default function JobScreen() {
 
   const next = buttons.tap ? TAP_BUTTON[buttons.tap] : null;
   const footer =
-    buttons.tap || buttons.shareAgain || buttons.stopSharing || canRelease ? (
+    buttons.tap || buttons.homeByBus || buttons.shareAgain || buttons.stopSharing || canRelease ? (
       <View style={styles.footer}>
         {buttons.tap && next ? (
           <Button
@@ -235,6 +238,19 @@ export default function JobScreen() {
             // Until his saved taps have loaded, the right button is not known yet.
             disabled={taps === undefined || cool || (busy !== null && busy !== 'tap')}
             testID={`tap-${buttons.tap}`}
+          />
+        ) : null}
+        {buttons.homeByBus ? (
+          // Back by bus: no train to board, Reached home straight after the drop.
+          <Button
+            title={t.job.homeByBus}
+            icon="bus"
+            variant="outline"
+            compact
+            onPress={() => confirmTap('homeAt')}
+            loading={busy === 'tap'}
+            disabled={taps === undefined || cool || (busy !== null && busy !== 'tap')}
+            testID="tap-homeAt-bus"
           />
         ) : null}
         {buttons.shareAgain ? (
@@ -328,6 +344,8 @@ export default function JobScreen() {
 
       <PaymentReceived id={job.id} taps={taps ?? null} />
 
+      {job.packageId === 'one-way-drop' && taps?.doneAt && !taps.homeAt ? <TrainsHome job={job} /> : null}
+
       {times.length ? (
         <Card>
           <AppText variant="small" color={colors.textFaint}>
@@ -412,6 +430,63 @@ export default function JobScreen() {
         </Card>
       ) : null}
     </Screen>
+  );
+}
+
+/** Drops this far and farther get the train check at the drop (the first nearby tier, SPEC-v4). */
+const TRAIN_CHECK_FROM_KM = 160;
+
+/**
+ * After a one-way drop (SPEC-v4 §2): the trains home the robot found — the
+ * customer books his ticket — and once one is chosen, "Your train: 18452 at
+ * 9:40 pm". No prices: those are the customer's.
+ */
+function TrainsHome({ job }: { job: Job }) {
+  const { t } = useI18n();
+  const { colors } = useTheme();
+  const check = job.returnCheck;
+  const choice = job.returnChoice;
+  const at = (d?: Date) => (d ? formatDateTime(t, d) : '');
+  if (choice) {
+    return (
+      <Card tone="cream">
+        <AppText weight="heavy" testID="your-train">
+          {t.job.yourTrain(choice.train, at(choice.dep))}
+        </AppText>
+      </Card>
+    );
+  }
+  if (!check) {
+    // The robot looks within a minute of the drop; nearer drops get no check.
+    return (job.trip?.km ?? 0) > TRAIN_CHECK_FROM_KM ? (
+      <Card>
+        <AppText color={colors.textMuted}>{t.job.trainsLooking}</AppText>
+      </Card>
+    ) : null;
+  }
+  return (
+    <Card>
+      <AppText variant="small" weight="bold" color={colors.textFaint}>
+        {t.job.trainsTitle}
+      </AppText>
+      {check.failed ? (
+        <AppText>{t.job.trainsFailed}</AppText>
+      ) : check.options.length === 0 ? (
+        <AppText>{t.job.trainsBus}</AppText>
+      ) : (
+        check.options.slice(0, 3).map((o) => (
+          <AppText key={`${o.train}-${o.dep?.getTime() ?? ''}`} testID={`train-${o.train}`}>
+            {t.job.trainOption(o.train, o.name, o.from, at(o.dep))}
+            {o.change ? t.job.trainChange(o.change.station, o.change.train) : ''}
+          </AppText>
+        ))
+      )}
+      {check.bus && check.options.length > 0 ? (
+        <AppText variant="small" color={colors.textMuted}>
+          {t.job.trainsLate}
+        </AppText>
+      ) : null}
+    </Card>
   );
 }
 

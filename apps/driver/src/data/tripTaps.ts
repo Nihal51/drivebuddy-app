@@ -20,7 +20,12 @@ import { firestore } from '@/firebase/app';
 
 import { type WriteFailure, failureOf, within } from './write';
 
-export type TapStep = 'leftAt' | 'arrivedAt' | 'doneAt' | 'homeAt';
+/**
+ * boardAt: a one-way drop's "Boarded the train" (SPEC-v4, 24 Nov 2026) — after
+ * the drop (Job done), before home, once. It sets his wait for the train on
+ * the bill. By bus he skips it: Reached home straight after the drop.
+ */
+export type TapStep = 'leftAt' | 'arrivedAt' | 'doneAt' | 'boardAt' | 'homeAt';
 
 export type PaidBy = 'upi' | 'cash';
 export const PAID_BY: readonly PaidBy[] = ['upi', 'cash'];
@@ -30,16 +35,20 @@ export type TripTaps = {
   leftAt?: Date;
   arrivedAt?: Date;
   doneAt?: Date;
+  boardAt?: Date;
   homeAt?: Date;
   /** How the customer paid, as he recorded it after Job done. */
   paidBy?: PaidBy;
   paidAt?: Date;
 };
 
-/** The taps a job has, in order: "Reached home" only after a one-way drop (he comes back by bus or train). */
+/**
+ * The taps a job has, in order: after a one-way drop, "Boarded the train"
+ * (skipped when he comes back by bus) and "Reached home".
+ */
 export function tapSteps(packageId: PackageId | null): TapStep[] {
   return packageId === 'one-way-drop'
-    ? ['leftAt', 'arrivedAt', 'doneAt', 'homeAt']
+    ? ['leftAt', 'arrivedAt', 'doneAt', 'boardAt', 'homeAt']
     : ['leftAt', 'arrivedAt', 'doneAt'];
 }
 
@@ -64,7 +73,10 @@ export function tapCheck(
   packageId: PackageId | null,
 ): 'ok' | 'already' | 'order' {
   if (taps?.[step]) return 'already';
-  return nextTap(taps, packageId) === step ? 'ok' : 'order';
+  const next = nextTap(taps, packageId);
+  // Home straight after the drop is fine: he came back by bus (firestore.rules: homeAt after doneAt).
+  if (step === 'homeAt' && next === 'boardAt') return 'ok';
+  return next === step ? 'ok' : 'order';
 }
 
 export type JobButtons = {
@@ -74,6 +86,8 @@ export type JobButtons = {
   shareAgain: boolean;
   /** Sharing when he should not be (after Arrived, or a Start whose tap was not saved): let him stop it. */
   stopSharing: boolean;
+  /** After a one-way drop, before he has boarded: "Reached home" too, for coming back by bus. */
+  homeByBus: boolean;
 };
 
 /** What the job screen offers, from his saved taps and whether this phone is sharing on this job. */
@@ -87,6 +101,7 @@ export function jobButtons(
     tap,
     shareAgain: tap === 'arrivedAt' && !sharingThis,
     stopSharing: sharingThis && tap !== 'arrivedAt',
+    homeByBus: tap === 'boardAt',
   };
 }
 
@@ -104,6 +119,7 @@ export function toTripTaps(d: Record<string, unknown>): TripTaps {
     leftAt: toDate(d.leftAt),
     arrivedAt: toDate(d.arrivedAt),
     doneAt: toDate(d.doneAt),
+    boardAt: toDate(d.boardAt),
     homeAt: toDate(d.homeAt),
     ...(PAID_BY.includes(d.paidBy as PaidBy) ? { paidBy: d.paidBy as PaidBy } : {}),
     paidAt: toDate(d.paidAt),

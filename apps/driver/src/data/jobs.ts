@@ -8,14 +8,17 @@
  *
  * A driver never sees what the customer pays or DriveBuddy's cut — only his
  * own pay (on the offer). The booking he reads still holds the customer's
- * money (quote, trip estimate, bills, payment, accepted price), so a Job is
- * built without any of it: no screen can show what is not there.
+ * money (quote, trip estimate, bills, payment, accepted price, the price with
+ * each train home), so a Job is built without any of it: no screen can show
+ * what is not there.
  */
 
 import {
   type Booking,
   type BookingTrip,
   type PickupGeo,
+  type ReturnCheck,
+  type ReturnCheckOption,
   readPickupGeo,
   toBooking,
   toDate,
@@ -25,15 +28,23 @@ import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 
 import { firestore } from '@/firebase/app';
 
-/** The customer's money on a booking: never part of a Job. */
-type MoneyKeys = 'quote' | 'bill' | 'acceptedPrice' | 'localBill' | 'payment';
+/** The customer's money on a booking: never part of a Job (returnPrice: the final price with his train). */
+type MoneyKeys = 'quote' | 'bill' | 'acceptedPrice' | 'localBill' | 'payment' | 'returnPrice';
+
+/** A train home the robot found at the drop, as the driver sees it: no price, no wait charge. */
+export type JobTrain = Omit<ReturnCheckOption, 'waitCharge' | 'price'>;
+
+/** The robot's train check at the drop, without the customer's prices. */
+export type JobReturnCheck = Omit<ReturnCheck, 'options'> & { options: JobTrain[] };
 
 /** DriveBuddy called him and confirmed the job (robot-written; absent until then). */
 export type DriverConfirmed = { at?: Date; by: string; driverId: string };
 
-export type Job = Omit<Booking, MoneyKeys | 'trip'> & {
+export type Job = Omit<Booking, MoneyKeys | 'trip' | 'returnCheck'> & {
   /** Where and how long — without the customer's estimate. */
   trip?: Omit<BookingTrip, 'estFrom' | 'estTo'>;
+  /** After a one-way drop over 160 km: the trains home (the customer books his ticket), without prices. */
+  returnCheck?: JobReturnCheck;
   pickupGeo: PickupGeo | null;
   driverConfirmed?: DriverConfirmed;
 };
@@ -76,9 +87,20 @@ export function notesForDriver(notes: string): string {
 }
 
 export function toJob(id: string, data: Record<string, unknown>): Job {
-  const { quote, bill, acceptedPrice, localBill, payment, trip, notes, ...rest } = toBooking(id, data);
-  void [quote, bill, acceptedPrice, localBill, payment]; // taken out on purpose: the customer's money
+  const { quote, bill, acceptedPrice, localBill, payment, returnPrice, returnCheck, trip, notes, ...rest } =
+    toBooking(id, data);
+  void [quote, bill, acceptedPrice, localBill, payment, returnPrice]; // taken out on purpose: the customer's money
   const job: Job = { ...rest, notes: notesForDriver(notes), pickupGeo: readPickupGeo(data.pickupGeo) };
+  if (returnCheck) {
+    job.returnCheck = {
+      ...returnCheck,
+      // Each train without what the customer pays with it.
+      options: returnCheck.options.map(({ waitCharge, price, ...train }) => {
+        void [waitCharge, price];
+        return train;
+      }),
+    };
+  }
   if (trip) {
     const { estFrom, estTo, ...where } = trip;
     void [estFrom, estTo];

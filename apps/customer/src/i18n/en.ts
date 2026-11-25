@@ -228,44 +228,43 @@ export const en = {
     timeTotal: (total: number) =>
       `His time: about ${total} h, from when he leaves until he is home — the drive, waiting for his train and the ride home`,
     returnShort: (n: number) => `way home (${n} h)`,
-    longSummary: (days: number, hours: number) =>
-      `${days === 1 ? '1 driving day' : `${days} driving days`} + about ${hours} h home`,
-    longDriving: (days: number, hours: number, rate: string) =>
-      `${days === 1 ? '1 driving day' : `${days} driving days`} (about ${hours} h) × ${rate}`,
-    longHome: (about: string, split: string, parts: string, dayMax: string) =>
-      `His way home about ${about}${split ? ` (${split})` : ''}: ${parts} (never more than ${dayMax} a day)`,
-    longHomeDays: (days: number, rate: string) => `${days === 1 ? '1 day' : `${days} days`} × ${rate}`,
-    longHomeHours: (hours: number, rate: string) => `${hours} h × ${rate}`,
-    longNothing: 'nothing',
-    longSplitTrain: (wait: string, ride: string) => `waiting ${wait} + train ${ride}`,
-    longSplitAverage: (wait: string, ride: string) => `waiting ${wait} + train ${ride}, the route’s average`,
     ticketLine: 'His ticket home: you book and pay for it',
     ticketAmount: '+ his ticket',
-    kmSummary: (hours: number) => `plus about ${hours} h for his way home`,
-    kmDriving: (km: string, rate: string) => `Driving ${km} × ${rate}`,
+    v4Drive: (km: string) => `Drive ${km}`,
+    v4Nights: (n: number, rate: string) => `${n === 1 ? '1 night' : `${n} nights`} on the road × ${rate}`,
+    v4Wait: (about: string, picked: boolean, hours: number, rate: string, free: number, max: string) =>
+      `Train wait about ${about} (${picked ? 'the train you picked' : 'the route’s usual wait'}): ${hours} h × ${rate} (the first ${free} h free, at most ${max})`,
+    v4WaitFree: (about: string, picked: boolean, free: number) =>
+      `Train wait about ${about} (${picked ? 'the train you picked' : 'the route’s usual wait'}): free (the first ${free} h)`,
+    v4Minimum: (minimum: string, subtotal: string) => `Minimum ${minimum} (the parts come to ${subtotal})`,
+    v4Rounded: (step: string) => `To the nearest ${step}`,
+    v4NoteFar: (max: string) =>
+      `The final price is set by the train he takes home — at most ${max} more for his wait.`,
+    v4NoteNear: 'No charge for his wait at this distance.',
+    explainV4Drive: (
+      first: string,
+      firstKm: string,
+      perKm: string,
+      farther: string,
+      perKmFarther: string,
+      night: string,
+    ) =>
+      `Farther: ${first} for the first ${firstKm}, then ${perKm} a km to ${farther} and ${perKmFarther} a km after — and ${night} for each night he stops on the road.`,
+    explainV4Wait: (from: string, free: number, hour: string, max: string) =>
+      `Farther than ${from}: his wait for the train home — the first ${free} h free, then ${hour} for each started hour, at most ${max}. The train ride itself is not charged; the final price goes by the train he takes.`,
     equals: (amount: string) => `= ${amount}`,
-    kmMinimum: (minimum: string, subtotal: string) =>
-      `Minimum ${minimum} (the drive and his way home come to ${subtotal})`,
-    kmRounded: (subtotal: string, step: string) => `${subtotal} to the nearest ${step}`,
     driveAbout: (drive: string) => `about ${drive}`,
     driveBreaks: (n: number, time: string) => ` + ${n} ${n === 1 ? 'break' : 'breaks'} (${time})`,
     driveDayNight: ', day and night',
     driveNights: (n: number) => `, resting ${n} ${n === 1 ? 'night' : 'nights'}`,
     driveArrives: (at: string) => ` → arrives about ${at} after leaving`,
-    explainKmDrive: (perKm: string) => `Farther: the drive is ${perKm} a km (one way, by road).`,
     explainDriveTime: (kmh: number, breakMinutes: number, every: number, maxRoad: number) =>
       `He drives about ${kmh} km an hour with a ${breakMinutes}-minute break every ${every} hours, and rests the night after about ${maxRoad} hours on the road — unless you want it driven day and night.`,
-    explainKmHome: (hour: string, dayMax: string, roundTo: string, minimum: string) =>
-      `Then his way home — waiting for the train he takes and the ride: ${hour} for each started hour, never more than ${dayMax} for each 24 hours. So 5 hours home = 5 × ${hour}; 27 hours = ${dayMax} + 3 × ${hour}. The total is rounded to the nearest ${roundTo}, at least ${minimum}; the final bill uses his real times.`,
     checkSeats: 'Check seats',
     seatsNote:
       'Tickets can sell out — check seats before you book. If there’s no seat, he takes the next train; the final bill counts his real time.',
     explainSameDay: (km: string, sameDay: string) =>
       `Up to ${km} he is home the same day: one price for the trip (${sameDay}, by distance).`,
-    explainLongDays: (day: string, perDay: number, last: number) =>
-      `Farther: ${day} for each day of driving — ${perDay} hours of driving a day, the last day up to ${last} hours.`,
-    explainLongHome: (hour: string, dayMax: string) =>
-      `Then his way home — waiting for the train he takes and the ride: ${hour} for each started hour, never more than ${dayMax} for each 24 hours. So 5 hours home = 5 × ${hour}; 27 hours = ${dayMax} + 3 × ${hour}. The final bill uses his real times.`,
     nonstop: 'Drive day and night',
     nonstopHint: 'No overnight rest, so he gets there sooner — the same price for the driving.',
     trainsTitle: 'Driver’s train home',
@@ -482,6 +481,23 @@ export const en = {
       extra: (hours: number, rate: string) =>
         `${hours === 1 ? '1 extra hour' : `${hours} extra hours`} × ${rate}`,
       used: (hours: number) => `${hours} h with the driver`,
+    },
+    trains: {
+      title: 'His train home',
+      dropped: 'Your driver has dropped the car. Book his ticket home — pick a train.',
+      failed: 'We could not check the trains just now — our team will call you.',
+      none: 'No train home soon — he comes home by bus.',
+      leaves: (dep: string, city: string, arr: string) => `Leaves ${dep} · arrives ${city} ${arr}`,
+      change: (station: string, train: string) => ` · change at ${station} to ${train}`,
+      total: (amount: string) => `${amount} total`,
+      checkSeats: 'Check seats ↗',
+      noSeatCheck: 'We do not check seats — look on the railway’s site before you book his ticket.',
+      booked: 'I booked this train',
+      lateFirst: 'The first train leaves late — a bus is fine too; the final bill counts his real wait.',
+      chosen: (train: string) => `Train ${train} — the final price comes in a few minutes.`,
+      final: (amount: string, train: string) => `Final price ${amount} · train ${train}`,
+      saveFailed: 'Could not save. Check your internet and try again.',
+      refused: 'This train could not be saved — please call us.',
     },
     meter: {
       title: 'Live fare',

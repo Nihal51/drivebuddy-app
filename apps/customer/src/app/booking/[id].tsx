@@ -9,6 +9,7 @@ import { DriverMap } from '@/booking/DriverMap';
 import { FareMeterCard } from '@/booking/FareMeterCard';
 import { PaymentCard } from '@/booking/PaymentCard';
 import { RatingCard } from '@/booking/RatingCard';
+import { ReturnTrainsCard } from '@/booking/ReturnTrainsCard';
 import {
   canAcceptPrice,
   canRate,
@@ -150,6 +151,8 @@ export default function BookingDetailScreen() {
           />
         </Card>
       ) : null}
+
+      {b.returnCheck ? <ReturnTrainsCard booking={b} /> : null}
 
       {b.status === 'assigned' ? <FareMeterCard booking={b} config={config} /> : null}
 
